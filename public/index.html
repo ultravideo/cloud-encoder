@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>kvazaar for cloud</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="style.css" />
+  </head>
+  <body>
+    <div id="frame">
+      <h3>zzz</h3>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+      <script src="resumable.js"></script>
+	  <script>
+		function displayResolution() {
+			var x = document.getElementById("resDiv");
+			if (x.style.display === "none")
+				x.style.display = "block";
+			else
+				x.style.display = "none";
+		}
+	  </script>
+
+      <div class="resumable-error">
+        Your browser, unfortunately, is not supported by Resumable.js. The library requires support for <a href="http://www.w3.org/TR/FileAPI/">the HTML5 File API</a> along with <a href="http://www.w3.org/TR/FileAPI/#normalization-of-params">file slicing</a>.
+      </div>
+
+	  <div id="formData">
+	  <span>raw video <input type="checkbox" name="raw_video" onclick="displayResolution()" class="options"/></span><br>
+	  <div id="resDiv" style="display:none">
+		  resolution<input type="text" name="resolution" class="options" placeholder="1920x1080"/>
+		  <div id="resMissing" style="display:none">
+			  <font color='red'><b>Resolution must be given for raw video</b></font>
+		  </div>
+	  </div>
+	  <span>preset</span> <select name="preset" class="kvz_options">
+		  <option value="ultrafast">Ultrafast</option>
+		  <option value="superfast">Superfast</option>
+		  <option value="medium">Medium</option>
+		  <option value="placebo">Placebo</option>
+	  </select><br>
+	  <span>container</span> <select name="container" class="kvz_options">
+		  <option value="none">None (raw HEVC video)</option>
+		  <option value="mp4">mp4</option>
+		  <option value="mkv">mkv</option>
+	  </select><br>
+	  </div>
+	  <button id="browseButton">Browse...</button><br>
+	  <button id="submitButton">Submit</button>
+
+      <div class="resumable-progress">
+        <table>
+          <tr>
+            <td width="100%"><div class="progress-container"><div class="progress-bar"></div></div></td>
+            <td class="progress-text" nowrap="nowrap"></td>
+            <td class="progress-pause" nowrap="nowrap">
+				<a href="#" onclick="r.upload(); return(false);" class="progress-resume-link">
+					<img src="resume.png" title="Resume upload"/>
+				</a>
+              <a href="#" onclick="r.pause(); return(false);" class="progress-pause-link">
+					<img src="pause.png" title="Pause upload"/>
+			  </a>
+              <a href="#" onclick="r.cancel(); return(false);" class="progress-cancel-link">
+				  <img src="cancel.png" title="Cancel upload"/>
+			  </a>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <ul class="resumable-list"></ul>
+    </div>
+	<script src="frontend.js"></script>
+  </body>
+</html>

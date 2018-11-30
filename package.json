@@ -1,0 +1,19 @@
+{
+  "name": "resumable.js",
+  "version": "0.0.1",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "concat-files": "^0.1.1",
+    "connect-multiparty": "^1.1.0",
+    "crypto-js": "^3.1.9-1",
+    "express": "^4.16.4",
+    "ffprobe": "^1.1.0",
+    "ffprobe-static": "^3.0.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "kue": "^0.11.6",
+    "sqlite3": "^4.0.4",
+    "websocket": "^1.0.28"
+  }
+}
