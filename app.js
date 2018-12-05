@@ -10,7 +10,9 @@ var concat = require('concat-files');
 var sqlite3 = require('sqlite3').verbose();
 var kue = require('kue');
 var db = require('./db');
-const { fork } = require('child_process');
+var ffprobe = require('ffprobe');
+var ffprobeStatic = require('ffprobe-static');
+const { fork, spawn } = require('child_process');
 
 var ws_conn = null;
 var ws_conns = {};
@@ -268,19 +270,61 @@ app.use(multipart());
 
 // Handle uploads through Resumable.js
 app.post('/upload', function(req, res) {
+    console.log("got upload request!");
     resumable.post(req, function(status, filename, original_filename, identifier) {
         const tmpFile    = "/tmp/cloud_uploads/" + identifier + ".tmp";
         const chunkFile  = "/tmp/cloud_uploads/resumable-" + original_filename + "." + req.query.resumableChunkNumber;
 
         // file too large (>50GB), inform user, terminate upload and clean database
         // TODO how easy it is for the user to spoof these values??
-        if (req.query.resumableChunkNumber * req.query.resumableChunkSize > 5 * 1000 * 1000 * 1000) {
+        if (req.query.resumableChunkNumber * req.query.resumableChunkSize > 50 * 1000 * 1000 * 1000) {
             sendMessage(ws_conn, "nok", "reply", "File too big");
             res.status(400).end();
             return;
         } else if (req.query.resumableChunkNumber == 1) {
-            // TODO ffprobe
+            console.log("sending db response...");
+            db.getFile(identifier).then(function(row) {
+                // this file hasn't been approved, terminate download
+                console.log("got db response...");
+                if (!row) {
+                    sendMessage(ws_conn, null, "status", "File been approved, file upload rejected!");
+                    res.status(400).send();
+                    return;
+                } else {
+                    // raw video, continue download (size limit for raw video is 50GB)
+                    if (row.raw_video === 1) {
+                        res.send(status);
+                    } else {
+                        // check if containerized file is too large (duration > 30min)
+                        const options = [
+                            "-v", "error", "-show_entries",
+                            "format=duration", "-of",
+                            "default=noprint_wrappers=1:nokey=1",
+                            chunkFile
+                        ];
+                        const child = spawn("ffprobe", options);
+                        let result = "";
+
+                        // TODO how easy is it to spoof this duration??
+                        // file size limit for containerized video is 30 minutes (1800 seconds)
+                        child.stdout.on("data", function(data) { result += data.toString(); });
+                        child.stderr.on("data", function(data) { result += data.toString(); });
+                        child.on("exit", function(code, signal) {
+                            let numSeconds = parseInt(result, 10);
+
+                            if (isNaN(numSeconds) || numSeconds > 1800) {
+                                sendMessage(ws_conn, null, "status", "File is too large!");
+                                res.status(400).send();
+                                return;
+                            }
+                        });
+                    }
+                }
+            });
         }
+
+        // accept chunk
+        res.send(status);
 
         if (status === "done") {
             sendMessage(ws_conn, null, "status", "Processing file...");
@@ -315,7 +359,6 @@ app.post('/upload', function(req, res) {
                 });
             });
         }
-        res.send(status);
     });
 });
 

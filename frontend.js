@@ -57,6 +57,7 @@ if(!r.support) {
             }
 
             if (message_data.type === "reply" && message_data.status === "ok") {
+                console.log("starting upload...");
                 $('.resumable-progress .progress-resume-link').hide();
                 $('.resumable-progress .progress-pause-link').show();
                 r.upload();
