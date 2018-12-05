@@ -52,11 +52,26 @@ function job_enqueue(taskID, token) {
     });
 }
 
-// TODO
+// TODO comment this
 function validateFileOptions(fileOptions) {
     return new Promise((resolve, reject) => {
-        console.log(fileOptions);
-        resolve();
+        let validatedOptions = {
+            resolution: 0,
+            raw_video: 0,
+            uniq_id: fileOptions.file_id
+        };
+
+        if (fileOptions.resolution !== "") {
+            let res = fileOptions.resolution.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
+            if (!res) {
+                reject(new Error("Invalid resolution!"));
+            }
+
+            validatedOptions["resolution"] = res[0];
+            validatedOptions["raw_video"]  = 1;
+        }
+
+        resolve(validatedOptions);
     });
 }
 
@@ -76,11 +91,22 @@ function linkOptionsAndFiles(owner, fileOptions, kvazaarHash, messageCallback) {
     .then(function(row) {
         // add new file to database and enqueue it to task queue
         if (!row) {
-            const task_params = {owner_id : owner, file_id : fileOptions.file_id,
-                                 ops_id : kvazaarHash, token : token};
+            const task_params = {
+                token    : token,
+                owner_id : owner,
+                ops_id   : kvazaarHash,
+                file_id  : fileOptions.file_id,
+            };
 
-            db.insertFile({uniq_id : fileOptions.file_id})
-            .then(db.insertTask(task_params))
+            validateFileOptions(fileOptions)
+            .then((validatedFileOptions) => {
+                return db.insertFile(validatedFileOptions)
+            })
+            // TODO TÄMÄ EI TOIMI PITKÄSSÄ JUOKSUSSA!!!!!!!
+            // .then(db.insertTask(task_params))
+            .then(() => {
+                return db.insertTask(task_params)
+            })
             .then(function() {
                 const json = {
                     status : "ok",
@@ -92,6 +118,13 @@ function linkOptionsAndFiles(owner, fileOptions, kvazaarHash, messageCallback) {
                 messageCallback(JSON.stringify(json));
             })
             .catch(function(err) {
+                const json = {
+                    status : "nok",
+                    type : "reply",
+                    message : err
+                };
+
+                messageCallback(JSON.stringify(json));
                 console.log(err);
             });
         } else {
@@ -287,41 +320,6 @@ app.get('/upload', function(req, res){
 });
 
 app.get('/download/:hash', function(req, res) {
-    db.getWorkerData(req.params.hash, function(row) {
-        if (!row) {
-            res.write("file does not exist");
-            res.end();
-        } else {
-            if (row.download_count >= 2) {
-                res.write("download limit for this file has been exceeded");
-                res.end();
-                return;
-            }
-
-            switch (row.status) {
-                case 0:
-                    res.write("file is not ready for download");
-            res.end();
-                    break;
-                case 1:
-                    res.write("file is being decoded, try again later");
-            res.end();
-                    break;
-                case 2:
-                    res.write("file is being encoded with kvazaar, try again later")
-            res.end();
-                    break;
-                case 3:
-                    res.write("file is being containerized, try again later");
-            res.end();
-                    break;
-                case 1337:
-                    res.download(String(row.file_path));
-                    db.registerUpload(req.params.hash, ++row.download_count , function() {});
-                    break;
-            }
-        }
-    });
 });
 
 app.get('/resumable.js', function (req, res) {
