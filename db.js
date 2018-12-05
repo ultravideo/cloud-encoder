@@ -138,7 +138,19 @@ module.exports = {
         });
     },
 
-    getTaskUsingTaskID : function(taskID, callback) {
+    getTasks : function(fieldName, fieldValue) {
+        return new Promise((resolve, reject) => {
+            const sql = "SELECT * FROM work_queue WHERE " + fieldName + " = ?";
+
+            db.all(sql, [fieldValue], function(err, rows) {
+                if (err)
+                    reject(err);
+                resolve(rows);
+            });
+        });
+    },
+
+    getTaskUsingTaskID : function(taskID) {
         return new Promise((resolve, reject) => {
             const sql = "SELECT * from work_queue WHERE taskID = ?";
 
@@ -150,7 +162,19 @@ module.exports = {
         });
     },
 
-    getTaskUsingOwnerFileOptions : function(owner, file_id, options_id, callback) {
+    getTaskUsingToken : function(token, callback) {
+        return new Promise((resolve, reject) => {
+            const sql = "SELECT * from work_queue WHERE token = ?";
+
+            db.get(sql, [token], function(err, row) {
+                if (err)
+                    reject(err);
+                resolve(row);
+            });
+        });
+    },
+
+    getTaskUsingOwnerFileOptions : function(owner, file_id, options_id) {
         return new Promise((resolve, reject) => {
             const sql = "SELECT * from work_queue WHERE file_id = ? AND ops_id = ? AND owner_id = ?";
 
@@ -167,16 +191,30 @@ module.exports = {
         return new Promise((resolve, reject) => {
             if (arguments.length == 1 && typeof(arguments[0]) === "number")
             {
-                resolve(this.getTaskUsingTaskID(arguments[0], arguments[1]));
+                resolve(this.getTaskUsingTaskID(arguments[0]));
+            } else if (arguments.length == 1 && typeof(arguments[0]) === "string") {
+                resolve(this.getTaskUsingToken(arguments[0]));
             } else if (arguments.length == 3 &&
                 typeof(arguments[0]) === "string" &&
                 typeof(arguments[1]) === "string" &&
                 typeof(arguments[2]) === "string")
             {
-                resolve(this.getTaskUsingOwnerFileOptions(arguments[0], arguments[1], arguments[2], arguments[3]));
+                resolve(this.getTaskUsingOwnerFileOptions(arguments[0], arguments[1], arguments[2]));
             } else {
                 reject(new Error("invalid parameters when calling getTask"));
             }
         });
     },
+
+    removeTask : function(taskID) {
+        return new Promise((resolve, reject) => {
+            const sql = "DELETE FROM work_queue WHERE taskID = ?";
+
+            db.get(sql, [taskID], function(err, row) {
+                if (err)
+                    reject(err);
+                resolve(row);
+            });
+        });
+    }
 };

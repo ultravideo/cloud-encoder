@@ -96,22 +96,23 @@ function linkOptionsAndFiles(owner, fileOptions, kvazaarHash, messageCallback) {
                 owner_id : owner,
                 ops_id   : kvazaarHash,
                 file_id  : fileOptions.file_id,
+                status   : -1
             };
 
             validateFileOptions(fileOptions)
             .then((validatedFileOptions) => {
                 return db.insertFile(validatedFileOptions)
             })
-            // TODO TÄMÄ EI TOIMI PITKÄSSÄ JUOKSUSSA!!!!!!!
-            // .then(db.insertTask(task_params))
-            .then(() => {
-                return db.insertTask(task_params)
-            })
+            .then(db.insertTask(task_params))
             .then(function() {
+                const downloadLink = '<a href=\"http://localhost:8080/download/' + token + '\">this link</a>';
+                const msg = "You can use " + downloadLink + " to download the file when it's ready";
+                const message = "Starting file upload...\n" + msg
+
                 const json = {
                     status : "ok",
                     type : "reply",
-                    message : "Starting file upload..."
+                    message : message
                 };
 
                 // job is added to kue's work queue once the download has finished
@@ -229,6 +230,38 @@ wsServer.on('request', function(request) {
     });
 });
 
+// concat all resumable file chunks, calculate sha256 checksum
+// and rename file. Return new path and file hash
+function concatChunks(numChunks, identifier, filename, callback) {
+    const tmpFile     = "/tmp/cloud_uploads/" + identifier + ".tmp";
+    const pathPrefix = "/tmp/cloud_uploads/resumable-";
+    const chunkFiles = Array.from({length: numChunks},
+        (v, k) => pathPrefix + filename + "." + (k + 1));
+
+    concat(chunkFiles, tmpFile, function(err) {
+        fs.readFile(tmpFile, function(err, data) {
+            if (err)
+                callback(err, "", "");
+
+            chunkFiles.forEach(function(file) {
+                fs.unlink(file, function(err) {
+                    if (err)
+                        callback(err, "", "");
+                });
+            });
+
+            const fileHash = crypto.createHash('sha256').update(data).digest('hex');
+            const filePath = "/tmp/cloud_uploads/" + fileHash;
+
+            fs.rename(tmpFile, filePath, function(err) {
+                if (err)
+                    callback(err, "", "");
+                callback(null, fileHash, filePath);
+            });
+        });
+    });
+}
+
 // Host most stuff in the public folder
 app.use(express.static(__dirname + '/public'));
 app.use(multipart());
@@ -240,74 +273,49 @@ app.post('/upload', function(req, res) {
         const chunkFile  = "/tmp/cloud_uploads/resumable-" + original_filename + "." + req.query.resumableChunkNumber;
 
         // file too large (>50GB), inform user, terminate upload and clean database
+        // TODO how easy it is for the user to spoof these values??
         if (req.query.resumableChunkNumber * req.query.resumableChunkSize > 5 * 1000 * 1000 * 1000) {
             sendMessage(ws_conn, "nok", "reply", "File too big");
-            res.sendStatus(400);
-            // TODO clean database
+            res.status(400).end();
             return;
         } else if (req.query.resumableChunkNumber == 1) {
             // TODO ffprobe
         }
 
-        // TODO refaktoroi tämä niin että tässä on 
-        // processChunk()-kutsu tarkistuen jälkeen ja callbackissa lähetetään response
+        if (status === "done") {
+            sendMessage(ws_conn, null, "status", "Processing file...");
 
-        fs.readFile(chunkFile, function(err, data) {
-            if (err) {
-                throw err;
-            }
+            concatChunks(req.query.resumableChunkNumber, identifier, original_filename, function(err, hash, path) {
+                if (err)
+                    console.log(err);
 
-            fs.appendFile(tmpFile, data, function(err) {
-                if (err) {
-                    throw err;
-                }
-
-                if (status === "done") {
-                    sendMessage(ws_conn, null, "status", "File upload done!");
-
-                    // TODO rewrite chunk transmission in resumable-node.js so blocks
-                    // can be deleted after their data has been read and then this loop 
-                    // can be deleted all together
-                    const pathPrefix = "/tmp/cloud_uploads/resumable-";
-                    const chunkFiles = Array.from({length: req.query.resumableChunkNumber},
-                        (v, k) => pathPrefix + original_filename + "." + (k + 1)); 
-
-                    chunkFiles.forEach(function(filepath) {
-                        fs.unlink(filepath, function(err) {
-                            if (err) {
-                                throw err;
-                            }
-                        });
-                    });
-
-                    fs.readFile(tmpFile, function(err, data) {
-                        const fileHash = crypto.createHash('sha256').update(data).digest('hex');
-                        const filePath = '/tmp/cloud_uploads/' + fileHash;
-                        const token    = crypto.randomBytes(64).toString('hex');
-
-                        const downloadLink = '<a href=\"http://localhost:8080/download/' + token + '\">this link</a>';
-                        const msg = "you can use " + downloadLink + " to download the file when it's ready";
-                        sendMessage(ws_conn, null, "status", msg);
-
-                        fs.rename(tmpFile, filePath, function(err) {
-                            if (err) {
-                                throw err;
-                            }
-
-                            db.updateFile(identifier, {file_path : filePath, hash : fileHash})
-                            .then(db.getLastInsertedId)
-                            .then((id) => {
-                                job_enqueue(id);
-                                sendMessage(ws_conn, null, "status", "file has been added to work queue!");
+                db.updateFile(identifier, {file_path : path, hash : hash})
+                .then(() => {
+                   return db.getTasks("file_id", identifier);
+                })
+                .then((tasks) => {
+                    if (!tasks) {
+                        sendMessage(ws_conn, "nok", "reply", "Error occurred during file processing!");
+                        return;
+                    }
+                    tasks.forEach(function(task) {
+                        if (task.status === -1) {
+                            db.updateTask(task.taskID, {status: 0})
+                            .then(() => {
+                                job_enqueue(task.taskID);
+                                sendMessage(ws_conn, null, "status", "File has been added to work queue!");
                             }, (reason) => {
-                                console.log(err);
+                                console.log("failed to add task to work queue");
                             });
-                        });
+                        }
                     });
-                }
-                res.send(status);
+                })
+                .catch(function(err) {
+                    console.log(err);
+                });
             });
-        });
+        }
+        res.send(status);
     });
 });
 
@@ -320,6 +328,30 @@ app.get('/upload', function(req, res){
 });
 
 app.get('/download/:hash', function(req, res) {
+    db.getTask(req.params.hash).then(function(taskInfo) {
+        if (!taskInfo) {
+            res.send("file does not exists!");
+            res.status(404).end();
+        } else {
+            if (taskInfo.status != 5) {
+                res.send("file is not ready");
+                res.status(403).end();
+                res.end();
+            }  else if (taskInfo.download_count >= 2) {
+                db.removeTask(taskInfo.taskID)
+                .then(() => {
+                    console.log(taskID, " has been removed from the database");
+                    res.send("download limit for this file has been exceeded");
+                    res.status(403).end();
+                }, (reason) => {
+                    console.log(reason);
+                });
+            } else {
+                res.download(String(row.file_path));
+                db.updateTask(taskInfo.taskID, {downl});
+            }
+        }
+    });
 });
 
 app.get('/resumable.js', function (req, res) {
