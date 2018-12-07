@@ -77,9 +77,6 @@ if(!r.support) {
 
             // server send us message regarding resumable upload process
             if (message_data.type === "action") {
-
-                console.log("got action message", message_data);
-
                 if (message_data.reply == "upload") {
                     $('.resumable-progress .progress-resume-link').hide();
                     $('.resumable-progress .progress-pause-link').show();

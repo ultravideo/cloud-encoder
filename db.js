@@ -210,11 +210,21 @@ module.exports = {
         return new Promise((resolve, reject) => {
             const sql = "DELETE FROM work_queue WHERE taskID = ?";
 
-            db.get(sql, [taskID], function(err, row) {
-                if (err)
-                    reject(err);
-                resolve(row);
-            });
+            db.prepare(sql).run([taskID], function(err) {
+                if (err) reject(err);
+                resolve();
+            }).finalize();
+        });
+    },
+
+    removeFile : function(fileID) {
+        return new Promise((resolve, reject) => {
+            const sql = "DELETE FROM files WHERE uniq_id = ?";
+
+            db.prepare(sql).run([fileID], function(err) {
+                if (err) reject(err);
+                resolve();
+            }).finalize();
         });
     }
 };

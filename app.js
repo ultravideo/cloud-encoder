@@ -98,7 +98,14 @@ app.post('/upload', function(req, res) {
         // file too large (>50GB), inform user, terminate upload and clean database
         if (req.query.resumableChunkNumber * req.query.resumableChunkSize > 1 * 1000 * 1000 * 1000) {
             sendMessage(req.query.token, "action", "cancel", "File is too large");
-            // TODO REMOVE FILE FROM DATABASE
+            db.getTasks("file_id", identifier)
+            .then((tasks) => {
+                return Promise.all([ db.removeTask(tasks[0].taskID), db.removeFile(identifier) ]);
+            })
+            .catch(function(err) {
+                console.log(err);
+            });
+
             res.status(400).end();
             return;
         } else if (req.query.resumableChunkNumber == 1 && status !== "done") { // TODO add comment about this check
@@ -129,10 +136,18 @@ app.post('/upload', function(req, res) {
                         child.on("exit", function(code, signal) {
                             let numSeconds = parseInt(result, 10);
 
-                            if (isNaN(numSeconds) || numSeconds > 18) {
-                                console.log("FILE TOO LARGE!");
-                                // TODO REMOVE FILE FROM DATABASE
+                            if (isNaN(numSeconds) || numSeconds > 1800) {
                                 sendMessage(req.query.token, "action", "cancel", "File is too large!");
+
+                                // remove file and the task associated with it
+                                db.getTasks("file_id", identifier)
+                                .then((tasks) => {
+                                    return Promise.all([ db.removeTask(tasks[0].taskID), db.removeFile(identifier) ]);
+                                })
+                                .catch(function(err) {
+                                    console.log(err);
+                                });
+
                                 res.status(400).send();
                                 return;
                             }
