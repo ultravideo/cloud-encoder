@@ -5,7 +5,8 @@ var numFiles = 0;
 var fileIds = [];
 var fileID = null;
 var response = null;
-var connection = new WebSocket('ws://127.0.0.1:8081');
+var connection = new WebSocket('ws://127.0.0.1:8083');
+var userToken  = generate_random_string(64);
 
 var r = new Resumable({
     target: '/upload',
@@ -14,6 +15,19 @@ var r = new Resumable({
     testChunks: false,
     throttleProgressCallbacks: 1
 });
+
+function generate_random_string(string_length){
+    let random_string = '';
+    let random_ascii;
+    let ascii_low = 65;
+    let ascii_high = 90
+
+    for(let i = 0; i < string_length; i++) {
+        random_ascii = Math.floor((Math.random() * (ascii_high - ascii_low)) + ascii_low);
+        random_string += String.fromCharCode(random_ascii)
+    }
+    return random_string
+}
 
 // Resumable.js isn't supported, fall back on a different method
 if(!r.support) {
@@ -31,7 +45,7 @@ if(!r.support) {
         $(".kvz_options").serializeArray().map(function(x){kvz_options[x.name] = x.value;});
         $(".options").serializeArray().map(function(x){other_options[x.name] = x.value;});
 
-        var options = { 'kvazaar' : kvz_options, 'other' : other_options };
+        var options = { 'type' : 'options', 'token': userToken, 'kvazaar' : kvz_options, 'other' : other_options };
         options['other']['file_id'] = fileID;
 
         if (other_options.raw_video && other_options.raw_video === "on" && other_options.resolution === "") {
@@ -49,6 +63,7 @@ if(!r.support) {
             try {
                 message_data = JSON.parse(message.data);
             } catch (e) {
+                console.log(message.data);
                 console.log(e);
             }
 
@@ -122,11 +137,21 @@ if(!r.support) {
     });
 
     // WebSocket stuff
-    connection.onopen = function () {
+    connection.onopen = function() {
         console.log("connection established");
+
+        // generate token for this connection so server knows send 
+        // status updates to correct client
+        let message = {
+            type: "init",
+            token: userToken
+        };
+
+        connection.send(JSON.stringify(message));
+        console.log(JSON.stringify(message));
     };
 
-    connection.onerror = function (error) {
+    connection.onerror = function(error) {
         console.log(error);
     };
 }

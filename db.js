@@ -162,7 +162,7 @@ module.exports = {
         });
     },
 
-    getTaskUsingToken : function(token, callback) {
+    getTaskUsingToken : function(token) {
         return new Promise((resolve, reject) => {
             const sql = "SELECT * from work_queue WHERE token = ?";
 

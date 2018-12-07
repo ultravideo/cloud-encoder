@@ -1,36 +1,239 @@
-let WebSocketServer = require('websocket').server;
+let WebSocket = require("ws");
+let fs = require("fs");
+let db = require("./db");
+let crypto = require('crypto');
+let kue = require('kue');
+var NRP = require('node-redis-pubsub');
+let sleep = require("sleep");
 
-let server = http.createServer(function(request, response) {
-}).listen(8081, function() { });
-
-// create the server
-wsServer = new WebSocketServer({
-    httpServer: server
+var queue = kue.createQueue({
+    redis: {
+        port: 7776,
+        host: "127.0.0.1"
+    }
 });
 
-// WebSocket server
-wsServer.on('request', function(request) {
-    ws_conn = request.accept(null, request.origin);
+class Clients {
+    constructor() {
+        this.clients = {};
+        this.saveClient = this.saveClient.bind(this);
+    }
 
-    ws_conn.on('message', function(message) {
-        if (message.type === 'utf8') {
-            var data = JSON.parse(message.utf8Data);
+    saveClient(token, socket) {
+        this.clients[token] = socket;
+    }
+}
 
-            // ws_conns[data.other.file_id] = 
-            // create temporary file for data chunks
-            fs.writeFile('/tmp/cloud_uploads/' + data.other.file_id + '.tmp', '', function (err) {
-                if (err) throw err;
+const clients = new Clients();
+const socket  = new WebSocket.Server({ port: 8083 });
 
-                sendMessage(ws_conn, null, "status", "Checking database....");
-                prepareDBForRequest(data, function(status) {
-                    ws_conn.send(status);
-                });
-            }); 
+// --------------- message queue stuff start --------------- 
+var nrp = new NRP({
+    port: 7776,
+    scope: "msg_queue"
+});
+
+nrp.on("message", function(msg) {
+    if (clients.clients[msg.user]) {
+        if (clients.clients[msg.user]) {
+            clients.clients[msg.user].send(JSON.stringify(msg));
         }
-    });
+    }
+});
 
-    ws_conn.on('close', function(connection) {
-        console.log("connection closed");
+// --------------- message queue stuff end --------------- 
+
+
+// --------------- socket stuff start --------------- 
+socket.on('connection', function(client) {
+    client.on('message', function(msg) {
+        try {
+            var message = JSON.parse(msg);
+        } catch (err) {
+            console.log("failed to parse client message: ", err);
+            return;
+        }
+
+        if (message.type === "init") {
+            if (message.token) {
+                clients.saveClient(message.token, client);
+                console.log("user", message.token, "has connected!");
+            }
+        } else if (message.type === "options") {
+            let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar);
+            let validatedFilePromise = validateFileOptions(message.other);
+
+            // first validated both kvazaar options and file info
+            Promise.all([validatedKvazaarPromise, validatedFilePromise]).then(function(values) {
+                let kvazaarPromise = db.getOptions(values[0].hash);
+                let filePromise = db.getFile(values[1].uniq_id);
+                let taskPromise = db.getTask(message.token, values[1].uniq_id, values[0].hash);
+
+                // data validation ok, check if database already has these values
+                Promise.all([kvazaarPromise, filePromise, taskPromise]).then((data) => {
+                    // return both database response and validated options
+                    console.log(message.token);
+                    return {
+                        options: {
+                            kvazaar: values[0],
+                            file: values[1],
+                            task: {
+                                token: message.token
+                            },
+                        },
+                        db: {
+                            kvazaar: data[0],
+                            file: data[1],
+                            task: data[2]
+                        }
+                    };
+                })
+                .then((data) => {
+                    // now check what info has already been stored. Save all insert queries 
+                    // to promisesToResolve array which is then executed with Promise.all. 
+                    // We can execute all queries at once because inserting different data 
+                    // do not depend on each other
+                    const token = crypto.randomBytes(64).toString('hex');
+                    let promisesToResolve = [ ];
+                    let uploadApproved = false;
+                    let message = "";
+
+                    // make sure connected user hasn't already done this request
+                    if (!data.db.task ||
+                        data.db.task.file_id != data.options.file.uniq_id ||
+                        data.db.task.ops_id  != data.options.kvazaar.hash)
+                    {
+                        message =  "Upload rejected (file already on the server), " + 
+                                   "file has been added to work queue\n";
+
+                        promisesToResolve.push(
+                            db.insertTask({
+                                status: -1, // upload hasn't started
+                                owner_id: data.options.task.token, // saved so that worker can send messages to this user
+                                token: token, // used for the download link
+                                ops_id: data.options.kvazaar.hash,
+                                file_id: data.options.file.uniq_id,
+                            })
+                        );
+
+                        // enqueue task to kue's work queue if file is already on the server
+                        if (data.db.file) {
+                            let job = queue.create('process_file', {
+                                task_token: token
+                            })
+                            .save(function(err) {
+                                if (err)
+                                    throw err;
+                                console.log("job " + job.id + " saved to queue");
+                            });
+                        }
+                    } else {
+                        message = "Upload rejected (file already on the server), file already in the work queue";
+                    }
+
+                    // this combination of options doesn't exist in the database
+                    if (!data.db.kvazaar) {
+                        promisesToResolve.push(
+                            db.insertOptions({
+                                preset: data.options.kvazaar.preset,
+                                container: data.options.kvazaar.container,
+                                hash: data.options.kvazaar.hash
+                            })
+                        );
+                    }
+
+                    // file doesn't exist in the database
+                    if (!data.db.file) {
+                        uploadApproved = true;
+                        message = "Starting file upload...\n";
+
+                        promisesToResolve.push(
+                            db.insertFile({
+                                resolution: data.options.file.resolution,
+                                raw_video: data.options.file.raw_video,
+                                uniq_id: data.options.file.uniq_id
+                            })
+                        );
+                    }
+
+                    Promise.all(promisesToResolve).then(() => {
+                        const downloadLink = '<a href=\"http://localhost:8080/download/' + token + '\">this link</a>';
+                        const msg = "You can use " + downloadLink + " to download the file when it's ready";
+
+                        return {
+                            approved: true,
+                            message: message + msg
+                        };
+                    })
+                    .then((uploadInfo) => {
+                        client.send(
+                            JSON.stringify({
+                                status: uploadInfo.approved ? "ok" : "nok",
+                                type: "reply",
+                                message: uploadInfo.message
+                            })
+                        );
+                    })
+                    .catch(function(err) {
+                        console.log("Invalid options:", err);
+                        return;
+                    });
+                })
+            });
+        }
+
+        // TODO how to know *who* closed connection
+        client.on('close', function(connection) {
+            console.log("client closed connection!");
+        })
     });
 });
+// --------------- socket stuff end --------------- 
+
+function validateFileOptions(fileOptions) {
+    return new Promise((resolve, reject) => {
+        let validatedOptions = {
+            resolution: 0,
+            raw_video: 0,
+            uniq_id: fileOptions.file_id
+        };
+
+        if (fileOptions.resolution !== "") {
+            let res = fileOptions.resolution.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
+            if (!res) {
+                reject(new Error("Invalid resolution!"));
+            }
+
+            validatedOptions["resolution"] = res[0];
+            validatedOptions["raw_video"]  = 1;
+        }
+
+        resolve(validatedOptions);
+    });
+}
+
+function validateKvazaarOptions(kvazaarOptions) {
+
+    const validOptions = {
+        'preset' : ["ultrafast", "superfast", "medium", "placebo"],
+        'container' : ["none", "mp4", "mkv"],
+    };
+
+    return new Promise((resolve, reject) => {
+        for (let key in kvazaarOptions) {
+            if (validOptions.hasOwnProperty(key)) {
+                if (validOptions[key].indexOf(kvazaarOptions[key]) === -1)
+                    reject(new Error("Invalid kvazaar options!"));
+            } else {
+                reject(new Error("Invalid kvazaar options!"));
+            }
+        }
+
+        const ops = JSON.stringify(kvazaarOptions);
+        const hash = crypto.createHash("sha256").update(ops);
+        kvazaarOptions['hash'] = hash.digest("hex");
+
+        resolve(kvazaarOptions);
+    });
+}
 
