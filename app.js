@@ -96,7 +96,7 @@ app.post('/upload', function(req, res) {
         const chunkFile  = "/tmp/cloud_uploads/resumable-" + original_filename + "." + req.query.resumableChunkNumber;
 
         // file too large (>50GB), inform user, terminate upload and clean database
-        if (req.query.resumableChunkNumber * req.query.resumableChunkSize > 1 * 1000 * 1000 * 1000) {
+        if (req.query.resumableChunkNumber * req.query.resumableChunkSize > 50 * 1000 * 1000 * 1000) {
             sendMessage(req.query.token, "action", "cancel", "File is too large");
             db.getTasks("file_id", identifier)
             .then((tasks) => {

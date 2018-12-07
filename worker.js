@@ -59,26 +59,32 @@ function removeArtifacts(path, containerized) {
     });
 }
 
-// TODO add support for multiple inputs
 function callFFMPEG(inputs, inputOptions, output, outputOptions) {
     return new Promise((resolve, reject) => {
-        // TODO make sure this now works
-        //
-        // ie. you can have multiple concurrent ffmpegs running
-        let ffmpegProc = new ffmpeg();
-        ffmpegProc
-            .input(inputs)
-            .inputOptions(inputOptions)
-            .outputOptions(outputOptions)
-            .on("error", function(err) {
-                reject(err);
-            })
-            .on("end", function(err) {
-                if (err)
-                    reject(err);
+        let options = inputOptions;
+
+        inputs.forEach(function(input) {
+            options.push("-i", input);
+        });
+
+        options = options.concat(outputOptions);
+        options.push(output);
+
+        const child = spawn("ffmpeg", options);
+
+        let stderr_out = "";
+        child.stderr.on("data", function(data) { stderr_out += data.toString(); });
+        child.stdout.on("data", function(data) { });
+
+        child.on("exit", function(code, signal) {
+            if (code === 0) {
                 resolve();
-            })
-            .save(output);
+            } else {
+                console.log(stderr_out);
+                reject(new Error("ffmpeg failed with error code " + code));
+                console.log(options);
+            }
+        });
     });
 }
 
@@ -86,23 +92,13 @@ function ffmpegContainerize(videoPath, audioPath, container) {
     return new Promise((resolve, reject) => {
         const newPath = videoPath.split('.')[0] + "." + container;
 
-        ffmpeg()
-            .input(videoPath)
-            .inputFormat("hevc")
-            .videoCodec("copy")
-            .input(audioPath)
-            .inputFormat("aac")
-            .audioCodec("copy")
-            .inputOptions("-async 1")
-            .on('error', function(err) {
-                reject(err);
-            })
-            .on('end', function(err) {
-                if (err)
-                    reject(err);
-                resolve(newPath);
-            })
-            .save(newPath);
+        callFFMPEG([videoPath, audioPath], [],
+                   newPath, ["-async", "1", "-c", "copy"])
+        .then(() => {
+            resolve(newPath);
+        }, (reason) => {
+            reject(reason);
+        });
     });
 }
 
@@ -122,8 +118,8 @@ function moveToOutputFolder(path) {
 function addLogo(video_path, resolution, callback) {
     const pathPrefix = video_path.split('.')[0];
 
-    callFFMPEG("/tmp/cloud_uploads/misc/logo.png", [],
-               pathPrefix + "_logo.hevc", ["-vf scale=" + resolution.replace('x', ':') + ",setdar=1:1"])
+    callFFMPEG(["/tmp/cloud_uploads/misc/logo.png"], [],
+               pathPrefix + "_logo.hevc", ["-vf", "scale=" + resolution.replace('x', ':') + ",setdar=1:1"])
     .then(() => {
             console.log("concat logo and video file");
             fs.open(pathPrefix + ".txt", "wx", (err, fd) => {
@@ -134,8 +130,8 @@ function addLogo(video_path, resolution, callback) {
                                  "file '" + pathPrefix + "_logo.hevc" + "'";
 
                 fs.write(fd, fileData, function(err, a, b) {
-                    callFFMPEG(pathPrefix + ".txt",      ["-f concat", "-safe 0"],
-                               pathPrefix + "_new.hevc", ["-c:v copy"])
+                    callFFMPEG([pathPrefix + ".txt"],    ["-f", "concat", "-safe", "0"],
+                               pathPrefix + "_new.hevc", ["-c", "copy"])
                     .then(() => {
                         callback(null, pathPrefix + "_new.hevc");
                     }, (reason) => {
@@ -181,15 +177,15 @@ function decodeVideo(fileOptions, kvazaarOptions) {
             // extract audio
             if (fileOptions.container !== "none") {
                 console.log("extract audio...");
-                callFFMPEG(fileOptions.file_path, [],
-                           fileOptions.file_path + ".aac", ["-vn", "-acodec copy"])   
+                callFFMPEG([fileOptions.file_path], [],
+                           fileOptions.file_path + ".aac", ["-vn", "-acodec", "copy"])   
             }
         })
         .then(() => {
             // extract video in yuv420p format
             console.log("decoding video...");
-            callFFMPEG(fileOptions.file_path, ["-r", kvazaarOptions['input-fps']],
-                         fileOptions.file_path + ".yuv", ["-f rawvideo", "-pix_fmt yuv420p"])
+            callFFMPEG([fileOptions.file_path], ["-r", kvazaarOptions['input-fps']],
+                         fileOptions.file_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
             .then(() => {
                 console.log("decoding done!");
                 resolve(fileOptions.file_path + ".yuv");
@@ -243,10 +239,6 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
     });
 }
 
-// TODO 
-//
-// 1) send message to socket.js and inform user at the other end of websocket about this change in state
-// 2) update work_queue's task's state
 function updateWorkerStatus(taskInfo, status) {
     let message ="";
 
