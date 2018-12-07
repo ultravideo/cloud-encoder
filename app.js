@@ -118,7 +118,7 @@ app.post('/upload', function(req, res) {
                 } else {
                     // raw video, continue download (size limit for raw video is 50GB)
                     if (row.raw_video === 1) {
-                        res.send(status);
+                        return;
                     } else {
                         // check if containerized file is too large (duration > 30min)
                         const options = [

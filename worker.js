@@ -44,10 +44,14 @@ function sendMessage(user, message) {
 
 // remove original file, extracted audio file and 
 // raw video if the videos was containerized
-function removeArtifacts(path, containerized) {
-    var files = [".txt", "_logo.hevc", ".yuv", ".hevc"];
+function removeArtifacts(path, fileOptions) {
+    var files = [".txt", "_logo.hevc", ".hevc"];
 
-    if (containerized === true) {
+    if (fileOptions.raw_video === 0) {
+        files.push(".yuv");
+    }
+
+    if (fileOptions.container !== "none") {
         files = files.concat([".aac", "_new.hevc"]);
     }
 
@@ -178,17 +182,17 @@ function decodeVideo(fileOptions, kvazaarOptions) {
             if (fileOptions.container !== "none") {
                 console.log("extract audio...");
                 callFFMPEG([fileOptions.file_path], [],
-                           fileOptions.file_path + ".aac", ["-vn", "-acodec", "copy"])   
+                           fileOptions.tmp_path + ".aac", ["-vn", "-acodec", "copy"])
             }
         })
         .then(() => {
             // extract video in yuv420p format
             console.log("decoding video...");
             callFFMPEG([fileOptions.file_path], ["-r", kvazaarOptions['input-fps']],
-                         fileOptions.file_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
+                         fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
             .then(() => {
                 console.log("decoding done!");
-                resolve(fileOptions.file_path + ".yuv");
+                resolve(fileOptions.tmp_path + ".yuv");
             }, (reason) => {
                 console.log("decoding video failed with error: " + reason);
                 reject(reason);
@@ -210,7 +214,7 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
 
         var options = ["-i", videoLocation,
                       "--input-res", fileOptions.resolution,
-                      "--output", fileOptions.file_path + ".hevc"];
+                      "--output", fileOptions.tmp_path + ".hevc"];
 
         // kvazaar options have been validated earlier so it's safe to use
         // them here without any extra safety checks
@@ -226,7 +230,7 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
 
         child.on("exit", function(code, signal) {
             if (code === 0) {
-                addLogo(fileOptions.file_path + ".hevc", fileOptions.resolution, function(err, newPath) {
+                addLogo(fileOptions.tmp_path + ".hevc", fileOptions.resolution, function(err, newPath) {
                     if (err)
                         reject(err);
                     resolve(newPath);
@@ -269,13 +273,9 @@ function updateWorkerStatus(taskInfo, status) {
     });
 }
 
-function renameFile(oldPath, newPath) {
+function renameFile(path) {
     let promise = new Promise((resolve, reject) => {
-        fs.rename(oldPath, newPath, function(err) {
-            if (err)
-                reject(err);
-            resolve(newPath);
-        });
+        resolve(path);
     });
     return promise;
 }
@@ -284,7 +284,7 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     let preprocessFile = null;
 
     if (fileOptions.raw_video === 1) {
-        preprocessFile = renameFile(fileOptions.file_path, fileOptions.file_path + ".yuv");
+        preprocessFile = renameFile(fileOptions.file_path);
     } else {
         updateWorkerStatus(taskInfo, workerStatus.DECODING);
         preprocessFile = decodeVideo(fileOptions, kvazaarOptions);
@@ -297,7 +297,7 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     .then((encodedVideoName) => {
         if (fileOptions.container !== "none") {
             updateWorkerStatus(taskInfo, workerStatus.CONTAINERIZING);
-            return ffmpegContainerize(encodedVideoName, fileOptions.file_path + ".aac", fileOptions.container);
+            return ffmpegContainerize(encodedVideoName, fileOptions.tmp_path + ".aac", fileOptions.container);
         }
         return encodedVideoName;
     })
@@ -308,18 +308,18 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
         db.updateTask(taskInfo.taskID, {file_path : newPath})
         .then(() => {
             console.log(kvazaarOptions);
-            removeArtifacts(fileOptions.file_path, fileOptions.container !== "none");
+            removeArtifacts(fileOptions.tmp_path, fileOptions);
             updateWorkerStatus(taskInfo, workerStatus.READY);
             done();
         }, (reason) => {
             updateWorkerStatus(taskInfo, workerStatus.FAILURE);
-            removeArtifacts(fileOptions.file_path, fileOptions.container !== "none");
+            removeArtifacts(fileOptions.tmp_path, fileOptions);
             console.log(reason);
         });
     })
     .catch(function(reason) {
         updateWorkerStatus(taskInfo, workerStatus.FAILURE);
-        removeArtifacts(fileOptions.file_path, fileOptions.container !== "none");
+        removeArtifacts(fileOptions.tmp_path, fileOptions);
         console.log(reason);
     });
 }
@@ -336,8 +336,11 @@ queue.process("process_file", function(job, done) {
             delete values[1]["container"];
             delete values[1]["hash"];
 
-            updateWorkerStatus(taskRow.owner_id, workerStatus.STARTING);
+            // use generated token to handle all intermediate files (.hevc, .acc. _logo.hevc etc)
+            // this way N users can create request for the same file without "corruping" each others requests
+            values[0]["tmp_path"] = "/tmp/cloud_uploads/" + taskRow.token;
 
+            updateWorkerStatus(taskRow.owner_id, workerStatus.STARTING);
             processFile(values[0], values[1], taskRow, done);
         });
     })
