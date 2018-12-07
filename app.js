@@ -12,225 +12,46 @@ var kue = require('kue');
 var db = require('./db');
 var ffprobe = require('ffprobe');
 var ffprobeStatic = require('ffprobe-static');
+var NRP = require('node-redis-pubsub');
 const { fork, spawn } = require('child_process');
 
-var ws_conn = null;
-var ws_conns = {};
-
+// worker queue
 var queue = kue.createQueue({
     redis: {
         port: 7776,
         host: "127.0.0.1"
     }
 });
-
-const NUM_WORKERS = 5;
-for (var i = 0; i < NUM_WORKERS; ++i) {
+for (var i = 0; i < 5; ++i) {
     console.log("forked!");
     fork('./worker');
 }
-// fork("./socket"); // TODO
+
+// message queue
+var nrp = new NRP({
+    port: 7776,
+    scope: "msg_queue"
+});
+fork("./socket");
 
 // ------------------------------ INTERNAL FUNCTIONS ------------------------------
 
-function sendMessage(socket, _status, _type, _message) {
-    const message = {
-        status:  _status,
-        type:    _type,
-        message: _message
-    };
-
-    socket.send(JSON.stringify(message));
-}
-
-function job_enqueue(taskID, token) {
-    let job = queue.create('process_file', {
-        task_id: taskID,
-    })
-    .save(function(err) {
-        if (err)
-            throw err;
-        console.log("job " + job.id + " saved to queue");
-    });
-}
-
-// TODO comment this
-function validateFileOptions(fileOptions) {
-    return new Promise((resolve, reject) => {
-        let validatedOptions = {
-            resolution: 0,
-            raw_video: 0,
-            uniq_id: fileOptions.file_id
-        };
-
-        if (fileOptions.resolution !== "") {
-            let res = fileOptions.resolution.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
-            if (!res) {
-                reject(new Error("Invalid resolution!"));
-            }
-
-            validatedOptions["resolution"] = res[0];
-            validatedOptions["raw_video"]  = 1;
-        }
-
-        resolve(validatedOptions);
-    });
-}
-
-// TODO
-function validateKvazaarOptions(kvazaarOptions) {
-    return new Promise((resolve, reject) => {
-        console.log(kvazaarOptions);
-        resolve();
-    });
-}
-
-// TODO explain function and parameters
-function linkOptionsAndFiles(owner, fileOptions, kvazaarHash, messageCallback) {
-    const token = crypto.randomBytes(64).toString('hex');
-
-    db.getFile(fileOptions.file_id)
-    .then(function(row) {
-        // add new file to database and enqueue it to task queue
-        if (!row) {
-            const task_params = {
-                token    : token,
-                owner_id : owner,
-                ops_id   : kvazaarHash,
-                file_id  : fileOptions.file_id,
-                status   : -1
-            };
-
-            validateFileOptions(fileOptions)
-            .then((validatedFileOptions) => {
-                return db.insertFile(validatedFileOptions)
-            })
-            .then(db.insertTask(task_params))
-            .then(function() {
-                const downloadLink = '<a href=\"http://localhost:8080/download/' + token + '\">this link</a>';
-                const msg = "You can use " + downloadLink + " to download the file when it's ready";
-                const message = "Starting file upload...\n" + msg
-
-                const json = {
-                    status : "ok",
-                    type : "reply",
-                    message : message
-                };
-
-                // job is added to kue's work queue once the download has finished
-                messageCallback(JSON.stringify(json));
-            })
-            .catch(function(err) {
-                const json = {
-                    status : "nok",
-                    type : "reply",
-                    message : err
-                };
-
-                messageCallback(JSON.stringify(json));
-                console.log(err);
-            });
-        } else {
-            db.getTask(owner, fileOptions.file_id, kvazaarHash)
-            .then((row) => {
-                if (!row) {
-                    const task_params = {owner_id : owner, file_id : fileOptions.file_id,
-                                         ops_id : kvazaarHash, token : token};
-                    db.insertTask(task_params)
-                    .then(db.getLastInsertedId)
-                    .then((id) => {
-                        console.log("new task added");
-                        const downloadLink = '<a href=\"http://localhost:8080/download/' + token + '\">this link</a>';
-                        const msg = "You can use " + downloadLink + " to download the file when it's ready";
-                        const message =  "Upload rejected (file already on the server), " + 
-                                         "file has been added to work queue\n" + msg;
-                        const json = {
-                            status : "nok",
-                            type : "reply",
-                            message : message
-                        };
-
-                        job_enqueue(id);
-                        messageCallback(JSON.stringify(json));
-
-                    }, (reason) => {
-                        console.log(reason);
-                    });
-                } else {
-                    const json = {
-                        status : "nok",
-                        type : "reply",
-                        message :  "Upload rejected (file already on the server), file already in the work queue"
-                    };
-                    messageCallback(JSON.stringify(json));
-                }
-            }, (reason) => {
-                console.log(err);
-            });
-        }
-    });
-}
-
-// first check if kvz_options table already has these values
-//  -> use it instead, else create new record
+// type can be either "action" or "status"
+// "action" means that server is sending the client info regarding resumablejs 
+// upload (upload accept/rejected) and "status" means that server is sending 
+// the client status messages
 //
-// then check if file with this hash (file_id) already exits
-//  -> inform user about this and cancel file load
-//      -> encode the file with new parameters
-//  -> else create new record for file and inform frontend that 
-//     it's ok to start the file upload
-function prepareDBForRequest(options, callback) {
-    const kvazaarHash = crypto.createHash('sha256').update(JSON.stringify(options.kvazaar)).digest('hex');
-    options.kvazaar['hash'] = kvazaarHash;
-
-    db.getOptions(kvazaarHash)
-    .then((row) => {
-        if (!row) {
-            validateKvazaarOptions(options.kvazaar)
-            .then(db.insertOptions(options.kvazaar))
-            .then(() => {
-            }, (reason) => {
-                console.log(reason);
-            });
-        }
-        linkOptionsAndFiles("testuser", options.other, kvazaarHash, callback);
-    }, (reason) => {
-        console.log(reason);
+// { type: "action", reply: "upload" }, { type: "action", reply: "cancel" } and
+// { type: "status", reply: null } are all valid action/reply pairs that the 
+// client side code understand and knows how to act upon
+function sendMessage(user, type, reply, message) {
+    nrp.emit('message', {
+        user: user,
+        type: type,
+        reply: reply,
+        message: message
     });
 }
-
-var server = http.createServer(function(request, response) {
-}).listen(8081, function() { });
-
-// create the server
-wsServer = new WebSocketServer({
-    httpServer: server
-});
-
-// WebSocket server
-wsServer.on('request', function(request) {
-    ws_conn = request.accept(null, request.origin);
-
-    ws_conn.on('message', function(message) {
-        if (message.type === 'utf8') {
-            var data = JSON.parse(message.utf8Data);
-
-            // create temporary file for data chunks
-            fs.writeFile('/tmp/cloud_uploads/' + data.other.file_id + '.tmp', '', function (err) {
-                if (err) throw err;
-
-                sendMessage(ws_conn, null, "status", "Checking database....");
-                prepareDBForRequest(data, function(status) {
-                    ws_conn.send(status);
-                });
-            }); 
-        }
-    });
-
-    ws_conn.on('close', function(connection) {
-        console.log("connection closed");
-    });
-});
 
 // concat all resumable file chunks, calculate sha256 checksum
 // and rename file. Return new path and file hash
@@ -270,24 +91,21 @@ app.use(multipart());
 
 // Handle uploads through Resumable.js
 app.post('/upload', function(req, res) {
-    console.log("got upload request!");
     resumable.post(req, function(status, filename, original_filename, identifier) {
         const tmpFile    = "/tmp/cloud_uploads/" + identifier + ".tmp";
         const chunkFile  = "/tmp/cloud_uploads/resumable-" + original_filename + "." + req.query.resumableChunkNumber;
 
         // file too large (>50GB), inform user, terminate upload and clean database
-        // TODO how easy it is for the user to spoof these values??
-        if (req.query.resumableChunkNumber * req.query.resumableChunkSize > 50 * 1000 * 1000 * 1000) {
-            sendMessage(ws_conn, "nok", "reply", "File too big");
+        if (req.query.resumableChunkNumber * req.query.resumableChunkSize > 1 * 1000 * 1000 * 1000) {
+            sendMessage(req.query.token, "action", "cancel", "File is too large");
+            // TODO REMOVE FILE FROM DATABASE
             res.status(400).end();
             return;
-        } else if (req.query.resumableChunkNumber == 1) {
-            console.log("sending db response...");
+        } else if (req.query.resumableChunkNumber == 1 && status !== "done") { // TODO add comment about this check
             db.getFile(identifier).then(function(row) {
                 // this file hasn't been approved, terminate download
-                console.log("got db response...");
                 if (!row) {
-                    sendMessage(ws_conn, null, "status", "File been approved, file upload rejected!");
+                    sendMessage(req.query.token, "action", "cancel", "File hasn't  been approved, file upload rejected!");
                     res.status(400).send();
                     return;
                 } else {
@@ -305,15 +123,16 @@ app.post('/upload', function(req, res) {
                         const child = spawn("ffprobe", options);
                         let result = "";
 
-                        // TODO how easy is it to spoof this duration??
                         // file size limit for containerized video is 30 minutes (1800 seconds)
                         child.stdout.on("data", function(data) { result += data.toString(); });
                         child.stderr.on("data", function(data) { result += data.toString(); });
                         child.on("exit", function(code, signal) {
                             let numSeconds = parseInt(result, 10);
 
-                            if (isNaN(numSeconds) || numSeconds > 1800) {
-                                sendMessage(ws_conn, null, "status", "File is too large!");
+                            if (isNaN(numSeconds) || numSeconds > 18) {
+                                console.log("FILE TOO LARGE!");
+                                // TODO REMOVE FILE FROM DATABASE
+                                sendMessage(req.query.token, "action", "cancel", "File is too large!");
                                 res.status(400).send();
                                 return;
                             }
@@ -327,7 +146,7 @@ app.post('/upload', function(req, res) {
         res.send(status);
 
         if (status === "done") {
-            sendMessage(ws_conn, null, "status", "Processing file...");
+            sendMessage(req.query.token, "status", null, "Processing file...");
 
             concatChunks(req.query.resumableChunkNumber, identifier, original_filename, function(err, hash, path) {
                 if (err)
@@ -339,15 +158,20 @@ app.post('/upload', function(req, res) {
                 })
                 .then((tasks) => {
                     if (!tasks) {
-                        sendMessage(ws_conn, "nok", "reply", "Error occurred during file processing!");
+                        sendMessage(req.query.token, "action", "cancel", "Error occurred during file processing!");
                         return;
                     }
                     tasks.forEach(function(task) {
                         if (task.status === -1) {
-                            db.updateTask(task.taskID, {status: 0})
+                            db.updateTask(task.taskID, { status: 0 })
                             .then(() => {
-                                job_enqueue(task.taskID);
-                                sendMessage(ws_conn, null, "status", "File has been added to work queue!");
+                                let job = queue.create('process_file', {
+                                    task_token: task.token
+                                }).save(function(err) {
+                                    if (err) throw err;
+                                    console.log("job " + job.id + " saved to queue");
+                                });
+                                sendMessage(task.owner_id, "status", null, "File has been added to work queue!");
                             }, (reason) => {
                                 console.log("failed to add task to work queue");
                             });
@@ -383,15 +207,15 @@ app.get('/download/:hash', function(req, res) {
             }  else if (taskInfo.download_count >= 2) {
                 db.removeTask(taskInfo.taskID)
                 .then(() => {
-                    console.log(taskID, " has been removed from the database");
+                    console.log(taskInfo.taskID, " has been removed from the database");
                     res.send("download limit for this file has been exceeded");
                     res.status(403).end();
                 }, (reason) => {
                     console.log(reason);
                 });
             } else {
-                res.download(String(row.file_path));
-                db.updateTask(taskInfo.taskID, {downl});
+                res.download(String(taskInfo.file_path));
+                db.updateTask(taskInfo.taskID, {download_count: taskInfo.download_count + 1});
             }
         }
     });

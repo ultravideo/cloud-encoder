@@ -72,7 +72,6 @@ socket.on('connection', function(client) {
                 // data validation ok, check if database already has these values
                 Promise.all([kvazaarPromise, filePromise, taskPromise]).then((data) => {
                     // return both database response and validated options
-                    console.log(message.token);
                     return {
                         options: {
                             kvazaar: values[0],
@@ -91,8 +90,8 @@ socket.on('connection', function(client) {
                 .then((data) => {
                     // now check what info has already been stored. Save all insert queries 
                     // to promisesToResolve array which is then executed with Promise.all. 
-                    // We can execute all queries at once because inserting different data 
-                    // do not depend on each other
+                    // We can execute all queries at once because the insert queries 
+                    // dont depend on each other
                     const token = crypto.randomBytes(64).toString('hex');
                     let promisesToResolve = [ ];
                     let uploadApproved = false;
@@ -161,15 +160,15 @@ socket.on('connection', function(client) {
                         const msg = "You can use " + downloadLink + " to download the file when it's ready";
 
                         return {
-                            approved: true,
+                            approved: uploadApproved,
                             message: message + msg
                         };
                     })
                     .then((uploadInfo) => {
                         client.send(
                             JSON.stringify({
-                                status: uploadInfo.approved ? "ok" : "nok",
-                                type: "reply",
+                                type: "action",
+                                reply: uploadInfo.approved ? "upload" : "abort",
                                 message: uploadInfo.message
                             })
                         );
@@ -182,7 +181,7 @@ socket.on('connection', function(client) {
             });
         }
 
-        // TODO how to know *who* closed connection
+        // TODO how to know *who* closed the connection
         client.on('close', function(connection) {
             console.log("client closed connection!");
         })

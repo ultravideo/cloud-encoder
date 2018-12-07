@@ -13,7 +13,10 @@ var r = new Resumable({
     chunkSize: 1 * 1024 * 1024,
     simultaneousUploads: 1,
     testChunks: false,
-    throttleProgressCallbacks: 1
+    throttleProgressCallbacks: 1,
+    query: {
+        token: userToken
+    }
 });
 
 function generate_random_string(string_length){
@@ -65,17 +68,25 @@ if(!r.support) {
             } catch (e) {
                 console.log(message.data);
                 console.log(e);
+                return;
             }
 
             if (message_data.message != null) {
                 $('.resumable-list').append("<br>" + message_data.message);
             }
 
-            if (message_data.type === "reply" && message_data.status === "ok") {
-                console.log("starting upload...");
-                $('.resumable-progress .progress-resume-link').hide();
-                $('.resumable-progress .progress-pause-link').show();
-                r.upload();
+            // server send us message regarding resumable upload process
+            if (message_data.type === "action") {
+
+                console.log("got action message", message_data);
+
+                if (message_data.reply == "upload") {
+                    $('.resumable-progress .progress-resume-link').hide();
+                    $('.resumable-progress .progress-pause-link').show();
+                    r.upload();
+                } else if (message_data.reply == "cancel") {
+                    r.cancel();
+                }
             }
         };
     });
@@ -140,8 +151,8 @@ if(!r.support) {
     connection.onopen = function() {
         console.log("connection established");
 
-        // generate token for this connection so server knows send 
-        // status updates to correct client
+        // generate token for this connection so server knows to
+        // send status updates to correct client
         let message = {
             type: "init",
             token: userToken

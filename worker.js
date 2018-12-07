@@ -5,6 +5,7 @@ var ffprobe = require('ffprobe');
 var ffprobeStatic = require('ffprobe-static');
 var fs = require('fs');
 let process = require('process');
+var NRP = require('node-redis-pubsub');
 const { spawn } = require('child_process');
 const fsPromises = require('fs').promises;
 
@@ -27,6 +28,20 @@ const workerStatus = Object.freeze(
     }
 );
 
+var nrp = new NRP({
+    port: 7776,
+    scope: "msg_queue"
+});
+
+function sendMessage(user, message) {
+    nrp.emit('message', {
+        user: user,
+        status: null,
+        reply: "status",
+        message: message,
+    });
+}
+
 // remove original file, extracted audio file and 
 // raw video if the videos was containerized
 function removeArtifacts(path, containerized) {
@@ -47,7 +62,11 @@ function removeArtifacts(path, containerized) {
 // TODO add support for multiple inputs
 function callFFMPEG(inputs, inputOptions, output, outputOptions) {
     return new Promise((resolve, reject) => {
-        ffmpeg()
+        // TODO make sure this now works
+        //
+        // ie. you can have multiple concurrent ffmpegs running
+        let ffmpegProc = new ffmpeg();
+        ffmpegProc
             .input(inputs)
             .inputOptions(inputOptions)
             .outputOptions(outputOptions)
@@ -160,7 +179,7 @@ function decodeVideo(fileOptions, kvazaarOptions) {
             kvazaarOptions["input-fps"] = validated_options[1];
 
             // extract audio
-            if (kvazaarOptions.container !== "none") {
+            if (fileOptions.container !== "none") {
                 console.log("extract audio...");
                 callFFMPEG(fileOptions.file_path, [],
                            fileOptions.file_path + ".aac", ["-vn", "-acodec copy"])   
@@ -180,6 +199,7 @@ function decodeVideo(fileOptions, kvazaarOptions) {
             });
         })
         .catch(function(err) {
+            console.log("frpobe error" + err);
             reject(err);
         });
     });
@@ -199,20 +219,16 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
         // kvazaar options have been validated earlier so it's safe to use
         // them here without any extra safety checks
         for (var key in kvazaarOptions) {
-            // TODO UGLY, REMOVE THIS
-            if (key === "hash" || key === "container")
-                continue;
-
             options.push("--" + key);
             options.push(kvazaarOptions[key]);
         }
 
         const child = spawn("kvazaar", options);
 
-        child.stdout.on('data', function(data) { });
-        child.stderr.on('data', function(data) { });
+        child.stdout.on("data", function(data) { });
+        child.stderr.on("data", function(data) { });
 
-        child.on('exit', function(code, signal) {
+        child.on("exit", function(code, signal) {
             if (code === 0) {
                 addLogo(fileOptions.file_path + ".hevc", fileOptions.resolution, function(err, newPath) {
                     if (err)
@@ -231,19 +247,34 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
 //
 // 1) send message to socket.js and inform user at the other end of websocket about this change in state
 // 2) update work_queue's task's state
-function updateWorkerStatus(status) {
+function updateWorkerStatus(taskInfo, status) {
+    let message ="";
+
     switch (status) {
+        case workerStatus.STARTING:
+            message = "File encoding starting...";
+            break;
         case workerStatus.ENCODING:
+            message = "Starting to encode video...";
             break;
         case workerStatus.DECODING:
+            message = "Starting to decode video...";
             break;
         case workerStatus.CONTAINERIZING:
+            message = "Containerizing video...";
             break;
         case workerStatus.READY:
+            message = "Video ready!";
             break;
         case workerStatus.FAILURE:
+            message = "Encoding failed!";
             break;
     }
+
+    sendMessage(taskInfo.owner_id, message);
+    db.updateTask(taskInfo.taskID, {status: status}).then().catch(function(err) {
+        console.log(err);
+    });
 }
 
 function renameFile(oldPath, newPath) {
@@ -263,15 +294,19 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     if (fileOptions.raw_video === 1) {
         preprocessFile = renameFile(fileOptions.file_path, fileOptions.file_path + ".yuv");
     } else {
+        updateWorkerStatus(taskInfo, workerStatus.DECODING);
         preprocessFile = decodeVideo(fileOptions, kvazaarOptions);
     }
 
     preprocessFile.then((rawVideoName) => {
+        updateWorkerStatus(taskInfo, workerStatus.ENCODING);
         return kvazaarEncode(rawVideoName, fileOptions, kvazaarOptions);
     })
     .then((encodedVideoName) => {
-        if (kvazaarOptions.container !== "none")
-            return ffmpegContainerize(encodedVideoName, fileOptions.file_path + ".aac", kvazaarOptions.container);
+        if (fileOptions.container !== "none") {
+            updateWorkerStatus(taskInfo, workerStatus.CONTAINERIZING);
+            return ffmpegContainerize(encodedVideoName, fileOptions.file_path + ".aac", fileOptions.container);
+        }
         return encodedVideoName;
     })
     .then((path) => {
@@ -281,28 +316,36 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
         db.updateTask(taskInfo.taskID, {file_path : newPath})
         .then(() => {
             console.log(kvazaarOptions);
-            removeArtifacts(fileOptions.file_path, kvazaarOptions.container !== "none");
-            updateWorkerStatus(workerStatus.READY);
+            removeArtifacts(fileOptions.file_path, fileOptions.container !== "none");
+            updateWorkerStatus(taskInfo, workerStatus.READY);
             done();
         }, (reason) => {
-            updateWorkerStatus(workerStatus.FAILURE);
+            updateWorkerStatus(taskInfo, workerStatus.FAILURE);
+            removeArtifacts(fileOptions.file_path, fileOptions.container !== "none");
             console.log(reason);
         });
     })
     .catch(function(reason) {
-        updateWorkerStatus(workerStatus.FAILURE);
+        updateWorkerStatus(taskInfo, workerStatus.FAILURE);
+        removeArtifacts(fileOptions.file_path, fileOptions.container !== "none");
         console.log(reason);
     });
 }
 
-queue.process('process_file', function(job, done) {
-    updateWorkerStatus(workerStatus.STARTING);
+queue.process("process_file", function(job, done) {
 
-    db.getTask(job.data.task_id).then((taskRow) => {
+    db.getTask(job.data.task_token).then((taskRow) => {
         let filePromise = db.getFile(taskRow.file_id);
         let optionsPromise = db.getOptions(taskRow.ops_id);
 
         Promise.all([filePromise, optionsPromise]).then(function(values) {
+            // (re)move unnecessary info from kvazaarOptions (to fileOptions)
+            values[0]["container"] = values[1]["container"];
+            delete values[1]["container"];
+            delete values[1]["hash"];
+
+            updateWorkerStatus(taskRow.owner_id, workerStatus.STARTING);
+
             processFile(values[0], values[1], taskRow, done);
         });
     })
