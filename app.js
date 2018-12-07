@@ -220,9 +220,13 @@ app.get('/download/:hash', function(req, res) {
                 res.status(403).end();
                 res.end();
             }  else if (taskInfo.download_count >= 2) {
-                db.removeTask(taskInfo.taskID)
-                .then(() => {
-                    console.log(taskInfo.taskID, " has been removed from the database");
+                db.removeTask(taskInfo.taskID).then(() => {
+                    fs.unlink(taskInfo.file_path, function(err) {
+                        if (err)
+                            console.log(err);
+                        console.log(taskInfo.taskID, " has been removed from the database");
+                    });
+
                     res.send("download limit for this file has been exceeded");
                     res.status(403).end();
                 }, (reason) => {
