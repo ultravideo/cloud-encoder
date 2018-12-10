@@ -57,13 +57,12 @@ function removeArtifacts(path, fileOptions) {
 
         // raw video files don't have audio tracks
         if (fileOptions.raw_video === 0)
-            files.push(".aac");
+            files.push(".wav");
     }
 
     files.forEach(function(extension) {
         fs.unlink(path + extension, function(err) {
-            if (err)
-                console.log(err);
+            // some files may not be present, ignore errors
         });
     });
 }
@@ -106,11 +105,11 @@ function ffmpegContainerize(videoPath, audioPath, container) {
         // we wouldn't have an audio track
         fs.access(audioPath, fs.constants.F_OK, function(err) {
             let inputs = [ videoPath ];
-            let outputOptions = [ "-c", "copy" ];
+            let outputOptions = [ "-c:v", "copy" ];
 
             if (!err) {
                 inputs.push(audioPath);
-                outputOptions.push("-async", "1");
+                outputOptions.push("-async", "1", "-c:a", "aac");
             } 
             
             callFFMPEG(inputs, [], newPath, outputOptions).then(() => {
@@ -204,7 +203,7 @@ function decodeVideo(fileOptions, kvazaarOptions) {
             // and there's an audio track to extract [video is not raw])
             if (fileOptions.container !== "none" && fileOptions.raw_video === 0) {
                 promises.push(callFFMPEG([fileOptions.file_path], [],
-                              fileOptions.tmp_path + ".aac", ["-vn", "-acodec", "copy"]));
+                              fileOptions.tmp_path + ".wav", ["-vn", "-codec:a", "pcm_s16le", "-ac", "1"]));
             }
 
             return Promise.all(promises);
@@ -312,7 +311,7 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     .then((encodedVideoName) => {
         if (fileOptions.container !== "none") {
             updateWorkerStatus(taskInfo, workerStatus.CONTAINERIZING);
-            return ffmpegContainerize(encodedVideoName, fileOptions.tmp_path + ".aac", fileOptions.container);
+            return ffmpegContainerize(encodedVideoName, fileOptions.tmp_path + ".wav", fileOptions.container);
         }
         return encodedVideoName;
     })
