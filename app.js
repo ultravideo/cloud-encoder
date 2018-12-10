@@ -64,16 +64,18 @@ function concatChunks(numChunks, identifier, filename, callback) {
     concat(chunkFiles, tmpFile, function(err) {
         fs.readFile(tmpFile, function(err, data) {
             if (err)
-                callback(err, "", "");
+                callback(err, null, null);
 
             chunkFiles.forEach(function(file) {
                 fs.unlink(file, function(err) {
                     if (err)
-                        callback(err, "", "");
+                        callback(err, null, null);
                 });
             });
 
-            const fileHash = crypto.createHash('sha256').update(data).digest('hex');
+            // TODO do we even need the file checksum anywhere??
+            // const fileHash = crypto.createHash('sha256').update(data).digest('hex');
+            const fileHash = crypto.randomBytes(64).toString('hex');
             const filePath = "/tmp/cloud_uploads/" + fileHash;
 
             fs.rename(tmpFile, filePath, function(err) {

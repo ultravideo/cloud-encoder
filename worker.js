@@ -47,12 +47,17 @@ function sendMessage(user, message) {
 function removeArtifacts(path, fileOptions) {
     var files = [".txt", "_logo.hevc", ".hevc"];
 
+    // decodeVideo creates temporary yuv file
     if (fileOptions.raw_video === 0) {
         files.push(".yuv");
     }
 
     if (fileOptions.container !== "none") {
-        files = files.concat([".aac", "_new.hevc"]);
+        files.push("_new.hevc");
+
+        // raw video files don't have audio tracks
+        if (fileOptions.raw_video === 0)
+            files.push(".aac");
     }
 
     files.forEach(function(extension) {
@@ -96,12 +101,24 @@ function ffmpegContainerize(videoPath, audioPath, container) {
     return new Promise((resolve, reject) => {
         const newPath = videoPath.split('.')[0] + "." + container;
 
-        callFFMPEG([videoPath, audioPath], [],
-                   newPath, ["-async", "1", "-c", "copy"])
-        .then(() => {
-            resolve(newPath);
-        }, (reason) => {
-            reject(reason);
+        // check if audio track exists, user may have given us 
+        // raw video to encode and the containerize in which case
+        // we wouldn't have an audio track
+        fs.access(audioPath, fs.constants.F_OK, function(err) {
+            let inputs = [ videoPath ];
+            let outputOptions = [ "-c", "copy" ];
+
+            if (!err) {
+                inputs.push(audioPath);
+                outputOptions.push("-async", "1");
+            } 
+            
+            callFFMPEG(inputs, [], newPath, outputOptions).then(() => {
+                resolve(newPath);
+            })
+            .catch(function(err) {
+                reject(err);
+            });
         });
     });
 }
@@ -178,31 +195,28 @@ function decodeVideo(fileOptions, kvazaarOptions) {
             fileOptions.resolution      = validated_options[0];
             kvazaarOptions["input-fps"] = validated_options[1];
 
-            // extract audio
-            if (fileOptions.container !== "none") {
-                console.log("extract audio...");
-                callFFMPEG([fileOptions.file_path], [],
-                           fileOptions.tmp_path + ".aac", ["-vn", "-acodec", "copy"])
+            let promises = [
+                callFFMPEG([fileOptions.file_path], ["-r", kvazaarOptions['input-fps']],
+                            fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
+            ];
+
+            // extract audio if it's viable (users wants the output to contain the audio track
+            // and there's an audio track to extract [video is not raw])
+            if (fileOptions.container !== "none" && fileOptions.raw_video === 0) {
+                promises.push(callFFMPEG([fileOptions.file_path], [],
+                              fileOptions.tmp_path + ".aac", ["-vn", "-acodec", "copy"]));
             }
+
+            return Promise.all(promises);
         })
         .then(() => {
-            // extract video in yuv420p format
-            console.log("decoding video...");
-            callFFMPEG([fileOptions.file_path], ["-r", kvazaarOptions['input-fps']],
-                         fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
-            .then(() => {
-                console.log("decoding done!");
-                resolve(fileOptions.tmp_path + ".yuv");
-            }, (reason) => {
-                console.log("decoding video failed with error: " + reason);
-                reject(reason);
-            });
+            resolve(fileOptions.tmp_path + ".yuv");
         })
         .catch(function(err) {
-            console.log("frpobe error" + err);
             reject(err);
         });
     });
+
     return promise;
 }
 
@@ -273,7 +287,8 @@ function updateWorkerStatus(taskInfo, status) {
     });
 }
 
-function renameFile(path) {
+// raw video doesn't require any preprocessing (at least for now)
+function preprocessRawVideo(path) {
     let promise = new Promise((resolve, reject) => {
         resolve(path);
     });
@@ -284,7 +299,7 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     let preprocessFile = null;
 
     if (fileOptions.raw_video === 1) {
-        preprocessFile = renameFile(fileOptions.file_path);
+        preprocessFile = preprocessRawVideo(fileOptions.file_path);
     } else {
         updateWorkerStatus(taskInfo, workerStatus.DECODING);
         preprocessFile = decodeVideo(fileOptions, kvazaarOptions);
@@ -336,8 +351,8 @@ queue.process("process_file", function(job, done) {
             delete values[1]["container"];
             delete values[1]["hash"];
 
-            // use generated token to handle all intermediate files (.hevc, .acc. _logo.hevc etc)
-            // this way N users can create request for the same file without "corruping" each others requests
+            // use generated token to handle all intermediate files (.hevc, .acc, _logo.hevc etc)
+            // this way N users can create request for the same file without "corruping" each others processes
             values[0]["tmp_path"] = "/tmp/cloud_uploads/" + taskRow.token;
 
             updateWorkerStatus(taskRow.owner_id, workerStatus.STARTING);

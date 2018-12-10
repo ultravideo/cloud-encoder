@@ -15,12 +15,12 @@ var queue = kue.createQueue({
 
 class Clients {
     constructor() {
-        this.clients = {};
+        this.clientList = {};
         this.saveClient = this.saveClient.bind(this);
     }
 
     saveClient(token, socket) {
-        this.clients[token] = socket;
+        this.clientList[token] = socket;
     }
 }
 
@@ -34,9 +34,9 @@ var nrp = new NRP({
 });
 
 nrp.on("message", function(msg) {
-    if (clients.clients[msg.user]) {
-        if (clients.clients[msg.user]) {
-            clients.clients[msg.user].send(JSON.stringify(msg));
+    if (clients.clientList[msg.user]) {
+        if (clients.clientList[msg.user]) {
+            clients.clientList[msg.user].send(JSON.stringify(msg));
         }
     }
 });
@@ -156,12 +156,9 @@ socket.on('connection', function(client) {
                     }
 
                     Promise.all(promisesToResolve).then(() => {
-                        const downloadLink = '<a href=\"http://localhost:8080/download/' + token + '\">this link</a>';
-                        const msg = "You can use " + downloadLink + " to download the file when it's ready";
-
                         return {
                             approved: uploadApproved,
-                            message: message + msg
+                            message: message + makeDownloadLink(token)
                         };
                     })
                     .then((uploadInfo) => {
@@ -181,9 +178,15 @@ socket.on('connection', function(client) {
             });
         }
 
-        // TODO how to know *who* closed the connection
         client.on('close', function(connection) {
-            console.log("client closed connection!");
+            for (let key in clients.clientList) {
+                if (clients.clientList[key] === client) {
+                    console.log(key, "disconnected!");
+
+                    delete clients.clientList[key];
+                    break;
+                }
+            }
         })
     });
 });
@@ -236,3 +239,9 @@ function validateKvazaarOptions(kvazaarOptions) {
     });
 }
 
+function makeDownloadLink(token) {
+    const downloadLink = '<a href=\"http://localhost:8080/download/' + token + '\">this link</a>';
+    const msg = "You can use " + downloadLink + " to download the file when it's ready";
+
+    return msg;
+}
