@@ -4,7 +4,6 @@ let db = require("./db");
 let crypto = require('crypto');
 let kue = require('kue');
 var NRP = require('node-redis-pubsub');
-let sleep = require("sleep");
 
 var queue = kue.createQueue({
     redis: {
