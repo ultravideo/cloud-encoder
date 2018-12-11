@@ -256,7 +256,7 @@ function validateKvazaarOptions(kvazaarOptions) {
 }
 
 function makeDownloadLink(token) {
-    const downloadLink = '<a href=\"http://localhost:8080/download/' + token + '\">this link</a>';
+    const downloadLink = '<a href=\"http://' + process.env.CLOUD_HOST + '8080/download/' + token + '\">this link</a>';
     const msg = "You can use " + downloadLink + " to download the file when it's ready";
 
     return msg;
