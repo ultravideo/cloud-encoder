@@ -1,5 +1,5 @@
 var express = require('express');
-var resumable = require('./resumable-node.js')('/tmp/cloud_uploads/');
+var resumable = require('../util/resumable-node.js')('/tmp/cloud_uploads/');
 var app = express();
 var multipart = require('connect-multiparty');
 var crypto = require('crypto');
@@ -24,7 +24,7 @@ var queue = kue.createQueue({
 });
 for (var i = 0; i < 5; ++i) {
     console.log("forked!");
-    fork('./worker');
+    fork('./app/worker');
 }
 
 // message queue
@@ -32,7 +32,7 @@ var nrp = new NRP({
     port: 7776,
     scope: "msg_queue"
 });
-fork("./socket");
+fork("./app/socket");
 
 // ------------------------------ INTERNAL FUNCTIONS ------------------------------
 
@@ -88,7 +88,7 @@ function concatChunks(numChunks, identifier, filename, callback) {
 }
 
 // Host most stuff in the public folder
-app.use(express.static(__dirname + '/public'));
+app.use(express.static(__dirname + '/../public'));
 app.use(multipart());
 
 // Handle uploads through Resumable.js
@@ -245,13 +245,13 @@ app.get('/download/:hash', function(req, res) {
 app.get('/resumable.js', function (req, res) {
     var fs = require('fs');
     res.setHeader("content-type", "application/javascript");
-    fs.createReadStream("./resumable.js").pipe(res);
+    fs.createReadStream("./util/resumable.js").pipe(res);
 });
 
 app.get('/frontend.js', function (req, res) {
     var fs = require('fs');
     res.setHeader("content-type", "application/javascript");
-    fs.createReadStream("./frontend.js").pipe(res);
+    fs.createReadStream("./public/frontend.js").pipe(res);
 });
 
 queue.on('job enqueue', function() {

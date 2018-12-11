@@ -42,7 +42,7 @@ function sendMessage(user, message) {
     });
 }
 
-// remove original file, extracted audio file and 
+// remove original file, extracted audio file and
 // raw video if the videos was containerized
 function removeArtifacts(path, fileOptions) {
     var files = [".txt", "_logo.hevc", ".hevc"];
@@ -100,7 +100,7 @@ function ffmpegContainerize(videoPath, audioPath, container) {
     return new Promise((resolve, reject) => {
         const newPath = videoPath.split('.')[0] + "." + container;
 
-        // check if audio track exists, user may have given us 
+        // check if audio track exists, user may have given us
         // raw video to encode and the containerize in which case
         // we wouldn't have an audio track
         fs.access(audioPath, fs.constants.F_OK, function(err) {
@@ -110,8 +110,8 @@ function ffmpegContainerize(videoPath, audioPath, container) {
             if (!err) {
                 inputs.push(audioPath);
                 outputOptions.push("-async", "1", "-c:a", "aac");
-            } 
-            
+            }
+
             callFFMPEG(inputs, [], newPath, outputOptions).then(() => {
                 resolve(newPath);
             })
@@ -319,9 +319,7 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
         return moveToOutputFolder(path);
     })
     .then((newPath) => {
-        db.updateTask(taskInfo.taskID, {file_path : newPath})
-        .then(() => {
-            console.log(kvazaarOptions);
+        db.updateTask(taskInfo.taskID, {file_path : newPath}).then(() => {
             removeArtifacts(fileOptions.tmp_path, fileOptions);
             updateWorkerStatus(taskInfo, workerStatus.READY);
             done();
@@ -351,7 +349,7 @@ queue.process("process_file", function(job, done) {
             delete values[1]["hash"];
 
             // use generated token to handle all intermediate files (.hevc, .acc, _logo.hevc etc)
-            // this way N users can create request for the same file without "corruping" each others processes
+            // this way N users can create request for the same file without "corrupting" each others processes
             values[0]["tmp_path"] = "/tmp/cloud_uploads/" + taskRow.token;
 
             updateWorkerStatus(taskRow.owner_id, workerStatus.STARTING);
