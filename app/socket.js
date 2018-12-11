@@ -26,7 +26,7 @@ class Clients {
 const clients = new Clients();
 const socket  = new WebSocket.Server({ port: 8083 });
 
-// --------------- message queue stuff start --------------- 
+// --------------- message queue stuff start ---------------
 var nrp = new NRP({
     port: 7776,
     scope: "msg_queue"
@@ -120,8 +120,9 @@ socket.on('connection', function(client) {
                                 task_token: token
                             })
                             .save(function(err) {
-                                if (err)
-                                    throw err;
+                                if (err) {
+                                    console.log("err", err);
+                                }
                                 console.log("job " + job.id + " saved to queue");
                             });
                         }
@@ -164,16 +165,32 @@ socket.on('connection', function(client) {
                         client.send(
                             JSON.stringify({
                                 type: "action",
-                                reply: uploadInfo.approved ? "upload" : "abort",
+                                reply: uploadInfo.approved ? "upload" : "cancel",
                                 message: uploadInfo.message
                             })
                         );
                     })
                     .catch(function(err) {
-                        console.log("Invalid options:", err);
+                        client.send(
+                            JSON.stringify({
+                                type: "action",
+                                reply: "cancel",
+                                message: "Generic error, try again later"
+                            })
+                        );
+                        console.log("Something failed with database", err);
                         return;
                     });
                 })
+            }).catch(function(err) {
+                client.send(
+                    JSON.stringify({
+                        type: "action",
+                        reply: "cancel",
+                        message: err.toString()
+                    })
+                );
+                return;
             });
         }
 
@@ -224,9 +241,9 @@ function validateKvazaarOptions(kvazaarOptions) {
         for (let key in kvazaarOptions) {
             if (validOptions.hasOwnProperty(key)) {
                 if (validOptions[key].indexOf(kvazaarOptions[key]) === -1)
-                    reject(new Error("Invalid kvazaar options!"));
+                    reject(new Error("Invalid Kvazaar options!"));
             } else {
-                reject(new Error("Invalid kvazaar options!"));
+                reject(new Error("Invalid Kvazaar options!"));
             }
         }
 

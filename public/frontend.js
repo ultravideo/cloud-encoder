@@ -38,7 +38,7 @@ if(!r.support) {
 } else {
     r.assignBrowse($('#browseButton'));
 
-    $('#submitButton').click(function() {
+    $('#submitButton').click(function(){
         if (numFiles == 0) {
             console.log("no files");
             return;
@@ -58,34 +58,8 @@ if(!r.support) {
             document.getElementById("resMissing").style.display = "none";
         }
 
+        console.log("sent options...");
         connection.send(JSON.stringify(options));
-
-        connection.onmessage = function(message) {
-            var message_data = null;
-
-            try {
-                message_data = JSON.parse(message.data);
-            } catch (e) {
-                console.log(message.data);
-                console.log(e);
-                return;
-            }
-
-            if (message_data.message != null) {
-                $('.resumable-list').append("<br>" + message_data.message);
-            }
-
-            // server send us message regarding resumable upload process
-            if (message_data.type === "action") {
-                if (message_data.reply == "upload") {
-                    $('.resumable-progress .progress-resume-link').hide();
-                    $('.resumable-progress .progress-pause-link').show();
-                    r.upload();
-                } else if (message_data.reply == "cancel") {
-                    r.cancel();
-                }
-            }
-        };
     });
 
     // Handle file add event
@@ -157,6 +131,33 @@ if(!r.support) {
 
         connection.send(JSON.stringify(message));
         console.log(JSON.stringify(message));
+    };
+
+    connection.onmessage = function(message) {
+        var message_data = null;
+
+        try {
+            message_data = JSON.parse(message.data);
+        } catch (e) {
+            console.log(message.data);
+            console.log(e);
+            return;
+        }
+
+        if (message_data.message != null) {
+            $('.resumable-list').append("<br>" + message_data.message);
+        }
+
+        // server send us message regarding resumable upload process
+        if (message_data.type === "action") {
+            if (message_data.reply == "upload") {
+                $('.resumable-progress .progress-resume-link').hide();
+                $('.resumable-progress .progress-pause-link').show();
+                r.upload();
+            } else if (message_data.reply == "cancel") {
+                r.cancel();
+            }
+        }
     };
 
     connection.onerror = function(error) {
