@@ -5,7 +5,7 @@ var numFiles = 0;
 var fileIds = [];
 var fileID = null;
 var response = null;
-var connection = new WebSocket('ws://127.0.0.1:8083');
+var connection = new WebSocket('ws://127.0.0.1:8083'); // TODO ???
 var userToken  = generate_random_string(64);
 
 var r = new Resumable({
@@ -156,6 +156,11 @@ if(!r.support) {
                 r.upload();
             } else if (message_data.reply == "cancel") {
                 r.cancel();
+            } else if (message_data.reply == "pause") {
+                r.pause();
+            } else if (message_data.reply == "continue") {
+                console.log("continue upload");
+                r.upload();
             }
         }
     };

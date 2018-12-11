@@ -73,8 +73,6 @@ function concatChunks(numChunks, identifier, filename, callback) {
                 });
             });
 
-            // TODO do we even need the file checksum anywhere??
-            // const fileHash = crypto.createHash('sha256').update(data).digest('hex');
             const fileHash = crypto.randomBytes(64).toString('hex');
             const filePath = "/tmp/cloud_uploads/" + fileHash;
 
@@ -86,6 +84,111 @@ function concatChunks(numChunks, identifier, filename, callback) {
         });
     });
 }
+
+// extract video stream from input file and if it exists
+// check that its duration is within limits (<30min)
+function checkIsVideoFile(inputFile) {
+    return new Promise((resolve, reject) => {
+        const options = [
+            "-v", "error", "-show_entries",
+            "format=duration", "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            inputFile
+        ];
+        const child = spawn("ffprobe", options);
+        let result = "";
+
+        // file size limit for containerized video is 30 minutes (1800 seconds)
+        child.stdout.on("data", function(data) { result += data.toString(); });
+        child.stderr.on("data", function(data) { result += data.toString(); });
+
+        child.on("exit", function(code, signal) {
+            let numSeconds = parseInt(result, 10);
+
+            if (isNaN(numSeconds)) {
+                reject(new Error("Failed to extract duration, file rejected"));
+            } else if (numSeconds > 1800) {
+                reject(new Error("File is too big!"));
+            } else {
+                resolve();
+            }
+        });
+    });
+}
+
+function checkFileValidity(identifier, chunkFile) {
+    return new Promise((resolve, reject) => {
+        db.getFile(identifier).then(function(row) {
+            // this file hasn't been approved, terminate download
+            if (!row) {
+                reject(new Error("File hasn't been approved!"));
+            } else {
+                // raw video, continue download (size limit for raw video is 50GB)
+                if (row.raw_video === 1) {
+                    resolve();
+                } else {
+                    checkIsVideoFile(chunkFile).then(() => {
+                        resolve();
+                    })
+                    .catch(function(err) {
+                        db.getTasks("file_id", identifier).then((tasks) => {
+                            reject(err);
+                            return Promise.all([ db.removeTask(tasks[0].taskID), db.removeFile(identifier) ]);
+                        })
+                        .catch(function(err) {
+                            reject(err);
+                            console.log(err);
+                        });
+                    });
+                }
+            }
+        });
+    });
+}
+
+// concatenate chunks, 
+function processUploadedFile(req, identifier, original_filename) {
+    return new Promise((resolve, reject) => {
+        sendMessage(req.query.token, "status", null, "Processing file...");
+
+        concatChunks(req.query.resumableChunkNumber, identifier, original_filename, function(err, hash, path) {
+            if (err)
+                console.log(err);
+
+            console.log("adding ", path, hash);
+
+            db.updateFile(identifier, {file_path : path, hash : hash}).then(() => {
+               return db.getTasks("file_id", identifier);
+            })
+            .then((tasks) => {
+                if (!tasks) {
+                    sendMessage(req.query.token, "action", "cancel", "Error occurred during file processing!");
+                    return;
+                }
+                tasks.forEach(function(task) {
+                    if (task.status === -1) {
+                        db.updateTask(task.taskID, { status: 0 })
+                        .then(() => {
+                            let job = queue.create('process_file', {
+                                task_token: task.token
+                            }).save(function(err) {
+                                if (err) throw err;
+                                console.log("job " + job.id + " saved to queue");
+                            });
+                            sendMessage(task.owner_id, "status", null, "File has been added to work queue!");
+                        }, (reason) => {
+                            console.log("failed to add task to work queue");
+                        });
+                    }
+                });
+            })
+            .catch(function(err) {
+                console.log(err);
+            });
+        });
+    })
+}
+
 
 // Host most stuff in the public folder
 app.use(express.static(__dirname + '/../public'));
@@ -110,95 +213,43 @@ app.post('/upload', function(req, res) {
 
             res.status(400).end();
             return;
-        } else if (req.query.resumableChunkNumber == 1 && status !== "done") { // TODO add comment about this check
-            db.getFile(identifier).then(function(row) {
-                // this file hasn't been approved, terminate download
-                if (!row) {
-                    sendMessage(req.query.token, "action", "cancel", "File hasn't  been approved, file upload rejected!");
-                    res.status(400).send();
+        } else if (req.query.resumableChunkNumber == 1) {
+            res.send(status);
+            sendMessage(req.query.token, "action", "pause", null);
+
+            checkFileValidity(identifier, chunkFile).then(() => {
+                if (status !== "done") {
+                    console.log("continue uploading......");
+                    sendMessage(req.query.token, "action", "continue", null);
                     return;
-                } else {
-                    // raw video, continue download (size limit for raw video is 50GB)
-                    if (row.raw_video === 1) {
-                        return;
-                    } else {
-                        // check if containerized file is too large (duration > 30min)
-                        const options = [
-                            "-v", "error", "-show_entries",
-                            "format=duration", "-of",
-                            "default=noprint_wrappers=1:nokey=1",
-                            chunkFile
-                        ];
-                        const child = spawn("ffprobe", options);
-                        let result = "";
-
-                        // file size limit for containerized video is 30 minutes (1800 seconds)
-                        child.stdout.on("data", function(data) { result += data.toString(); });
-                        child.stderr.on("data", function(data) { result += data.toString(); });
-                        child.on("exit", function(code, signal) {
-                            let numSeconds = parseInt(result, 10);
-
-                            if (isNaN(numSeconds) || numSeconds > 1800) {
-                                sendMessage(req.query.token, "action", "cancel", "File is too large!");
-
-                                // remove file and the task associated with it
-                                db.getTasks("file_id", identifier)
-                                .then((tasks) => {
-                                    return Promise.all([ db.removeTask(tasks[0].taskID), db.removeFile(identifier) ]);
-                                })
-                                .catch(function(err) {
-                                    console.log(err);
-                                });
-
-                                res.status(400).send();
-                                return;
-                            }
-                        });
-                    }
                 }
-            });
-        }
 
-        // accept chunk
-        res.send(status);
-
-        if (status === "done") {
-            sendMessage(req.query.token, "status", null, "Processing file...");
-
-            concatChunks(req.query.resumableChunkNumber, identifier, original_filename, function(err, hash, path) {
-                if (err)
-                    console.log(err);
-
-                db.updateFile(identifier, {file_path : path, hash : hash})
-                .then(() => {
-                   return db.getTasks("file_id", identifier);
-                })
-                .then((tasks) => {
-                    if (!tasks) {
-                        sendMessage(req.query.token, "action", "cancel", "Error occurred during file processing!");
-                        return;
-                    }
-                    tasks.forEach(function(task) {
-                        if (task.status === -1) {
-                            db.updateTask(task.taskID, { status: 0 })
-                            .then(() => {
-                                let job = queue.create('process_file', {
-                                    task_token: task.token
-                                }).save(function(err) {
-                                    if (err) throw err;
-                                    console.log("job " + job.id + " saved to queue");
-                                });
-                                sendMessage(task.owner_id, "status", null, "File has been added to work queue!");
-                            }, (reason) => {
-                                console.log("failed to add task to work queue");
-                            });
-                        }
-                    });
+                // input file was smaller than one chunk (1MB), it must be processes 
+                // explicitly here
+                processUploadedFile(req, identifier, original_filename).then(() => {
+                    console.log("file ready");
                 })
                 .catch(function(err) {
+                    sendMessage(req.query.token, "status", null, err.toString());
                     console.log(err);
                 });
+            })
+            .catch(function(err) {
+                sendMessage(req.query.token, "action", "cancel", err.toString());
+                res.status(400).send();
+                return;
             });
+
+        } else if (status === "done") {
+            processUploadedFile(req, identifier, original_filename).then(() => {
+                console.log("file ready!");
+            })
+            .catch(function(err) {
+                sendMessage(req.query.token, "status", null, err.toString());
+                console.log(err);
+            });
+        } else {
+            res.send(status);
         }
     });
 });
