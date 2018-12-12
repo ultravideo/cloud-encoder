@@ -102,7 +102,7 @@ socket.on('connection', function(client) {
                         data.db.task.ops_id  != data.options.kvazaar.hash)
                     {
                         message =  "Upload rejected (file already on the server), " + 
-                                   "file has been added to work queue\n";
+                                   "file has been added to work queue. ";
 
                         promisesToResolve.push(
                             db.insertTask({
@@ -127,7 +127,7 @@ socket.on('connection', function(client) {
                             });
                         }
                     } else {
-                        message = "Upload rejected (file already on the server), file already in the work queue";
+                        message = "Upload rejected (file already on the server), file already in the work queue. ";
                     }
 
                     // this combination of options doesn't exist in the database
@@ -162,9 +162,11 @@ socket.on('connection', function(client) {
                         };
                     })
                     .then((uploadInfo) => {
+                        console.log("uniq id", data.options.file.uniq_id);
                         client.send(
                             JSON.stringify({
                                 type: "action",
+                                token: data.options.file.uniq_id,
                                 reply: uploadInfo.approved ? "upload" : "cancel",
                                 message: uploadInfo.message
                             })
@@ -174,8 +176,9 @@ socket.on('connection', function(client) {
                         client.send(
                             JSON.stringify({
                                 type: "action",
+                                token: data.options.file.uniq_id,
                                 reply: "cancel",
-                                message: "Generic error, try again later"
+                                message: "Error, try again later"
                             })
                         );
                         console.log("Something failed with database", err);
@@ -186,6 +189,7 @@ socket.on('connection', function(client) {
                 client.send(
                     JSON.stringify({
                         type: "action",
+                        token: message.other.file_id,
                         reply: "cancel",
                         message: err.toString()
                     })
@@ -256,7 +260,7 @@ function validateKvazaarOptions(kvazaarOptions) {
 }
 
 function makeDownloadLink(token) {
-    const downloadLink = '<a href=\"http://' + process.env.CLOUD_HOST + '8080/download/' + token + '\">this link</a>';
+    const downloadLink = '<a href=\"http://' + process.env.CLOUD_HOST + ':8080/download/' + token + '\">this link</a>';
     const msg = "You can use " + downloadLink + " to download the file when it's ready";
 
     return msg;

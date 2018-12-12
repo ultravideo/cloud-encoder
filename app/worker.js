@@ -33,9 +33,10 @@ var nrp = new NRP({
     scope: "msg_queue"
 });
 
-function sendMessage(user, message) {
+function sendMessage(user, fileId, message) {
     nrp.emit('message', {
         user: user,
+        token: fileId,
         status: null,
         reply: "status",
         message: message,
@@ -256,7 +257,7 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
     });
 }
 
-function updateWorkerStatus(taskInfo, status) {
+function updateWorkerStatus(taskInfo, fileId, status) {
     let message ="";
 
     switch (status) {
@@ -280,7 +281,7 @@ function updateWorkerStatus(taskInfo, status) {
             break;
     }
 
-    sendMessage(taskInfo.owner_id, message);
+    sendMessage(taskInfo.owner_id, fileId, message);
     db.updateTask(taskInfo.taskID, {status: status}).then().catch(function(err) {
         console.log(err);
     });
@@ -300,17 +301,17 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     if (fileOptions.raw_video === 1) {
         preprocessFile = preprocessRawVideo(fileOptions.file_path);
     } else {
-        updateWorkerStatus(taskInfo, workerStatus.DECODING);
+        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING);
         preprocessFile = decodeVideo(fileOptions, kvazaarOptions);
     }
 
     preprocessFile.then((rawVideoName) => {
-        updateWorkerStatus(taskInfo, workerStatus.ENCODING);
+        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.ENCODING);
         return kvazaarEncode(rawVideoName, fileOptions, kvazaarOptions);
     })
     .then((encodedVideoName) => {
         if (fileOptions.container !== "none") {
-            updateWorkerStatus(taskInfo, workerStatus.CONTAINERIZING);
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.CONTAINERIZING);
             return ffmpegContainerize(encodedVideoName, fileOptions.tmp_path + ".wav", fileOptions.container);
         }
         return encodedVideoName;
@@ -321,16 +322,16 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     .then((newPath) => {
         db.updateTask(taskInfo.taskID, {file_path : newPath}).then(() => {
             removeArtifacts(fileOptions.tmp_path, fileOptions);
-            updateWorkerStatus(taskInfo, workerStatus.READY);
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.READY);
             done();
         }, (reason) => {
-            updateWorkerStatus(taskInfo, workerStatus.FAILURE);
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.FAILURE);
             removeArtifacts(fileOptions.tmp_path, fileOptions);
             console.log(reason);
         });
     })
     .catch(function(reason) {
-        updateWorkerStatus(taskInfo, workerStatus.FAILURE);
+        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.FAILURE);
         removeArtifacts(fileOptions.tmp_path, fileOptions);
         console.log(reason);
     });
@@ -352,7 +353,7 @@ queue.process("process_file", function(job, done) {
             // this way N users can create request for the same file without "corrupting" each others processes
             values[0]["tmp_path"] = "/tmp/cloud_uploads/" + taskRow.token;
 
-            updateWorkerStatus(taskRow.owner_id, workerStatus.STARTING);
+            updateWorkerStatus(taskRow.owner_id, values[0].uniq_id, workerStatus.STARTING);
             processFile(values[0], values[1], taskRow, done);
         });
     })

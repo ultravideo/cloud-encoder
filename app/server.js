@@ -44,9 +44,10 @@ fork("./app/socket");
 // { type: "action", reply: "upload" }, { type: "action", reply: "cancel" } and
 // { type: "status", reply: null } are all valid action/reply pairs that the 
 // client side code understand and knows how to act upon
-function sendMessage(user, type, reply, message) {
+function sendMessage(user, token, type, reply, message) {
     nrp.emit('message', {
         user: user,
+        token: token,
         type: type,
         reply: reply,
         message: message
@@ -149,7 +150,7 @@ function checkFileValidity(identifier, chunkFile) {
 // concatenate chunks, 
 function processUploadedFile(req, identifier, original_filename) {
     return new Promise((resolve, reject) => {
-        sendMessage(req.query.token, "status", null, "Processing file...");
+        sendMessage(req.query.token, identifier, "status", null, "Processing file...");
 
         concatChunks(req.query.resumableChunkNumber, identifier, original_filename, function(err, hash, path) {
             if (err)
@@ -162,20 +163,19 @@ function processUploadedFile(req, identifier, original_filename) {
             })
             .then((tasks) => {
                 if (!tasks) {
-                    sendMessage(req.query.token, "action", "cancel", "Error occurred during file processing!");
+                    sendMessage(req.query.token, identifier, "action", "cancel", "Error occurred during file processing!");
                     return;
                 }
                 tasks.forEach(function(task) {
                     if (task.status === -1) {
-                        db.updateTask(task.taskID, { status: 0 })
-                        .then(() => {
+                        db.updateTask(task.taskID, { status: 0 }).then(() => {
                             let job = queue.create('process_file', {
                                 task_token: task.token
                             }).save(function(err) {
                                 if (err) throw err;
                                 console.log("job " + job.id + " saved to queue");
                             });
-                            sendMessage(task.owner_id, "status", null, "File has been added to work queue!");
+                            sendMessage(task.owner_id, identifier, "status", null, "File has been added to work queue!");
                         }, (reason) => {
                             console.log("failed to add task to work queue");
                         });
@@ -202,7 +202,7 @@ app.post('/upload', function(req, res) {
 
         // file too large (>50GB), inform user, terminate upload and clean database
         if (req.query.resumableChunkNumber * req.query.resumableChunkSize > 50 * 1000 * 1000 * 1000) {
-            sendMessage(req.query.token, "action", "cancel", "File is too large");
+            sendMessage(req.query.token, identifier, "action", "cancel", "File is too large");
             db.getTasks("file_id", identifier)
             .then((tasks) => {
                 return Promise.all([ db.removeTask(tasks[0].taskID), db.removeFile(identifier) ]);
@@ -215,12 +215,12 @@ app.post('/upload', function(req, res) {
             return;
         } else if (req.query.resumableChunkNumber == 1) {
             res.send(status);
-            sendMessage(req.query.token, "action", "pause", null);
+            sendMessage(req.query.token, identifier, "action", "pause", null);
 
             checkFileValidity(identifier, chunkFile).then(() => {
+                    sendMessage(req.query.token, identifier, "action", "continue", null);
                 if (status !== "done") {
                     console.log("continue uploading......");
-                    sendMessage(req.query.token, "action", "continue", null);
                     return;
                 }
 
@@ -230,22 +230,24 @@ app.post('/upload', function(req, res) {
                     console.log("file ready");
                 })
                 .catch(function(err) {
-                    sendMessage(req.query.token, "status", null, err.toString());
+                    sendMessage(req.query.token, identifier, "status", null, err.toString());
                     console.log(err);
                 });
             })
             .catch(function(err) {
-                sendMessage(req.query.token, "action", "cancel", err.toString());
+                sendMessage(req.query.token, identifier, "action", "cancel", err.toString());
                 res.status(400).send();
                 return;
             });
 
         } else if (status === "done") {
+            res.send(status);
+
             processUploadedFile(req, identifier, original_filename).then(() => {
                 console.log("file ready!");
             })
             .catch(function(err) {
-                sendMessage(req.query.token, "status", null, err.toString());
+                sendMessage(req.query.token, identifier, "status", null, err.toString());
                 console.log(err);
             });
         } else {
@@ -286,8 +288,12 @@ app.get('/download/:hash', function(req, res) {
                     console.log(reason);
                 });
             } else {
-                res.download(String(taskInfo.file_path));
-                db.updateTask(taskInfo.taskID, {download_count: taskInfo.download_count + 1});
+                res.download(String(taskInfo.file_path), function(err) {
+                    if (err) {
+                        console.log(err);
+                    }
+                    db.updateTask(taskInfo.taskID, { download_count: taskInfo.download_count + 1 });
+                });
             }
         }
     });

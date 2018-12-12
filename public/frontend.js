@@ -32,6 +32,20 @@ function generate_random_string(string_length){
     return random_string
 }
 
+// append new message to request's own div
+//
+// create div if it doesn't exist
+function appendToDiv(message_data) {
+    $('#files').show();
+
+    if ($("#" + message_data.token).length == 0) {
+        $("#files").append("<br><div id='" + message_data.token + "' class='file-request'></div>");
+        $("#" + message_data.token).show();
+    }
+
+    $("#" + message_data.token).append(message_data.message + "<br>");
+}
+
 // Resumable.js isn't supported, fall back on a different method
 if(!r.support) {
     $('.resumable-error').show();
@@ -41,6 +55,7 @@ if(!r.support) {
     $('#submitButton').click(function(){
         if (numFiles == 0) {
             console.log("no files");
+            alert("select file!");
             return;
         }
 
@@ -144,8 +159,18 @@ if(!r.support) {
             return;
         }
 
+        // console.log(message_data);
+
         if (message_data.message != null) {
-            $('.resumable-list').append("<br>" + message_data.message);
+            console.log(message_data);
+            appendToDiv(message_data);
+
+            // $('.resumable-list').append("<br>" + message_data.message);
+            // console.log(message_data.token, message_data.message);
+            // if ($("#" + message_data.token) == null) {
+            //     $("#files").append("<br><div id='" + message_data.token + "' class='file-request'></div>");
+            // }
+            // $("#" + message_data.token).append(message_data.message + "<br>");
         }
 
         // server send us message regarding resumable upload process
@@ -156,13 +181,21 @@ if(!r.support) {
                 r.upload();
             } else if (message_data.reply == "cancel") {
                 r.cancel();
+                $('.resumable-list').empty();
             } else if (message_data.reply == "pause") {
                 r.pause();
             } else if (message_data.reply == "continue") {
-                console.log("continue upload");
                 r.upload();
+            } else if (message_data.reply === "file") {
+                // let test = new Blob([], {"type:"});
+                // let url  = url = webkitURL.createObjectURL(pdfBlob);
+                // window.open(url);
             }
         }
+    };
+
+    connection.onclose = function(error) {
+        console.log("connection closed...");
     };
 
     connection.onerror = function(error) {
