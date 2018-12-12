@@ -5,8 +5,17 @@ var numFiles = 0;
 var fileIds = [];
 var fileID = null;
 var response = null;
-var connection = new WebSocket('ws://127.0.0.1:8083'); // TODO ???
+var connection = null;
+var connection = null;
 var userToken  = generate_random_string(64);
+
+for (let i = 0;  i < 3; ++i) {
+    if (connection == null) {
+        connection = new WebSocket('ws://127.0.0.1:8083');
+    } else {
+        break;
+    }
+}
 
 var r = new Resumable({
     target: '/upload',
@@ -40,10 +49,24 @@ function appendToDiv(message_data) {
 
     if ($("#" + message_data.token).length == 0) {
         $("#files").append("<br><div id='" + message_data.token + "' class='file-request'></div>");
+        $("#" + message_data.token).append("<h2>" + r.files[r.files.length - 1].fileName + "</h2>");
         $("#" + message_data.token).show();
     }
 
-    $("#" + message_data.token).append(message_data.message + "<br>");
+    var message = "";
+
+    if (message_data.status === 1) {
+        message = "<div class='status-msg-starting'>" + message_data.message + "</div><br>";
+    } else if (message_data.status === 2) {
+        $("#" + message_data.token + " div:last").hide();
+        message = "<div class='status-msg-ready'>" + message_data.message + "</div><br>";
+    } else if (message_data.status === 3) {
+        message = "<div class='status-msg-error'>" + message_data.message + "</div><br>";
+    } else {
+        message = "<div>" + message_data.message + "</div>"
+    }
+
+    $("#" + message_data.token).append(message);
 }
 
 // Resumable.js isn't supported, fall back on a different method
@@ -159,18 +182,8 @@ if(!r.support) {
             return;
         }
 
-        // console.log(message_data);
-
         if (message_data.message != null) {
-            console.log(message_data);
             appendToDiv(message_data);
-
-            // $('.resumable-list').append("<br>" + message_data.message);
-            // console.log(message_data.token, message_data.message);
-            // if ($("#" + message_data.token) == null) {
-            //     $("#files").append("<br><div id='" + message_data.token + "' class='file-request'></div>");
-            // }
-            // $("#" + message_data.token).append(message_data.message + "<br>");
         }
 
         // server send us message regarding resumable upload process
