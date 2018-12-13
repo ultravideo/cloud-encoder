@@ -37,13 +37,14 @@ var nrp = new NRP({
     scope: "msg_queue"
 });
 
-function sendMessage(user, fileId, message, status) {
+function sendMessage(user, fileId, message, status, misc) {
     nrp.emit('message', {
         user: user,
         token: fileId,
         status: status,
         reply: "status",
         message: message,
+        misc: misc,
     });
 }
 
@@ -262,7 +263,8 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
 }
 
 function updateWorkerStatus(taskInfo, fileId, currentJob, jobStatus) {
-    let message ="";
+    let message = "";
+    let extra   = null;
 
     switch (currentJob) {
         case workerStatus.ENCODING:
@@ -285,16 +287,16 @@ function updateWorkerStatus(taskInfo, fileId, currentJob, jobStatus) {
             break;
         case workerStatus.READY:
             message = "Video ready!";
+            extra = taskInfo.token;
             break;
         case workerStatus.FAILURE:
             message = "Encoding failed!";
             break;
     }
 
-    console.log(message);
-    sendMessage(taskInfo.owner_id, fileId, message, jobStatus);
+    sendMessage(taskInfo.owner_id, fileId, message, jobStatus, extra);
 
-    if (jobStatus == workStatus.DONE) {
+    if (jobStatus == workStatus.DONE || currentJob == workerStatus.READY) {
         db.updateTask(taskInfo.taskID, { status: currentJob }).catch(function(err) {
             console.log(err);
         });
@@ -325,9 +327,10 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
         return kvazaarEncode(rawVideoName, fileOptions, kvazaarOptions);
     })
     .then((encodedVideoName) => {
+        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.ENCODING, workStatus.DONE);
+        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.POSTPROCESSING, workStatus.STARTING);
+
         if (fileOptions.container !== "none") {
-            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.ENCODING, workStatus.DONE);
-            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.POSTPROCESSING, workStatus.STARTING);
             return ffmpegContainerize(encodedVideoName, fileOptions.tmp_path + ".wav", fileOptions.container);
         }
         return encodedVideoName;
