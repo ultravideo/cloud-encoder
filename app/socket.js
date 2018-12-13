@@ -58,6 +58,9 @@ socket.on('connection', function(client) {
                 clients.saveClient(message.token, client);
                 console.log("user", message.token, "has connected!");
             }
+
+        } else if (message.type === "download") {
+            handleFileDownload(client, message.token);
         } else if (message.type === "options") {
             let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar);
             let validatedFilePromise = validateFileOptions(message.other);
@@ -128,6 +131,7 @@ socket.on('connection', function(client) {
                         }
                     } else {
                         message = "Upload rejected (file already on the server), file already in the work queue. ";
+                        // TODO send token and create download button
                     }
 
                     // this combination of options doesn't exist in the database
@@ -158,7 +162,7 @@ socket.on('connection', function(client) {
                     Promise.all(promisesToResolve).then(() => {
                         return {
                             approved: uploadApproved,
-                            message: message + makeDownloadLink(token)
+                            message: message
                         };
                     })
                     .then((uploadInfo) => {
@@ -259,9 +263,50 @@ function validateKvazaarOptions(kvazaarOptions) {
     });
 }
 
-function makeDownloadLink(token) {
-    const downloadLink = '<a href=\"http://' + process.env.CLOUD_HOST + ':8080/download/' + token + '\">this link</a>';
-    const msg = "You can use " + downloadLink + " to download the file when it's ready";
+// check if the requested file is available
+// NOTE: these response messagse use incorrectly the misc field
+// TODO: create *CLEAR* spec for client<->server messages and freeze the spec
+function handleFileDownload(client, token) {
+    db.getTask(token).then(function(taskInfo) {
+        if (!taskInfo) {
+            client.send(JSON.stringify({
+                type: "action",
+                reply: "download",
+                status: "deleted",
+            }));
+        } else {
+            if (taskInfo.status != 5) {
+                client.send(JSON.stringify({
+                    type: "action",
+                    reply: "download",
+                    status: "rejected",
+                    misc: "File is not ready!"
+                }));
+            }  else if (taskInfo.download_count >= 2) {
+                client.send(JSON.stringify({
+                    type: "action",
+                    reply: "download",
+                    status: "exceeded",
+                    misc:  "File download limit has been exceeded!",
+                    file_id: taskInfo.file_id,
+                }));
 
-    return msg;
+                // remove task and associated file
+                db.removeTask(taskInfo.taskID).then(() => {
+                    fs.unlink(taskInfo.file_path, function(err) {
+                        console.log(taskInfo.taskID, " has been removed from the database");
+                    });
+                }, (reason) => {
+                    console.log(reason);
+                });
+            } else {
+                client.send(JSON.stringify({
+                    type: "action",
+                    reply: "download",
+                    status: "accepted",
+                    misc: token
+                }));
+            }
+        }
+    });
 }

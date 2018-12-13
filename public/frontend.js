@@ -5,17 +5,8 @@ var numFiles = 0;
 var fileIds = [];
 var fileID = null;
 var response = null;
-var connection = null;
-var connection = null;
+var connection = new WebSocket('ws://127.0.0.1:8083');
 var userToken  = generate_random_string(64);
-
-for (let i = 0;  i < 3; ++i) {
-    if (connection == null) {
-        connection = new WebSocket('ws://127.0.0.1:8083');
-    } else {
-        break;
-    }
-}
 
 var r = new Resumable({
     target: '/upload',
@@ -41,6 +32,36 @@ function generate_random_string(string_length){
     return random_string
 }
 
+
+// check from server side if the file is available
+// Server response is handled in connection.onmessage below
+function sendDownloadRequest(token) {
+    console.log("sending download request..");
+    connection.send(JSON.stringify({
+        type: "download",
+        token: token
+    }));
+}
+
+// server gave us response regarding file download
+// the download request may have been rejected (file doesn't exist or
+// download limit has been exceeded) in which case we remove this div
+// from #files and inform user about it
+//
+// if the download request has been approved, download the file
+function downloadFile(response) {
+    if (response.status === "accepted") {
+        var win = window.open("http://localhost:8080/download/" + response.misc, '_blank');
+        win.focus();
+    } else if (response.status === "rejected") {
+        alert(response.misc);
+    } else if (response.status === "exceeded") {
+        confirm(response.misc);
+        $("#" + response.file_id).remove();
+        $(".resumable-file-" + response.file_id).remove();
+    }
+}
+
 // append new message to request's own div
 //
 // create div if it doesn't exist
@@ -62,8 +83,11 @@ function appendToDiv(message_data) {
         message = "<div class='status-msg-ready'>" + message_data.message + "</div><br>";
     } else if (message_data.status === 3) {
         message = "<div class='status-msg-error'>" + message_data.message + "</div><br>";
-    } else {
+    } else if (message_data.misc === undefined) {
         message = "<div>" + message_data.message + "</div>"
+    } else {
+        message = "<div>" + "<button onclick=\"sendDownloadRequest('" + message_data.misc +
+                  "')\">Download video</button>" + "</div><br>";
     }
 
     $("#" + message_data.token).append(message);
@@ -199,10 +223,8 @@ if(!r.support) {
                 r.pause();
             } else if (message_data.reply == "continue") {
                 r.upload();
-            } else if (message_data.reply === "file") {
-                // let test = new Blob([], {"type:"});
-                // let url  = url = webkitURL.createObjectURL(pdfBlob);
-                // window.open(url);
+            } else if (message_data.reply === "download") {
+                downloadFile(message_data);
             }
         }
     };
