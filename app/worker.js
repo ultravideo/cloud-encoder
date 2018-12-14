@@ -1,4 +1,5 @@
 let db = require('./db');
+let parser = require("./parser");
 var exec = require('child_process').exec;
 var ffmpeg = require('fluent-ffmpeg');
 var ffprobe = require('ffprobe');
@@ -94,8 +95,8 @@ function callFFMPEG(inputs, inputOptions, output, outputOptions) {
             if (code === 0) {
                 resolve();
             } else {
-                console.log(stderr_out);
                 reject(new Error("ffmpeg failed with error code " + code));
+                console.log(stderr_out);
                 console.log(options);
             }
         });
@@ -147,7 +148,6 @@ function addLogo(video_path, resolution, callback) {
     callFFMPEG(["/tmp/cloud_uploads/misc/logo.png"], [],
                pathPrefix + "_logo.hevc", ["-vf", "scale=" + resolution.replace('x', ':') + ",setdar=1:1"])
     .then(() => {
-            console.log("concat logo and video file");
             fs.open(pathPrefix + ".txt", "wx", (err, fd) => {
                 if (err)
                     throw err;
@@ -171,22 +171,10 @@ function addLogo(video_path, resolution, callback) {
 }
 
 function validateVideoOptions(video_info) {
-    return new Promise((resolve, reject) => {
-        let tmp = video_info.streams[0].width + "x" + video_info.streams[0].height;
-        let res = tmp.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
-        if (!res) {
-            reject(new Error("Invalid resolution!"));
-        }
-
-        tmp = video_info.streams[0].avg_frame_rate;
-        let fps = tmp.match(/[0-9]{1,4}\/[0-9]{1,4}/g);
-        if (!fps) {
-            reject(new Error("Invalid FPS!"));
-        }
-
-        console.log("video options ok!");
-        resolve([res[0], fps[0]]);
-    });
+    return Promise.all([
+        parser.validateResolution(video_info.streams[0].width + "x" + video_info.streams[0].height),
+        parser.validateFrameRate(video_info.streams[0].avg_frame_rate)
+    ]);
 }
 
 function decodeVideo(fileOptions, kvazaarOptions) {
@@ -196,7 +184,6 @@ function decodeVideo(fileOptions, kvazaarOptions) {
             return validateVideoOptions(info);
         })
         .then((validated_options) => {
-            console.log("video options have been validated!");
             fileOptions.resolution      = validated_options[0];
             kvazaarOptions["input-fps"] = validated_options[1];
 
@@ -295,12 +282,6 @@ function updateWorkerStatus(taskInfo, fileId, currentJob, jobStatus) {
     }
 
     sendMessage(taskInfo.owner_id, fileId, message, jobStatus, extra);
-
-    if (jobStatus == workStatus.DONE || currentJob == workerStatus.READY) {
-        db.updateTask(taskInfo.taskID, { status: currentJob }).catch(function(err) {
-            console.log(err);
-        });
-    }
 }
 
 // raw video doesn't require any preprocessing (at least for now)
@@ -339,7 +320,7 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
         return moveToOutputFolder(path);
     })
     .then((newPath) => {
-        db.updateTask(taskInfo.taskID, {file_path : newPath}).then(() => {
+        db.updateTask(taskInfo.taskID, { file_path : newPath }).then(() => {
             removeArtifacts(fileOptions.tmp_path, fileOptions);
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.POSTPROCESSING, workStatus.DONE);
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.READY);

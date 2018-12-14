@@ -1,6 +1,7 @@
 let WebSocket = require("ws");
 let fs = require("fs");
 let db = require("./db");
+let parser = require("./parser");
 let crypto = require('crypto');
 let kue = require('kue');
 var NRP = require('node-redis-pubsub');
@@ -225,16 +226,16 @@ function validateFileOptions(fileOptions) {
         };
 
         if (fileOptions.resolution !== "" && fileOptions.raw_video === "on") {
-            let res = fileOptions.resolution.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
-            if (!res) {
-                reject(new Error("Invalid resolution!"));
-            }
-
-            validatedOptions["resolution"] = res[0];
-            validatedOptions["raw_video"]  = 1;
+            parser.validateResolution(fileOptions.resolution).then((resolution) => {
+                validatedOptions["resolution"] = resolution;
+                validatedOptions["raw_video"]  = 1;
+                resolve(validatedOptions);
+            }, (reason) => {
+                reject(reason);
+            });
+        } else {
+            resolve(validatedOptions);
         }
-
-        resolve(validatedOptions);
     });
 }
 
