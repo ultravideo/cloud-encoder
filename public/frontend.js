@@ -10,7 +10,7 @@ var userToken  = generate_random_string(64);
 
 var r = new Resumable({
     target: '/upload',
-    chunkSize: 1 * 1024 * 1024,
+    chunkSize: 5 * 1024 * 1024,
     simultaneousUploads: 1,
     testChunks: false,
     throttleProgressCallbacks: 1,

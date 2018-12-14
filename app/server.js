@@ -6,7 +6,6 @@ var crypto = require('crypto');
 var WebSocketServer = require('websocket').server;
 var http = require('http');
 var fs = require('fs');
-var concat = require('concat-files');
 var sqlite3 = require('sqlite3').verbose();
 var kue = require('kue');
 var db = require('./db');
@@ -57,32 +56,35 @@ function sendMessage(user, token, type, reply, message) {
 // concat all resumable file chunks, calculate sha256 checksum
 // and rename file. Return new path and file hash
 function concatChunks(numChunks, identifier, filename, callback) {
-    const tmpFile     = "/tmp/cloud_uploads/" + identifier + ".tmp";
+    const hash       = crypto.randomBytes(64).toString('hex');
+    const outFile    = "/tmp/cloud_uploads/" + hash;
     const pathPrefix = "/tmp/cloud_uploads/resumable-";
     const chunkFiles = Array.from({length: numChunks},
         (v, k) => pathPrefix + filename + "." + (k + 1));
 
-    concat(chunkFiles, tmpFile, function(err) {
-        fs.readFile(tmpFile, function(err, data) {
-            if (err)
-                callback(err, null, null);
+    // This is temporary hack to support large files
+    // I'll rewrite this when I have read the EventStream documentation thoroughly
+    let writestream = fs.createWriteStream(outFile, { encoding: "binary" });
 
-            chunkFiles.forEach(function(file) {
-                fs.unlink(file, function(err) {
-                    if (err)
-                        callback(err, null, null);
-                });
-            });
+    const child = spawn("cat", chunkFiles);
+    let stderr = "";
 
-            const fileHash = crypto.randomBytes(64).toString('hex');
-            const filePath = "/tmp/cloud_uploads/" + fileHash;
+    child.stdout.on("data", function(data) {
+        writestream.write(data);
+    });
+    child.stderr.on("data", function(data) {
+        stderr += data.toString();
+    });
 
-            fs.rename(tmpFile, filePath, function(err) {
-                if (err)
-                    callback(err, "", "");
-                callback(null, fileHash, filePath);
+    child.on("exit", function(code, signal) {
+        chunkFiles.forEach(function(chunkFile) {
+            fs.unlink(chunkFile, function(err) {
+                // ignore errors (for now)
             });
         });
+
+        writestream.end();
+        callback(null, hash, outFile);
     });
 }
 
@@ -197,7 +199,6 @@ app.use(multipart());
 // Handle uploads through Resumable.js
 app.post('/upload', function(req, res) {
     resumable.post(req, function(status, filename, original_filename, identifier) {
-        const tmpFile    = "/tmp/cloud_uploads/" + identifier + ".tmp";
         const chunkFile  = "/tmp/cloud_uploads/resumable-" + original_filename + "." + req.query.resumableChunkNumber;
 
         // file too large (>50GB), inform user, terminate upload and clean database
