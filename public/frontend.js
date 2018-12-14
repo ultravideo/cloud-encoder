@@ -140,6 +140,7 @@ if(!r.support) {
 
         fileID = file.uniqueIdentifier;
         numFiles = 1;
+        $("#submitButton").prop("disabled", false);
     });
 
     r.on('pause', function(){
@@ -171,6 +172,7 @@ if(!r.support) {
 
     r.on('cancel', function(){
         $('.resumable-file-progress').html('canceled');
+        $("#submitButton").prop("disabled", true);
         numFiles = 0;
     });
 
