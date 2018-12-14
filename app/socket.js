@@ -224,7 +224,7 @@ function validateFileOptions(fileOptions) {
             uniq_id: fileOptions.file_id
         };
 
-        if (fileOptions.resolution !== "") {
+        if (fileOptions.resolution !== "" && fileOptions.raw_video === "on") {
             let res = fileOptions.resolution.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
             if (!res) {
                 reject(new Error("Invalid resolution!"));

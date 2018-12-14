@@ -140,6 +140,17 @@ if(!r.support) {
 
         fileID = file.uniqueIdentifier;
         numFiles = 1;
+
+        // try to extract video resolution from name
+        if ($("#resValue").val() === "") {
+            var str = r.files[r.files.length - 1].fileName.toString();
+            var res  = str.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
+
+            if (res && res.length != 0) {
+                $("#resValue").val(res[0]);
+            }
+        }
+
         $("#submitButton").prop("disabled", false);
     });
 
