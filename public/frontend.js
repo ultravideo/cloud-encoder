@@ -126,7 +126,11 @@ if(!r.support) {
 
     // Handle file add event
     r.on('fileAdded', function(file){
-        // Show progress pabr
+        // remove previously selected files
+        $('.resumable-list').empty();
+        r.files = r.files.slice(-1);
+        console.log(r.files);
+
         $('.resumable-progress, .resumable-list').show();
         $('.resumable-progress .progress-resume-link').hide();
         $('.resumable-progress .progress-pause-link').hide();
@@ -141,15 +145,29 @@ if(!r.support) {
         fileID = file.uniqueIdentifier;
         numFiles = 1;
 
-        // try to extract video resolution from name
-        if ($("#resValue").val() === "") {
-            var str = r.files[r.files.length - 1].fileName.toString();
-            var res  = str.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
+        let fname = r.files[r.files.length - 1].fileName.toString();
+
+        // set raw video to true if file extension is yuv
+        if ($("#rawVideoCheck").is(":checked") === false) {
+            let res  = fname.match(/\.yuv$/g);
 
             if (res && res.length != 0) {
-                $("#resValue").val(res[0]);
-            }
+                $("#rawVideoCheck").click();
+            } 
+        } else {
+            let res  = fname.match(/\.yuv$/g);
+
+            if (!res) {
+                $("#rawVideoCheck").click();
+                $("#resValue").val("");
+            } 
         }
+
+        // try to match file resolution from name
+        let res  = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
+        if (res && res.length != 0) {
+            $("#resValue").val(res[0]);
+        } 
 
         $("#submitButton").prop("disabled", false);
     });

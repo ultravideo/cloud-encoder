@@ -25,9 +25,10 @@
       </div>
 
 	  <div id="formData">
-	  <span>raw video <input type="checkbox" name="raw_video" onclick="displayResolution()" class="options"/></span><br>
+	  <span>raw video <input type="checkbox" id="rawVideoCheck" name="raw_video" onclick="displayResolution()" class="options"/>
+	  </span><br>
 	  <div id="resDiv" style="display:none">
-		  resolution<input type="text" name="resolution" class="options" placeholder="1920x1080"/>
+		  resolution<input type="text" name="resolution" id="resValue" class="options" placeholder="1920x1080"/>
 		  <div id="resMissing" style="display:none">
 			  <font color='red'><b>Resolution must be given for raw video</b></font>
 		  </div>
@@ -39,11 +40,12 @@
 		  <option value="placebo">Placebo</option>
 	  </select><br>
 	  <span>container</span> <select name="container" class="kvz_options">
-		  <option value="none">None (raw HEVC video)</option>
+		  <option value="none">None (HEVC video)</option>
 		  <option value="mp4">mp4</option>
-		  <option value="mkv">mkv</option>
 	  </select><br>
 	  </div>
+	  <button id="kvazaarCmdButton">Add more kvazaar options</button><br>
+	  <textarea rows="4" cols="50" id="kvazaarExtraOptions"></textarea>
 	  <button id="browseButton">Browse...</button><br>
 	  <button id="submitButton" disabled>Submit</button>
 
