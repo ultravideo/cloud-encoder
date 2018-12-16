@@ -10,15 +10,15 @@ indent by 4 spaces. (no tabs)
 2) User sends kvazaar options and unique identifier of the file to backend
 3) Backend checks if the file already exist in the database
 4) Backend sends a response to client regarding the encoding request
-	a) File was approved, client can start the file upload
-	b) File was rejected, the file exists already on the server
-	  i) User hasn't made this request yet (new options), request added to work queue
-	  ii) User has already made this request, inform user that encoding request has been rejected
+   * File was approved, client can start the file upload
+   * File was rejected, the file exists already on the server
+      - User hasn't made this request yet (new options), request added to work queue
+	  - User has already made this request, inform user that encoding request has been rejected
 5) File upload is started and it's done using Resumable.js
 6) When all chunks have been uploaded, server concatenates all chunks and adds the request to work queue
 7) Some worker will take this request under work and first checks if the file is raw
-	a) If it is, no preprocessing must be done
-	b) If it isn't, it will first extract raw video (and audio) from input file
+   * If it is, no preprocessing must be done
+   * If it isn't, it will first extract raw video (and audio) from input file
 8) After preprocessing is done, worker starts to encode the file using Kvazaar
 9) After encoding file may be put into user-specified container after which all intermediate files are removed (.wav, .yuv etc.)
 10) Request has been processed
@@ -37,8 +37,8 @@ Cloud uses 5 worker threads for processing user requests. Workers listen to Kue'
 How a worker thread works is very straightforward:
 
 1) Check if given video file is raw
-   a) If it is -> no need to preprocess
-   b) If it isn't -> Extract raw video (yuv420p) and audio (if necessary) using FFMPEG
+   * If it is -> no need to preprocess
+   * If it isn't -> Extract raw video (yuv420p) and audio (if necessary) using FFMPEG
 2) Encode the raw video using Kvazaar
 3) Add Kvazaar logo at the end of encoded video
 4) If user has so specified, add the encoded video to container
