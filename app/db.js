@@ -206,7 +206,7 @@ module.exports = {
         });
     },
 
-    removeTask : function(taskID) {
+    removeTaskUsingID : function(taskID) {
         return new Promise((resolve, reject) => {
             const sql = "DELETE FROM work_queue WHERE taskID = ?";
 
@@ -216,6 +216,30 @@ module.exports = {
             }).finalize();
         });
     },
+
+    removeTaskUsingToken : function(token) {
+        return new Promise((resolve, reject) => {
+            const sql = "DELETE FROM work_queue WHERE token = ?";
+
+            db.prepare(sql).run([token], function(err) {
+                if (err) reject(err);
+                resolve();
+            }).finalize();
+        });
+    },
+
+    removeTask : function() {
+        return new Promise((resolve, reject) => {
+            if (arguments.length == 1 && typeof(arguments[0]) === "number")
+            {
+                resolve(this.removeTaskUsingID(arguments[0]));
+            } else if (arguments.length == 1 && typeof(arguments[0]) === "string") {
+                resolve(this.removeTaskUsingToken(arguments[0]));
+            } else {
+                reject(new Error("invalid parameters when calling removeTask"));
+            }
+        });
+    }
 
     removeFile : function(fileID) {
         return new Promise((resolve, reject) => {
