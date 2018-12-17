@@ -152,15 +152,11 @@ function checkFileValidity(identifier, chunkFile) {
 // concatenate chunks, 
 function processUploadedFile(req, identifier, original_filename) {
     return new Promise((resolve, reject) => {
-        sendMessage(req.query.token, identifier, "status", null, "Processing file...");
-
         concatChunks(req.query.resumableChunkNumber, identifier, original_filename, function(err, hash, path) {
             if (err)
-                console.log(err);
+                reject(err);
 
-            console.log("adding ", path, hash);
-
-            db.updateFile(identifier, {file_path : path, hash : hash}).then(() => {
+            db.updateFile(identifier, { file_path : path, hash : hash }).then(() => {
                return db.getTasks("file_id", identifier);
             })
             .then((tasks) => {
@@ -174,18 +170,18 @@ function processUploadedFile(req, identifier, original_filename) {
                             let job = queue.create('process_file', {
                                 task_token: task.token
                             }).save(function(err) {
-                                if (err) throw err;
-                                console.log("job " + job.id + " saved to queue");
+                                if (err)
+                                    reject(err);
+                                resolve();
                             });
-                            sendMessage(task.owner_id, identifier, "status", null, "File has been added to work queue!");
                         }, (reason) => {
-                            console.log("failed to add task to work queue");
+                            reject(reason);
                         });
                     }
                 });
             })
             .catch(function(err) {
-                console.log(err);
+                reject(err);
             });
         });
     })
@@ -219,7 +215,8 @@ app.post('/upload', function(req, res) {
             sendMessage(req.query.token, identifier, "action", "pause", null);
 
             checkFileValidity(identifier, chunkFile).then(() => {
-                    sendMessage(req.query.token, identifier, "action", "continue", null);
+                sendMessage(req.query.token, identifier, "action", "continue", null);
+
                 if (status !== "done") {
                     console.log("continue uploading......");
                     return;
@@ -271,7 +268,7 @@ app.get('/download/:hash', function(req, res) {
             res.send("file does not exists!");
             res.status(404).end();
         } else {
-            if (taskInfo.status != 5) {
+            if (taskInfo.status != 4) {
                 res.send("file is not ready");
                 res.status(403).end();
                 res.end();

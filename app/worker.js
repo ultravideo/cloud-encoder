@@ -19,12 +19,14 @@ let queue = kue.createQueue({
 });
 
 const workerStatus = Object.freeze({
-    "WAITING": 1,
-    "DECODING" : 2,
-    "ENCODING" : 3,
-    "POSTPROCESSING" : 4,
-    "READY" : 5,
-    "FAILURE" : 6,
+    "CANCELLED": -3,
+    "FAILURE": -2,
+    "UPLOADING": -1,
+    "WAITING": 0,
+    "DECODING" : 1,
+    "ENCODING" : 2,
+    "POSTPROCESSING" : 3,
+    "READY" : 4,
 });
 
 const workStatus = Object.freeze({
@@ -249,39 +251,31 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
     });
 }
 
-function updateWorkerStatus(taskInfo, fileId, currentJob, jobStatus) {
+function updateWorkerStatus(taskInfo, fileId, currentJob) {
     let message = "";
-    let extra   = null;
 
     switch (currentJob) {
-        case workerStatus.ENCODING:
-            if (jobStatus === workStatus.STARTING)
-                message = "Starting to encode video...";
-            else
-                message = "File encoding done!";
-            break;
-        case workerStatus.DECODING:
-            if (jobStatus === workStatus.STARTING)
-                message = "Starting to decode video...";
-            else
-                message = "File decoding done!";
-            break;
-        case workerStatus.POSTPROCESSING:
-            if (jobStatus === workStatus.STARTING)
-                message = "Post-processing video...";
-            else
-                message = "Post-processing done!";
-            break;
-        case workerStatus.READY:
-            message = "Video ready!";
-            extra = taskInfo.token;
-            break;
-        case workerStatus.FAILURE:
-            message = "Encoding failed!";
-            break;
+        case workerStatus.READY:          message = "Done!";             break;
+        case workerStatus.FAILURE:        message = "Request failed!";   break;
+        case workerStatus.WAITING:        message = "Queued";            break;
+        case workerStatus.DECODING:       message = "Decoding";          break;
+        case workerStatus.ENCODING:       message = "Encoding";          break;
+        case workerStatus.CANCELLED:      message = "Request cancelled"; break;
+        case workerStatus.UPLOADING:      message = "Uploading file";    break;
+        case workerStatus.POSTPROCESSING: message = "Post-processing";   break;
     }
 
-    sendMessage(taskInfo.owner_id, fileId, message, jobStatus, extra);
+    db.updateTask(taskInfo.taskID, { status: currentJob }).then(() => {
+        nrp.emit('message', {
+            user: taskInfo.owner_id,
+            file_id: fileId,
+            token: taskInfo.token,
+            type: "action",
+            reply: "taskUpdate",
+            status: currentJob,
+            message: message
+        });
+    });
 }
 
 // raw video doesn't require any preprocessing (at least for now)
@@ -298,18 +292,16 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     if (fileOptions.raw_video === 1) {
         preprocessFile = preprocessRawVideo(fileOptions.file_path);
     } else {
-        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING, workStatus.STARTING);
+        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING);
         preprocessFile = decodeVideo(fileOptions, kvazaarOptions);
     }
 
     preprocessFile.then((rawVideoName) => {
-        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING, workStatus.DONE);
-        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.ENCODING, workStatus.STARTING);
+        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.ENCODING);
         return kvazaarEncode(rawVideoName, fileOptions, kvazaarOptions);
     })
     .then((encodedVideoName) => {
-        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.ENCODING, workStatus.DONE);
-        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.POSTPROCESSING, workStatus.STARTING);
+        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.POSTPROCESSING);
 
         if (fileOptions.container !== "none") {
             return ffmpegContainerize(encodedVideoName, fileOptions.tmp_path + ".wav", fileOptions.container);
@@ -322,17 +314,16 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     .then((newPath) => {
         db.updateTask(taskInfo.taskID, { file_path : newPath }).then(() => {
             removeArtifacts(fileOptions.tmp_path, fileOptions);
-            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.POSTPROCESSING, workStatus.DONE);
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.READY);
             done();
         }, (reason) => {
-            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.FAILURE, workStatus.FAILED);
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.FAILURE);
             removeArtifacts(fileOptions.tmp_path, fileOptions);
             console.log(reason);
         });
     })
     .catch(function(reason) {
-        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.FAILURE, workStatus.FAILED);
+        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.FAILURE);
         removeArtifacts(fileOptions.tmp_path, fileOptions);
         console.log(reason);
     });

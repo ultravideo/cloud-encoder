@@ -45,6 +45,18 @@ nrp.on("message", function(msg) {
 
 
 // --------------- socket stuff start --------------- 
+
+function getUserTokenBySocket(socket) {
+    return new Promise((resolve, reject) => {
+        for (let key in clients.clientList) {
+            if (clients.clientList[key] === socket) {
+                resolve(key);
+            }
+        }
+        reject(new Error("Can't find client's user token"));
+    });
+}
+
 socket.on('connection', function(client) {
     client.on('message', function(msg) {
         try {
@@ -60,9 +72,18 @@ socket.on('connection', function(client) {
                 console.log("user", message.token, "has connected!");
             }
 
-        } else if (message.type === "download") {
-            handleFileDownload(client, message.token);
-        } else if (message.type === "options") {
+        } else if (message.type === "downloadRequest") {
+            handleDownloadRequest(client, message.token);
+
+        } else if (message.type === "deleteRequest") {
+            handleDeleteRequest(client, message.token);
+        } else if (message.type === "cancelRequest") {
+            // TODO
+        } else if (message.type === "taskQuery") {
+            handleTaskRequest(client, message);
+
+            // TODO rename to handleUploadRequst
+        } else if (message.type === "uploadRequest") {
             let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar);
             let validatedFilePromise = validateFileOptions(message.other);
 
@@ -98,6 +119,7 @@ socket.on('connection', function(client) {
                     const token = crypto.randomBytes(64).toString('hex');
                     let promisesToResolve = [ ];
                     let uploadApproved = false;
+                    let requestApproved = false;
                     let message = "";
 
                     // make sure connected user hasn't already done this request
@@ -105,6 +127,7 @@ socket.on('connection', function(client) {
                         data.db.task.file_id != data.options.file.uniq_id ||
                         data.db.task.ops_id  != data.options.kvazaar.hash)
                     {
+                        requestApproved = true;
                         message =  "Upload rejected (file already on the server), " + 
                                    "file has been added to work queue. ";
 
@@ -153,6 +176,7 @@ socket.on('connection', function(client) {
 
                         promisesToResolve.push(
                             db.insertFile({
+                                name: data.options.file.name,
                                 resolution: data.options.file.resolution,
                                 raw_video: data.options.file.raw_video,
                                 uniq_id: data.options.file.uniq_id
@@ -171,8 +195,9 @@ socket.on('connection', function(client) {
                         client.send(
                             JSON.stringify({
                                 type: "action",
+                                reply: "uploadResponse",
+                                status: uploadApproved ? "upload" : requestApproved ? "request_ok" : "request_nok",
                                 token: data.options.file.uniq_id,
-                                reply: uploadInfo.approved ? "upload" : "cancel",
                                 message: uploadInfo.message
                             })
                         );
@@ -204,17 +229,18 @@ socket.on('connection', function(client) {
         }
 
         client.on('close', function(connection) {
-            for (let key in clients.clientList) {
-                if (clients.clientList[key] === client) {
-                    console.log(key, "disconnected!");
-
-                    delete clients.clientList[key];
-                    break;
-                }
-            }
+            getUserTokenBySocket(connection).then((key) => {
+                console.log(key, "disconnected!");
+                delete clients.clientList[key];
+            })
+            .catch(function(err) {
+                console.log(err);
+            });
         })
     });
 });
+
+
 // --------------- socket stuff end --------------- 
 
 function validateFileOptions(fileOptions) {
@@ -222,7 +248,8 @@ function validateFileOptions(fileOptions) {
         let validatedOptions = {
             resolution: 0,
             raw_video: 0,
-            uniq_id: fileOptions.file_id
+            uniq_id: fileOptions.file_id,
+            name: fileOptions.name
         };
 
         if (fileOptions.resolution !== "" && fileOptions.raw_video === "on") {
@@ -267,26 +294,26 @@ function validateKvazaarOptions(kvazaarOptions) {
 // check if the requested file is available
 // NOTE: these response messagse use incorrectly the misc field
 // TODO: create *CLEAR* spec for client<->server messages and freeze the spec
-function handleFileDownload(client, token) {
+function handleDownloadRequest(client, token) {
     db.getTask(token).then(function(taskInfo) {
         if (!taskInfo) {
             client.send(JSON.stringify({
                 type: "action",
-                reply: "download",
+                reply: "downloadResponse",
                 status: "deleted",
             }));
         } else {
-            if (taskInfo.status != 5) {
+            if (taskInfo.status != 4) {
                 client.send(JSON.stringify({
                     type: "action",
-                    reply: "download",
+                    reply: "downloadResponse",
                     status: "rejected",
                     misc: "File is not ready!"
                 }));
             }  else if (taskInfo.download_count >= 2) {
                 client.send(JSON.stringify({
                     type: "action",
-                    reply: "download",
+                    reply: "downloadResponse",
                     status: "exceeded",
                     misc:  "File download limit has been exceeded!",
                     file_id: taskInfo.file_id,
@@ -303,11 +330,98 @@ function handleFileDownload(client, token) {
             } else {
                 client.send(JSON.stringify({
                     type: "action",
-                    reply: "download",
+                    reply: "downloadResponse",
                     status: "accepted",
+                    file_id: taskInfo.file_id,
+                    count: taskInfo.download_count + 1,
                     misc: token
                 }));
             }
         }
+    });
+}
+
+// use both user token and task token to ensure that this user 
+// really owns the task he/she is requesting the delete
+function handleDeleteRequest(client, token) {
+    getUserTokenBySocket(client).then((key) => {
+        db.getTask(token).then((row) => {
+
+            // "authentication" failure
+            if (!row || row.owner_id !== key) {
+                client.send(JSON.stringify({
+                    type: "action",
+                    reply: "deleteResponse",
+                    status: "nok",
+                }));
+
+                return;
+            }
+
+            db.removeTask(token).then(() => {
+                console.log("task delete succeeded!");
+                client.send(JSON.stringify({
+                    type: "action",
+                    reply: "deleteResponse",
+                    status: "ok",
+                    file_id: row.file_id
+                }));
+            })
+        })
+    })
+    .catch(function(err) {
+        console.log(err);
+    });
+}
+
+function handleTaskRequest(client, message) {
+    // TODO make sure this is safe!!!
+    // TODO make sure this is safe!!!
+    // TODO make sure this is safe!!!
+    // TODO make sure this is safe!!!
+    db.getTasks("owner_id", message.user).then((rows) => {
+        if (!rows || rows.length === 0) {
+            client.send(JSON.stringify({
+                type: "action",
+                reply: "taskResponse",
+                numTasks: 0,
+            }));
+            return;
+        }
+
+        let message = {
+            type: "action",
+            reply: "taskResponse",
+            numTasks: rows.length,
+            data: [],
+        };
+
+        rows.forEach(function(taskRow) {
+            db.getFile(taskRow.file_id).then((fileRow) => {
+
+                let msg = "Done";
+                switch (taskRow.status) {
+                    case -3:  msg = "Request cancelled"; break;
+                    case -2:  msg = "Request failed!";   break;
+                    case -1:  msg = "Uploading file";    break;
+                    case  0:  msg = "Queued";            break;
+                    case  1:  msg = "Decoding";          break;
+                    case  2:  msg = "Encoding";          break;
+                    case  3:  msg = "Post-processing";   break;
+                }
+
+                message.data.push({
+                    name: fileRow.name,
+                    uniq_id: taskRow.file_id,
+                    status: taskRow.status,
+                    message: msg,
+                    download_count: taskRow.download_count,
+                    token: taskRow.token
+                });
+
+                client.send(JSON.stringify(message));
+            });
+        });
+
     });
 }

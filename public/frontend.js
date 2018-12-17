@@ -7,6 +7,7 @@ var fileID = null;
 var response = null;
 var connection = new WebSocket('ws://127.0.0.1:8083');
 var userToken  = generate_random_string(64);
+var numRequests = 0; // TODO save this info to cookie
 
 var r = new Resumable({
     target: '/upload',
@@ -32,14 +33,46 @@ function generate_random_string(string_length){
     return random_string
 }
 
+function updateRequestCount() {
+    $("#linkRequests").text("My request (" + numRequests + ")");
+}
+
+function incRequestCount() {
+    ++numRequests
+    updateRequestCount();
+}
+
+function decRequestCount() {
+    --numRequests
+    updateRequestCount();
+}
 
 // check from server side if the file is available
 // Server response is handled in connection.onmessage below
 function sendDownloadRequest(token) {
     console.log("sending download request..");
     connection.send(JSON.stringify({
-        type: "download",
+        type: "downloadRequest",
         token: token
+    }));
+}
+
+// delete task from database
+function sendDeleteRequest(token) {
+    console.log("sending delete request...");
+    connection.send(JSON.stringify({
+        type: "deleteRequest",
+        token: token,
+    }));
+}
+
+// task is active -> stop all work on it,
+// remove it from work queue and from database
+function cancelTask(token) {
+    console.log("sending cancel request...");
+    connection.send(JSON.stringify({
+        type: "cancelRequest",
+        token: token,
     }));
 }
 
@@ -51,15 +84,110 @@ function sendDownloadRequest(token) {
 // if the download request has been approved, download the file
 function downloadFile(response) {
     if (response.status === "accepted") {
+        $("#table" + response.file_id + " #tdDownloadCount").html("Downloads left: " + (2 - response.count));
         var win = window.open("http://localhost:8080/download/" + response.misc, '_blank');
         win.focus();
     } else if (response.status === "rejected") {
         alert(response.misc);
     } else if (response.status === "exceeded") {
+        // TODO use bootstrap modal here
         confirm(response.misc);
+
+        decRequestCount();
         $("#" + response.file_id).remove();
+        $("#table" + response.file_id).remove();
         $(".resumable-file-" + response.file_id).remove();
     }
+}
+
+// TODO comment
+function drawFileTable(file) {
+    let newHTML = 
+        "<table id='table" + file.uniq_id + "'><tr><td>" + file.name + "</td>";
+
+    if (file.status === 4) {
+        newHTML +=
+            "<td align='right'><button id='btnDownload' class='btn btn-success' " +
+                "onclick=\"sendDownloadRequest('" + file.token + "')\">Download</button></td>" +
+            "<td align='right'><button id='btnDelete' class='btn btn-danger' " + 
+                "onclick=\"sendDeleteRequest('" + file.token + "')\">Delete</button></td></tr>";
+    } else {
+        newHTML +=
+            "<td align='right'><button id='btnDownload' class='btn btn-success' disabled>Download</button></td>" +
+            "<td align='right'><button id='btnDelete'   class='btn btn-danger' " +
+                "onclick=\"cancelTask('" + file.token + "')\">Cancel</button></td></tr>";
+    }
+
+    newHTML +=
+        "<tr><td id='tdDownloadCount' align='left'>Downloads left: " + (2 - file.download_count) + "</td></tr>" +
+        "<tr><td id='tdStatus' align='left' id=''>Status: " + file.message + "</td></tr>" +
+        "</table><br><br>";
+
+    return newHTML;
+}
+
+// TODO comment
+function handleTaskResponse(response) {
+    $("#divRequests").empty();
+
+    console.log("response:", response);
+
+    if (response.numTasks === 0) {
+        $("#divRequests").append("<p>You haven't done anything</p>");
+    } else {
+        // creating HTML dynamically like this is awful but whatevs
+        response.data.forEach(function(file) {
+            $("#divRequests").append(drawFileTable(file));
+        });
+    }
+}
+
+// TODO comment
+function handleTaskUpdate(response) {
+    if ($("#table" + response.file_id).length == 0) {
+        // ignore update, "My requests" tab is not active
+        console.log("table not present");
+    } else {
+        console.log("table is present", response.status);
+        if (response.status === 4) {
+            $("#table" + response.file_id + " #btnDownload").prop("disabled", false);
+            $("#table" + response.file_id + " #btnDownload").removeAttr("onclick");
+            $("#table" + response.file_id + " #btnDownload").attr("onClick", "sendDownloadRequest('" + response.token + "');");
+
+            // remove Cancel button and add Delete button
+            $("#table" + response.file_id + " #btnDelete").text("Delete");
+            $("#table" + response.file_id + " #btnDelete").removeAttr("onclick");
+            $("#table" + response.file_id + " #btnDelete").attr("onClick", "sendDeleteRequest('" + response.token + "');");
+        } 
+
+        $("#table" + response.file_id + " #tdStatus").html(response.message)
+    }
+}
+
+function handleCancelResponse(response) {
+    if (status === "ok") {
+        decRequestCount();
+        $("#table" + response.file_id).remove();
+    } else {
+        alert("Failed to cancel request");
+    }
+}
+
+function handleDeleteResponse(response) {
+    if (response.status === "ok") {
+        decRequestCount();
+        $("#table" + response.file_id).remove();
+    } else {
+        alert("Failed to delete request, reason: " + response.message);
+    }
+}
+
+function resetResumable() {
+    $(".resumable-list").empty();
+    $(".resumable-progress").hide();
+    $("#submitButton").prop("disabled", true);
+
+    fileID = null, numFiles = 0, r.files = [];
 }
 
 // append new message to request's own div
@@ -111,8 +239,9 @@ $('#submitButton').click(function(){
     $(".kvz_options").serializeArray().map(function(x){kvz_options[x.name] = x.value;});
     $(".options").serializeArray().map(function(x){other_options[x.name] = x.value;});
 
-    var options = { 'type' : 'options', 'token': userToken, 'kvazaar' : kvz_options, 'other' : other_options };
+    var options = { 'type' : 'uploadRequest', 'token': userToken, 'kvazaar' : kvz_options, 'other' : other_options };
     options['other']['file_id'] = fileID;
+    options['other']['name'] = r.files[r.files.length - 1].fileName.toString()
 
     if (other_options.raw_video && other_options.raw_video === "on" && other_options.resolution === "") {
         document.getElementById("resMissing").style.display = "block";
@@ -136,12 +265,24 @@ function activateView(name) {
 }
 
 $("#linkUpload").click(function() {
+    if ($("#divUpload").is(":hidden")) {
+        resetResumable();
+    }
+
     deActivate("About");
     deActivate("Requests");
     activateView("Upload")
 });
 
 $("#linkRequests").click(function() {
+    // send query only if linkRequests tab isn't active
+    if ($("#divRequests").is(":hidden")) {
+        connection.send(JSON.stringify({
+            user: userToken,
+            type: "taskQuery"
+        }));
+    }
+
     deActivate("About");
     deActivate("Upload");
     activateView("Requests")
@@ -158,7 +299,6 @@ r.on('fileAdded', function(file){
     // remove previously selected files
     $('.resumable-list').empty();
     r.files = r.files.slice(-1);
-    console.log(r.files);
 
     $('.resumable-progress, .resumable-list').show();
     $('.resumable-progress .progress-resume-link').hide();
@@ -267,25 +407,40 @@ connection.onmessage = function(message) {
         return;
     }
 
-    if (message_data.message != null) {
-        appendToDiv(message_data);
-    }
-
     // server send us message regarding resumable upload process
     if (message_data.type === "action") {
-        if (message_data.reply == "upload") {
-            $('.resumable-progress .progress-resume-link').hide();
-            $('.resumable-progress .progress-pause-link').show();
-            r.upload();
+        if (message_data.reply === "uploadResponse") {
+            if (message_data.status === "upload") {
+                $(".resumable-progress .progress-resume-link").hide();
+                $(".resumable-progress .progress-pause-link").show();
+                r.upload();
+            } else if (message_data.status === "request_ok") {
+                resetResumable();
+                incRequestCount();
+                $(".resumable-list").html("<br><br><br>File already in the server, request has been added to work queue");
+            } else {
+                resetResumable();
+                $(".resumable-list").html("<br><br><br>You have already made this request, check \"My requests\" tab");
+            }
         } else if (message_data.reply == "cancel") {
             r.cancel();
             $('.resumable-list').empty();
         } else if (message_data.reply == "pause") {
             r.pause();
         } else if (message_data.reply == "continue") {
+            incRequestCount();
             r.upload();
-        } else if (message_data.reply === "download") {
+        } else if (message_data.reply === "downloadResponse") {
             downloadFile(message_data);
+        } else if (message_data.reply === "taskResponse") {
+            handleTaskResponse(message_data);
+        }  else if (message_data.reply === "taskUpdate") {
+            handleTaskUpdate(message_data);
+        } else if (message_data.reply === "deleteResponse") {
+            handleDeleteResponse(message_data);
+        } else if (message_data.reply === "cancelResponse") {
+            handleCancelResponse(message_data);
+            
         }
     }
 };

@@ -19,8 +19,9 @@ RUN apt-get update \
     && mkdir -p /tmp /tmp/cloud_uploads /tmp/cloud_uploads/misc /tmp/cloud_uploads/output \
     && export CLOUD_HOST=$CLOUD_HOST \
     && touch src/cloud.db \
-    && sqlite3 src/cloud.db "CREATE TABLE 'files' (hash TEXT, file_path TEXT, resolution TEXT, uniq_id TEXT, raw_video INTEGER)" \
     && sqlite3 src/cloud.db "CREATE TABLE 'kvz_options' (preset TEXT, container TEXT, hash TEXT)" \
+    && sqlite3 src/cloud.db "CREATE TABLE 'files' (name TEXT, hash TEXT, file_path TEXT, resolution TEXT, \
+                             uniq_id TEXT, raw_video INTEGER)" \
     && sqlite3 src/cloud.db "CREATE TABLE 'work_queue' (taskID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, file_id TEXT, \
                              ops_id TEXT, file_path TEXT, status INTEGER DEFAULT 0, download_count INTEGER DEFAULT 0, token TEXT, \
                              owner_id TEXT )"

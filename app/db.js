@@ -239,7 +239,7 @@ module.exports = {
                 reject(new Error("invalid parameters when calling removeTask"));
             }
         });
-    }
+    },
 
     removeFile : function(fileID) {
         return new Promise((resolve, reject) => {
