@@ -78,7 +78,7 @@ socket.on('connection', function(client) {
         } else if (message.type === "deleteRequest") {
             handleDeleteRequest(client, message.token);
         } else if (message.type === "cancelRequest") {
-            // TODO
+            handleCancelRequest(client, message.token);
         } else if (message.type === "taskQuery") {
             handleTaskRequest(client, message);
 
@@ -364,7 +364,8 @@ function handleDeleteRequest(client, token) {
                     type: "action",
                     reply: "deleteResponse",
                     status: "ok",
-                    file_id: row.file_id
+                    file_id: row.file_id,
+                    token: row.token
                 }));
             })
         })
@@ -424,4 +425,11 @@ function handleTaskRequest(client, message) {
         });
 
     });
+}
+
+function handleCancelRequest(client, token) {
+    // TODO check if task is still in the queue
+    // TODO if it is -> remove and update database
+    // TODO if not -> find out who is working on it
+    // TODO needs supervisor???
 }
