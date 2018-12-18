@@ -1,4 +1,5 @@
 let sqlite3 = require('sqlite3').verbose();
+let htmlspecialchars = require('htmlspecialchars');
 
 let db = new sqlite3.Database('./cloud.db', (err) => {
     if (err)
@@ -14,7 +15,7 @@ function buildInsertSQL(table_name, data, callback) {
     for (let key in data) {
         sql += key + ", ";
         val += "?, ";
-        params.push(data[key]);
+        params.push(htmlspecialchars(data[key]));
     }
 
     sql = 
@@ -30,7 +31,7 @@ function buildUpdateSQL(table_name, uniq_id_name, uniq_id, data, callback) {
 
     for (let key in data) {
         sql += key + " = ?, ";
-        params.push(data[key]);
+        params.push(htmlspecialchars(data[key]));
     }
 
     sql = sql.substring(0, sql.length - 2) + 

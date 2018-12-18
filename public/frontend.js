@@ -247,7 +247,7 @@ $('#submitButton').click(function(){
 
     var options = { 'type' : 'uploadRequest', 'token': userToken, 'kvazaar' : kvz_options, 'other' : other_options };
     options['other']['file_id'] = fileID;
-    options['other']['name'] = r.files[r.files.length - 1].fileName.toString()
+    options['other']['name'] = r.files[r.files.length - 1].fileName.toString();
 
     // make sure that user has entered all necessary values for raw video
     if (other_options.raw_video === "on") {

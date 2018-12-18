@@ -12,6 +12,7 @@
     "ffprobe-static": "^3.0.0",
     "fluent-ffmpeg": "^2.1.2",
     "fs": "0.0.1-security",
+    "htmlspecialchars": "^1.0.5",
     "kue": "^0.11.6",
     "node-redis-pubsub": "^4.0.0",
     "sqlite3": "^4.0.4",

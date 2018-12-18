@@ -39,4 +39,17 @@ module.exports = {
             reject(new Error("Invalid bit depth!"));
         });
     },
+
+    validateUserToken : function(str) {
+        return new Promise((resolve, reject) => {
+            if (typeof(str) === "string") {
+                let token = str.match(/[A-Z]{64}/);
+                if (token && token.length > 0) {
+                    resolve(token[0]);
+                }
+                reject(new Error("Invalid user token"));
+            }
+            reject(new Error("Invalid user token"));
+        });
+    },
 };

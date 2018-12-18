@@ -68,8 +68,13 @@ socket.on('connection', function(client) {
 
         if (message.type === "init") {
             if (message.token) {
-                clients.saveClient(message.token, client);
-                console.log("user", message.token, "has connected!");
+                parser.validateUserToken(message.token).then((validatedToken) => {
+                    clients.saveClient(validatedToken, client);
+                    console.log("user", message.token, "has connected!");
+                })
+                .catch(function(err) {
+                    console.log(err);
+                });
             }
 
         } else if (message.type === "downloadRequest") {
