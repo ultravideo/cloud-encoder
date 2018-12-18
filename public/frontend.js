@@ -6,7 +6,7 @@ var fileIds = [];
 var fileID = null;
 var response = null;
 var connection = new WebSocket('ws://127.0.0.1:8083');
-var userToken  = generate_random_string(64);
+var userToken  = null;
 var numRequests = 0; // TODO save this info to cookie
 var uploadInProgress = false;
 var uploadFileToken = null;
@@ -141,11 +141,12 @@ function drawFileTable(file) {
 function handleTaskResponse(response) {
     $("#divRequests").empty();
 
-    console.log("response:", response);
-
     if (response.numTasks === 0) {
         $("#divRequests").append("<p>You haven't made requests</p>");
     } else {
+        numRequests = response.data.length;
+        updateRequestCount();
+
         // creating HTML dynamically like this is awful but whatevs
         response.data.forEach(function(file) {
             $("#divRequests").append(drawFileTable(file));
@@ -312,6 +313,7 @@ $("#linkUpload").click(function() {
         resetResumable();
         if ($("#rawVideoCheck").is(":checked") === true) {
             $("#rawVideoCheck").click();
+            $("#rawDiv").hide();
         }
     }
 
@@ -455,15 +457,33 @@ r.on('uploadStart', function(){
 connection.onopen = function() {
     console.log("connection established");
 
-    // generate token for this connection so server knows to
-    // send status updates to correct client
-    let message = {
-        type: "init",
-        token: userToken
-    };
+    let type = "";
+    userToken = Cookies.get("cloudUserToken");
 
-    connection.send(JSON.stringify(message));
-    console.log(JSON.stringify(message));
+    if (userToken) {
+        connection.send(JSON.stringify({
+            type: "reinit",
+            token: userToken,
+        }));
+        console.log("reinit", userToken);
+
+        connection.send(JSON.stringify({
+            user: userToken,
+            type: "taskQuery"
+        }));
+    } else {
+        userToken = generate_random_string(64);
+
+        Cookies.set("cloudUserToken", userToken,
+            { expires: 365, path: "" }
+        );
+
+        connection.send(JSON.stringify({
+            type: "init",
+            token: userToken,
+        }));
+        console.log("init", userToken);
+    }
 };
 
 connection.onmessage = function(message) {

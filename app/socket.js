@@ -35,7 +35,7 @@ var nrp = new NRP({
 
 nrp.on("message", function(msg) {
     if (clients.clientList[msg.user]) {
-        if (clients.clientList[msg.user]) {
+        if (clients.clientList[msg.user] && clients.clientList[msg.user].readyState === 1) {
             clients.clientList[msg.user].send(JSON.stringify(msg));
         }
     }
@@ -76,6 +76,10 @@ socket.on('connection', function(client) {
                     console.log(err);
                 });
             }
+
+        } else if (message.type === "reinit") {
+            console.log("reiniting connection for ", message.token);
+            clients.clientList[message.token] = client;
 
         } else if (message.type === "downloadRequest") {
             handleDownloadRequest(client, message.token);
