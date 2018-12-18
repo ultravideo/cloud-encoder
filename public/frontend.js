@@ -85,14 +85,16 @@ function cancelTask(token) {
 // if the download request has been approved, download the file
 function downloadFile(response) {
     if (response.status === "accepted") {
-        $("#table" + response.token+ " #tdDownloadCount").html("Downloads left: " + (2 - response.count));
-        var win = window.open("http://localhost:8080/download/" + response.misc, '_blank');
+        $("#table" + response.token + " #tdDownloadCount").html("Downloads left: " + (2 - response.count));
+        var win = window.open("http://localhost:8080/download/" + response.token, '_blank');
         win.focus();
     } else if (response.status === "rejected") {
-        alert(response.misc);
+        alert(response.message);
     } else if (response.status === "exceeded") {
         // TODO use bootstrap modal here
-        confirm(response.misc);
+        confirm(response.message);
+
+        console.log(response);
 
         decRequestCount();
         $("#" + response.token).remove();
@@ -113,8 +115,8 @@ function drawFileTable(file) {
     });
 
     newHTML +=
-        "<tr><td id='tdDownloadCount' align='left'>Downloads left: " + (2 - file.download_count) + "</td></tr>";
-        "<tr><td id='tdStatus' align='left' id=''>Status: " + file.message + "</td></tr>";
+        "<tr><td id='tdDownloadCount' align='left'>Downloads left: " + (2 - file.download_count) + "</td></tr>" +
+        "<tr><td id='tdStatus' align='left'>Status: " + file.message + "</td></tr>";
 
     if (file.status === 4) {
         newHTML +=

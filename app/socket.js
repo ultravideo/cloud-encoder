@@ -336,15 +336,16 @@ function handleDownloadRequest(client, token) {
                     type: "action",
                     reply: "downloadResponse",
                     status: "rejected",
-                    misc: "File is not ready!"
+                    message: "File is not ready!"
                 }));
             }  else if (taskInfo.download_count >= 2) {
+                console.log("download count exceeded");
                 client.send(JSON.stringify({
                     type: "action",
                     reply: "downloadResponse",
                     status: "exceeded",
-                    misc:  "File download limit has been exceeded!",
-                    file_id: taskInfo.file_id,
+                    message:  "File download limit has been exceeded!",
+                    token: taskInfo.token,
                 }));
 
                 // remove task and associated file
@@ -360,9 +361,8 @@ function handleDownloadRequest(client, token) {
                     type: "action",
                     reply: "downloadResponse",
                     status: "accepted",
-                    file_id: taskInfo.file_id,
+                    token: token,
                     count: taskInfo.download_count + 1,
-                    misc: token
                 }));
             }
         }
