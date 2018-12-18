@@ -9,6 +9,7 @@ var connection = new WebSocket('ws://127.0.0.1:8083');
 var userToken  = generate_random_string(64);
 var numRequests = 0; // TODO save this info to cookie
 var uploadInProgress = false;
+var uploadFileToken = null;
 
 var r = new Resumable({
     target: '/upload',
@@ -108,7 +109,7 @@ function drawFileTable(file) {
 
     let newHTML = 
         "<span class='border'>" + 
-        "<table id='table" + file.token + "'><tr><td>" + file.name + "</td></tr>";
+        "<table id='table" + file.token + "'><tr><td><h4>" + file.name + "</h4></td></tr>";
 
     Object.keys(file.options).forEach(function(key) {
         newHTML += "<tr><td align='left'>" + key + ": " + file.options[key] + "</td></tr>";
@@ -143,7 +144,7 @@ function handleTaskResponse(response) {
     console.log("response:", response);
 
     if (response.numTasks === 0) {
-        $("#divRequests").append("<p>You haven't done anything</p>");
+        $("#divRequests").append("<p>You haven't made requests</p>");
     } else {
         // creating HTML dynamically like this is awful but whatevs
         response.data.forEach(function(file) {
@@ -432,7 +433,15 @@ r.on('cancel', function(){
     $('.resumable-file-progress').html('canceled');
     $("#submitButton").prop("disabled", true);
 
-    numFiles = 0, fileID = null;
+    // inform server that upload has been cancelled
+    connection.send(JSON.stringify({
+        token: uploadFileToken,
+        type: "cancelInfo"
+    }));
+
+    decRequestCount();
+    numFiles = 0, fileID = null, uploadFileToken = null;
+    uploadInProgress = false;
 });
 
 r.on('uploadStart', function(){
@@ -474,6 +483,7 @@ connection.onmessage = function(message) {
             if (message_data.status === "upload") {
                 $(".resumable-progress .progress-resume-link").hide();
                 $(".resumable-progress .progress-pause-link").show();
+                uploadFileToken = message_data.token;
                 r.upload();
             } else if (message_data.status === "request_ok") {
                 resetResumable();

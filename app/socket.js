@@ -82,12 +82,16 @@ socket.on('connection', function(client) {
 
         } else if (message.type === "deleteRequest") {
             handleDeleteRequest(client, message.token);
+
         } else if (message.type === "cancelRequest") {
             handleCancelRequest(client, message.token);
+
         } else if (message.type === "taskQuery") {
             handleTaskRequest(client, message);
 
-            // TODO rename to handleUploadRequst
+        } else if (message.type === "cancelInfo") {
+            handleUploadCancellation(client, message);
+
         } else if (message.type === "uploadRequest") {
             let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar, message.kvazaar_extra);
             let validatedFilePromise = validateFileOptions(message.other);
@@ -205,7 +209,7 @@ socket.on('connection', function(client) {
                                 type: "action",
                                 reply: "uploadResponse",
                                 status: uploadApproved ? "upload" : requestApproved ? "request_ok" : "request_nok",
-                                token: data.options.file.uniq_id,
+                                token: token,
                                 message: uploadInfo.message
                             })
                         );
@@ -453,6 +457,15 @@ function handleTaskRequest(client, message) {
                 client.send(JSON.stringify(message));
             });
         });
+    });
+}
+
+function handleUploadCancellation(client, message) {
+    db.removeTask(message.token).then(() => {
+        console.log("task removed from database");
+    })
+    .catch(function(err) {
+        console.log(err);
     });
 }
 
