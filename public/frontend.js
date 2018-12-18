@@ -103,21 +103,28 @@ function downloadFile(response) {
 
 // TODO comment
 function drawFileTable(file) {
+
     let newHTML = 
         "<span class='border'>" + 
-        "<table id='table" + file.token + "'><tr><td>" + file.name + "</td></tr>" +
-        "<tr><td id='tdDownloadCount' align='left'>Downloads left: " + (2 - file.download_count) + "</td></tr>" +
-        "<tr><td id='tdStatus' align='left' id=''>Status: " + file.message + "</td></tr><tr>";
+        "<table id='table" + file.token + "'><tr><td>" + file.name + "</td></tr>";
+
+    Object.keys(file.options).forEach(function(key) {
+        newHTML += "<tr><td align='left'>" + key + ": " + file.options[key] + "</td></tr>";
+    });
+
+    newHTML +=
+        "<tr><td id='tdDownloadCount' align='left'>Downloads left: " + (2 - file.download_count) + "</td></tr>";
+        "<tr><td id='tdStatus' align='left' id=''>Status: " + file.message + "</td></tr>";
 
     if (file.status === 4) {
         newHTML +=
-            "<td align='left'><button id='btnDownload' class='btn btn-success' " +
-                "onclick=\"sendDownloadRequest('" + file.token + "')\">Download</button>" +
-                "<button id='btnDelete' class='btn btn-danger' " + 
-                "onclick=\"sendDeleteRequest('" + file.token + "')\">Delete</button></td>";
+            "<tr><td align='left'><button id='btnDownload' class='btn btn-success' " +
+            "onclick=\"sendDownloadRequest('" + file.token + "')\">Download</button>" +
+            "<button id='btnDelete' class='btn btn-danger' " + 
+            "onclick=\"sendDeleteRequest('" + file.token + "')\">Delete</button></td>";
     } else {
         newHTML +=
-            "<td align='left'><button id='btnDownload' class='btn btn-success' disabled>Download</button>" +
+            "<tr><td align='left'><button id='btnDownload' class='btn btn-success' disabled>Download</button>" +
             "<button id='btnDelete'   class='btn btn-danger' " +
             "onclick=\"cancelTask('" + file.token + "')\">Cancel</button></td>";
     }

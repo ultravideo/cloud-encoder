@@ -395,10 +395,6 @@ function handleDeleteRequest(client, token) {
 }
 
 function handleTaskRequest(client, message) {
-    // TODO make sure this is safe!!!
-    // TODO make sure this is safe!!!
-    // TODO make sure this is safe!!!
-    // TODO make sure this is safe!!!
     db.getTasks("owner_id", message.user).then((rows) => {
         if (!rows || rows.length === 0) {
             client.send(JSON.stringify({
@@ -417,8 +413,11 @@ function handleTaskRequest(client, message) {
         };
 
         rows.forEach(function(taskRow) {
-            db.getFile(taskRow.file_id).then((fileRow) => {
 
+            Promise.all([
+                db.getFile(taskRow.file_id),
+                db.getOptions(taskRow.ops_id)
+            ]).then((values) => {
                 let msg = "Done";
                 switch (taskRow.status) {
                     case -3:  msg = "Request cancelled"; break;
@@ -430,19 +429,21 @@ function handleTaskRequest(client, message) {
                     case  3:  msg = "Post-processing";   break;
                 }
 
+                delete values[1]['hash'];
+
                 message.data.push({
-                    name: fileRow.name,
+                    name: values[0].name,
                     uniq_id: taskRow.file_id,
                     status: taskRow.status,
                     message: msg,
                     download_count: taskRow.download_count,
-                    token: taskRow.token
+                    token: taskRow.token,
+                    options: values[1]
                 });
 
                 client.send(JSON.stringify(message));
             });
         });
-
     });
 }
 
