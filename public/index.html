@@ -36,81 +36,93 @@
 		<h3 class="text-muted">Kvazaar in Cloud</h3>
 		</div>
 
-		<div class="jumbotron">
-			<div id="divUpload">
-				<div id="formData">
-					<span>
-						Raw video?
-						<input type="checkbox" id="rawVideoCheck" name="raw_video" class="options"/>
-					</span><br>
-					<div id="rawDiv" style="display:none">
-						Resolution <input type="text" name="resolution" id="resValue" class="options" placeholder="1920x1080"/>
-						<div id="resMissing" style="display:none" class="rawVideoWarning">
-							<font color='red'><b>Resolution must be given for raw video</b></font>
-						</div><br>
-						Input FPS<input type="text" name="inputFPS" id="inputFPSValue" class="options" placeholder="25"/>
-						<div id="inputFPSMissing" style="display:none" class="rawVideoWarning">
-							<font color='red'><b>Input FPS must be given for raw video</b></font>
-						</div><br>
-						Bit depth<input type="text" name="bitDepth" id="bitDepthValue" class="options" placeholder="8"/>
-						<div id="bitDepthMissing" style="display:none" class="rawVideoWarning">
-							<font color='red'><b>Bit depth must be given for raw video</b></font>
-						</div>
-					</div>
-					<span>Preset</span>
-						<select name="preset" class="kvz_options">
-							<option value="ultrafast">Ultrafast</option>
-							<option value="superfast">Superfast</option>
-							<option value="medium">Medium</option>
-							<option value="placebo">Placebo</option>
-						</select><br>
-					<span>Output container</span>
-						<select name="container" class="kvz_options">
-							<option value="none">None (HEVC video)</option>
-							<option value="mp4">mp4</option>
-						</select><br>
+	<div class="jumbotron">
+		<div id="divUpload">
+			<div id="formData">
+				<div class="form-group">
+					<label>Preset</label>
+					<select class="form-control kvz_options" name="preset">
+						<option value="ultrafast">Ultrafast</option>
+						<option value="superfast">Superfast</option>
+						<option value="medium">Medium</option>
+						<option value="placebo">Placebo</option>
+					</select><br>
+					<label>Output container</label>
+					<select class="form-control kvz_options" name="container">
+						<option value="none">None (HEVC video)</option>
+						<option value="mp4">mp4</option>
+					</select>
 				</div>
+				<div class="form-check">
+					<input type="checkbox" id="rawVideoCheck" name="raw_video" class="options form-check-input"/>
+					<label class="form-check-label" for="rawVideoCheck">Raw video?</label>
+				</div>
+
+				<div id="rawDiv" class="form-group" style="display:none">
+					<label>Resolution</label>
+					<input type="text" name="resolution" id="resValue" class="options form-control" placeholder="1920x1080"/>
+					<div id="resMissing" style="display:none" class="rawVideoWarning">
+						<font color='red'><b>Resolution must be given for raw video</b></font>
+					</div><br>
+
+					<label>Input FPS</label>
+					<input type="text" name="inputFPS" id="inputFPSValue" class="options form-control" placeholder="25"/>
+					<div id="inputFPSMissing" style="display:none" class="rawVideoWarning">
+						<font color='red'><b>Input FPS must be given for raw video</b></font>
+					</div><br>
+
+					<label>Bit depth</label>
+					<input type="text" name="bitDepth" id="bitDepthValue" class="options form-control" placeholder="8"/>
+					<div id="bitDepthMissing" style="display:none" class="rawVideoWarning">
+						<font color='red'><b>Bit depth must be given for raw video</b></font>
+					</div><br>
+				</div>
+
 				<button id="kvazaarCmdButton" class="btn btn-primary">Add more kvazaar options</button><br>
-				<div id="kvazaarExtraOptionsDiv"><br>
-					<a target="_blank" href="https://github.com/ultravideo/kvazaar#parameters">List of Kvazaar parameters</a>
-					<br><textarea id="kvazaarExtraOptions" placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50"></textarea>
+				<div id="kvazaarExtraOptionsDiv" class="form-group"><br>
+					<a class="" target="_blank"
+					   href="https://github.com/ultravideo/kvazaar#parameters">List of Kvazaar parameters</a><br>
+					<textarea id="kvazaarExtraOptions" class="form-control"
+						placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50"></textarea>
 				</div>
 				<button id="browseButton" class="btn btn-primary">Browse...</button><br>
 				<button id="submitButton" class="btn btn-primary" disabled>Submit</button>
 
 				<div class="resumable-progress">
 					<table>
-						<tr>
-							<td width="100%"><div class="progress-container"><div class="progress-bar"></div></div></td>
-							<td class="progress-text" nowrap="nowrap"></td>
-							<td class="progress-pause" nowrap="nowrap">
-								<a href="#" onclick="r.upload(); return(false);" class="progress-resume-link">
-									<img src="resume.png" title="Resume upload"/>
-								</a>
-								<a href="#" onclick="r.pause(); return(false);" class="progress-pause-link">
-									<img src="pause.png" title="Pause upload"/>
-								</a>
-								<a href="#" onclick="r.cancel(); return(false);" class="progress-cancel-link">
-									<img src="cancel.png" title="Cancel upload"/>
-								</a>
-							</td>
-						</tr>
+					<tr>
+					<td width="100%"><div class="progress-container"><div class="progress-bar"></div></div></td>
+					<td class="progress-text" nowrap="nowrap"></td>
+					<td class="progress-pause" nowrap="nowrap">
+					<a href="#" onclick="r.upload(); return(false);" class="progress-resume-link">
+						<img src="resume.png" title="Resume upload"/>
+					</a>
+					<a href="#" onclick="r.pause(); return(false);" class="progress-pause-link">
+						<img src="pause.png" title="Pause upload"/>
+					</a>
+					<a href="#" onclick="r.cancel(); return(false);" class="progress-cancel-link">
+						<img src="cancel.png" title="Cancel upload"/>
+					</a>
+					</td>
+					</tr>
 					</table>
 				</div>
 				<ul class="resumable-list"></ul>
 				<div id="files"></div>
-			</div> <!-- end of divUpload -->
-			<div id="divRequests"></div>
-			<div id="divAbout">
+			</div>
+		</div> <!-- end of divUpload -->
+
+		<div id="divRequests"></div>
+		<div id="divAbout">
 			<h1>Who we are</h1>
 				<p class="lead">Ultra Video Group is a research group in the 
-					<a target="_blank" href="http://www.tut.fi/en/research/research-fields/pervasive-computing/index.htm">
+				<a target="_blank" href="http://www.tut.fi/en/research/research-fields/pervasive-computing/index.htm">
 							Laboratory of Pervasive Computing
-					</a> at <a href="http://www.tut.fi" target="_blank">Tampere University of Technology</a>, Finland.
+				</a> at <a href="http://www.tut.fi" target="_blank">Tampere University of Technology</a>, Finland.
 				We have over 15-year experience in conducting pioneering research on video/image processing systems. 
 				All our research is being carried out in a tight collaboration with industry.</p>
 				<br/>
-			</div>
+		</div>
 	</div>
 	<div class="footer">
 		<p>&copy; Ultra Video Group 2018</p>
