@@ -17,15 +17,6 @@
 
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
 		<script src="resumable.js"></script>
-		<script>
-			function displayResolution() {
-				var x = document.getElementById("resDiv");
-				if (x.style.display === "none")
-					x.style.display = "block";
-				else
-					x.style.display = "none";
-			}
-		</script>
 	</head>
 	<body>
 	<div class="container">
@@ -49,12 +40,21 @@
 			<div id="divUpload">
 				<div id="formData">
 					<span>
-						Raw video? <input type="checkbox" id="rawVideoCheck" name="raw_video" onclick="displayResolution()" class="options"/>
+						Raw video?
+						<input type="checkbox" id="rawVideoCheck" name="raw_video" class="options"/>
 					</span><br>
-					<div id="resDiv" style="display:none">
+					<div id="rawDiv" style="display:none">
 						Resolution <input type="text" name="resolution" id="resValue" class="options" placeholder="1920x1080"/>
-						<div id="resMissing" style="display:none">
+						<div id="resMissing" style="display:none" class="rawVideoWarning">
 							<font color='red'><b>Resolution must be given for raw video</b></font>
+						</div><br>
+						Input FPS<input type="text" name="inputFPS" id="inputFPSValue" class="options" placeholder="25"/>
+						<div id="inputFPSMissing" style="display:none" class="rawVideoWarning">
+							<font color='red'><b>Input FPS must be given for raw video</b></font>
+						</div><br>
+						Bit depth<input type="text" name="bitDepth" id="bitDepthValue" class="options" placeholder="8"/>
+						<div id="bitDepthMissing" style="display:none" class="rawVideoWarning">
+							<font color='red'><b>Bit depth must be given for raw video</b></font>
 						</div>
 					</div>
 					<span>Preset</span>

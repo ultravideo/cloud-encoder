@@ -179,6 +179,8 @@ socket.on('connection', function(client) {
                                 name: data.options.file.name,
                                 resolution: data.options.file.resolution,
                                 raw_video: data.options.file.raw_video,
+                                fps: data.options.file.fps,
+                                bit_depth: data.options.file.bit_depth,
                                 uniq_id: data.options.file.uniq_id
                             })
                         );
@@ -234,7 +236,8 @@ socket.on('connection', function(client) {
                 delete clients.clientList[key];
             })
             .catch(function(err) {
-                console.log(err);
+                // NOTE: client may no longer be in the array
+                // (gc may have cleaned it) so ignore error
             });
         })
     });
@@ -248,17 +251,28 @@ function validateFileOptions(fileOptions) {
         let validatedOptions = {
             resolution: 0,
             raw_video: 0,
+            bit_depth: 0,
+            fps: 0,
             uniq_id: fileOptions.file_id,
             name: fileOptions.name
         };
 
-        if (fileOptions.resolution !== "" && fileOptions.raw_video === "on") {
-            parser.validateResolution(fileOptions.resolution).then((resolution) => {
-                validatedOptions["resolution"] = resolution;
-                validatedOptions["raw_video"]  = 1;
+        if (fileOptions.raw_video === "on") {
+            Promise.all([
+                parser.validateInputFPS(fileOptions.inputFPS),
+                parser.validateBithDepth(fileOptions.bitDepth),
+                parser.validateResolution(fileOptions.resolution)
+            ]).then((validated) => {
+
+                validatedOptions.fps        = validated[0];
+                validatedOptions.bit_depth  = validated[1];
+                validatedOptions.resolution = validated[2];
+                validatedOptions.raw_video  = 1;
+
                 resolve(validatedOptions);
-            }, (reason) => {
-                reject(reason);
+            })
+            .catch(function(err) {
+                reject(err);
             });
         } else {
             resolve(validatedOptions);

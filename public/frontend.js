@@ -230,6 +230,10 @@ if(!r.support) {
     r.assignBrowse($('#browseButton'));
 }
 
+$("#rawVideoCheck").click(function() {
+    $("#rawDiv").toggle();
+});
+
 $('#submitButton').click(function(){
     if (numFiles == 0) {
         console.log("no files");
@@ -245,11 +249,30 @@ $('#submitButton').click(function(){
     options['other']['file_id'] = fileID;
     options['other']['name'] = r.files[r.files.length - 1].fileName.toString()
 
-    if (other_options.raw_video && other_options.raw_video === "on" && other_options.resolution === "") {
-        document.getElementById("resMissing").style.display = "block";
-        return;
-    } else {
-        document.getElementById("resMissing").style.display = "none";
+    // make sure that user has entered all necessary values for raw video
+    if (other_options.raw_video === "on") {
+        $("#resMissing").hide();
+        $("#inputFPSMissing").hide();
+        $("#bitDepthMissing").hide();
+        let error = false;
+
+        if (other_options.resolution === "") {
+            $("#resMissing").show();
+            error = true;
+        }
+
+        if (other_options.inputFPS === "") {
+            $("#inputFPSMissing").show();
+            error = true;
+        }
+
+        if (other_options.bitDepth === "") {
+            $("#bitDepthMissing").show();
+            error = true;
+        }
+
+        if (error)
+            return;
     }
 
     console.log("sent options...");
@@ -269,6 +292,9 @@ function activateView(name) {
 $("#linkUpload").click(function() {
     if ($("#divUpload").is(":hidden") && !uploadInProgress) {
         resetResumable();
+        if ($("#rawVideoCheck").is(":checked") === true) {
+            $("#rawVideoCheck").click();
+        }
     }
 
     deActivate("About");
@@ -302,6 +328,9 @@ r.on('fileAdded', function(file){
     $('.resumable-list').empty();
     r.files = r.files.slice(-1);
 
+    // hide raw video related warnings
+    $(".rawVideoWarning").hide();
+
     $('.resumable-progress, .resumable-list').show();
     $('.resumable-progress .progress-resume-link').hide();
     $('.resumable-progress .progress-pause-link').hide();
@@ -334,11 +363,24 @@ r.on('fileAdded', function(file){
         } 
     }
 
-    // try to match file resolution from name
-    let res  = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
+    // try to match file resolution, fps and bit depth from file name
+    let res    = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g), resVal = "";
     if (res && res.length != 0) {
-        $("#resValue").val(res[0]);
-    } 
+        resVal = res[0];
+    }
+    $("#resValue").val(resVal);
+
+    let fps = fname.match(/[1-9]{1}[0-9]{0,2}[-_\s]?(FPS)/ig), fpsVal = "";
+    if (fps && fps.length != 0) {
+        fpsVal = fps[0].match(/[1-9]{1}[0-9]{0,2}/)[0]; // extract only the number
+    }
+    $("#inputFPSValue").val(fpsVal);
+
+    let bitDepth = fname.match(/([89]|1[0-6])[_-\s]?(bit)/ig), bitDepthVal = "";
+    if (bitDepth && bitDepth.length != 0) {
+        bitDepthVal = bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
+    }
+    $("#bitDepthValue").val(bitDepthVal);
 
     $("#submitButton").prop("disabled", false);
 });
@@ -374,7 +416,6 @@ r.on('cancel', function(){
     $("#submitButton").prop("disabled", true);
 
     numFiles = 0, fileID = null;
-    // TODO inform server about this
 });
 
 r.on('uploadStart', function(){

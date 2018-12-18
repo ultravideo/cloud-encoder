@@ -341,6 +341,12 @@ queue.process("process_file", function(job, done) {
             delete values[1]["container"];
             delete values[1]["hash"];
 
+            // add bit depth and input fps to kvazaar options if file is raw
+            if (values[0].raw_video === 1) {
+                values[1]["input-fps"] = values[0].fps;
+                values[1]["input-bitdepth"] = values[0].bit_depth;
+            }
+
             // use generated token to handle all intermediate files (.hevc, .acc, _logo.hevc etc)
             // this way N users can create request for the same file without "corrupting" each others processes
             values[0]["tmp_path"] = "/tmp/cloud_uploads/" + taskRow.token;
