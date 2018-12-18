@@ -241,6 +241,13 @@ $("#rawVideoCheck").click(function() {
     $("#rawDiv").toggle();
 });
 
+$("#kvazaarCmdButton").click(function() {
+    if ($("#kvazaarExtraOptionsDiv").is(":hidden")) {
+        $("#kvazaarExtraOptionsDiv").show();
+        $("<br>").insertAfter("#kvazaarExtraOptions");
+    }
+});
+
 $('#submitButton').click(function(){
     if (numFiles == 0) {
         console.log("no files");
@@ -252,7 +259,8 @@ $('#submitButton').click(function(){
     $(".kvz_options").serializeArray().map(function(x){kvz_options[x.name] = x.value;});
     $(".options").serializeArray().map(function(x){other_options[x.name] = x.value;});
 
-    var options = { 'type' : 'uploadRequest', 'token': userToken, 'kvazaar' : kvz_options, 'other' : other_options };
+    var options = { 'type' : 'uploadRequest', 'token': userToken, 'kvazaar' : kvz_options,
+                    'kvazaar_extra' : $("#kvazaarExtraOptions").val(), 'other' : other_options };
     options['other']['file_id'] = fileID;
     options['other']['name'] = r.files[r.files.length - 1].fileName.toString();
 
@@ -475,7 +483,15 @@ connection.onmessage = function(message) {
             }
         } else if (message_data.reply == "cancel") {
             r.cancel();
-            $('.resumable-list').empty();
+            resetResumable();
+
+            let html = "<br>";
+            let parts = message_data.message.split("\n");
+            parts.forEach(function(part) {
+                html += part + "<br>";
+            });
+
+            $(".resumable-list").html(html);
         } else if (message_data.reply == "pause") {
             r.pause();
         } else if (message_data.reply == "continue") {

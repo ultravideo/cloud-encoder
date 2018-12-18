@@ -228,13 +228,16 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
         // them here without any extra safety checks
         for (var key in kvazaarOptions) {
             options.push("--" + key);
-            options.push(kvazaarOptions[key]);
+
+            if (kvazaarOptions[key] != null)
+                options.push(kvazaarOptions[key]);
         }
 
         const child = spawn("kvazaar", options);
 
+        let stderr = "";
         child.stdout.on("data", function(data) { });
-        child.stderr.on("data", function(data) { });
+        child.stderr.on("data", function(data) { stderr += data.toString(); });
 
         child.on("exit", function(code, signal) {
             if (code === 0) {
@@ -246,6 +249,7 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
             } else {
                 reject(new Error("kvazaar failed with exit code " + code));
                 console.log(options);
+                console.log(stderr);
             }
         });
     });
@@ -346,6 +350,21 @@ queue.process("process_file", function(job, done) {
                 values[1]["input-fps"] = values[0].fps;
                 values[1]["input-bitdepth"] = values[0].bit_depth;
             }
+
+            // if user gave us extra options, do a small reformat and add them to kvazaar options
+            if (values[1].extra !== "") {
+                let allOptions = values[1].extra.split(",");
+
+                allOptions.forEach(function(option) {
+                    let parts = option.split(" ");
+
+                    if (parts.length > 1)
+                        values[1][parts[0]] = parts[1];
+                    else
+                        values[1][parts[0]] = null;
+                });
+            }
+            delete values[1].extra;
 
             // use generated token to handle all intermediate files (.hevc, .acc, _logo.hevc etc)
             // this way N users can create request for the same file without "corrupting" each others processes

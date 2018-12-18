@@ -89,14 +89,14 @@ socket.on('connection', function(client) {
 
             // TODO rename to handleUploadRequst
         } else if (message.type === "uploadRequest") {
-            let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar);
+            let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar, message.kvazaar_extra);
             let validatedFilePromise = validateFileOptions(message.other);
 
             // first validated both kvazaar options and file info
             Promise.all([validatedKvazaarPromise, validatedFilePromise]).then(function(values) {
-                let kvazaarPromise = db.getOptions(values[0].hash);
+                let kvazaarPromise = db.getOptions(values[0][0].hash);
                 let filePromise = db.getFile(values[1].uniq_id);
-                let taskPromise = db.getTask(message.token, values[1].uniq_id, values[0].hash);
+                let taskPromise = db.getTask(message.token, values[1].uniq_id, values[0][0].hash);
 
                 // data validation ok, check if database already has these values
                 Promise.all([kvazaarPromise, filePromise, taskPromise]).then((data) => {
@@ -130,7 +130,7 @@ socket.on('connection', function(client) {
                     // make sure connected user hasn't already done this request
                     if (!data.db.task ||
                         data.db.task.file_id != data.options.file.uniq_id ||
-                        data.db.task.ops_id  != data.options.kvazaar.hash)
+                        data.db.task.ops_id  != data.options.kvazaar[0].hash)
                     {
                         requestApproved = true;
                         message =  "Upload rejected (file already on the server), " + 
@@ -141,7 +141,7 @@ socket.on('connection', function(client) {
                                 status: -1, // upload hasn't started
                                 owner_id: data.options.task.token, // saved so that worker can send messages to this user
                                 token: token, // used for the download link
-                                ops_id: data.options.kvazaar.hash,
+                                ops_id: data.options.kvazaar[0].hash,
                                 file_id: data.options.file.uniq_id,
                             })
                         );
@@ -167,9 +167,10 @@ socket.on('connection', function(client) {
                     if (!data.db.kvazaar) {
                         promisesToResolve.push(
                             db.insertOptions({
-                                preset: data.options.kvazaar.preset,
-                                container: data.options.kvazaar.container,
-                                hash: data.options.kvazaar.hash
+                                preset: data.options.kvazaar[0].preset,
+                                container: data.options.kvazaar[0].container,
+                                hash: data.options.kvazaar[0].hash,
+                                extra: data.options.kvazaar[1]
                             })
                         );
                     }
@@ -226,7 +227,6 @@ socket.on('connection', function(client) {
                 client.send(
                     JSON.stringify({
                         type: "action",
-                        token: message.other.file_id,
                         reply: "cancel",
                         message: err.toString()
                     })
@@ -285,7 +285,7 @@ function validateFileOptions(fileOptions) {
     });
 }
 
-function validateKvazaarOptions(kvazaarOptions) {
+function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 
     const validOptions = {
         'preset' : ["ultrafast", "superfast", "medium", "placebo"],
@@ -306,7 +306,16 @@ function validateKvazaarOptions(kvazaarOptions) {
         const hash = crypto.createHash("sha256").update(ops);
         kvazaarOptions['hash'] = hash.digest("hex");
 
-        resolve(kvazaarOptions);
+        if (kvazaarExtraOptions && kvazaarExtraOptions.length > 0) {
+            parser.validateKvazaarOptions(kvazaarExtraOptions).then((validatedExtraOptions) => {
+                resolve([kvazaarOptions, validatedExtraOptions]);
+            })
+            .catch(function(err) {
+                reject(err);
+            });
+        } else {
+            resolve([kvazaarOptions, ""]);
+        }
     });
 }
 
