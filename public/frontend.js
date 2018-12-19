@@ -364,9 +364,10 @@ $("#linkUpload").click(function() {
     deActivate("About");
     deActivate("Requests");
     activateView("Upload")
+    $("#dlDoneInfo").hide();
 });
 
-$("#linkRequests").click(function() {
+function showRequests() {
     // send query only if linkRequests tab isn't active
     if ($("#divRequests").is(":hidden")) {
         connection.send(JSON.stringify({
@@ -377,8 +378,11 @@ $("#linkRequests").click(function() {
 
     deActivate("About");
     deActivate("Upload");
-    activateView("Requests")
-});
+    activateView("Requests");
+}
+
+$("#linkRequests").click(showRequests);
+$("#linkRequestLink").click(showRequests);
 
 $("#linkAbout").click(function() {
     deActivate("Requests");
@@ -407,6 +411,9 @@ r.on('fileAdded', function(file){
 
     // hide raw video related warnings
     $(".rawVideoWarning").hide();
+
+    // hide download info
+    $("#dlDoneInfo").hide();
 
     // reset progress-container color
     $('.progress-container').css( "background", "#9CBD94" );
@@ -479,6 +486,7 @@ r.on('complete', function(){
 r.on('fileSuccess', function(file,message){
     $('.resumable-file-' + file.uniqueIdentifier + ' .resumable-file-progress').html('(completed)');
     $("#browseButton").prop("disabled", false);
+
     uploadInProgress = false;
     numFiles = 0, fileID = null, uploadFileToken = null, r.files = [];
 });
@@ -566,6 +574,7 @@ connection.onmessage = function(message) {
                 resetResumable();
                 incRequestCount();
                 $(".resumable-list").html("<br><br><br>File already in the server, request has been added to work queue");
+                $("#dlDoneInfo").show();
             } else {
                 resetResumable();
                 $(".resumable-list").html("<br><br><br>You have already made this request, check \"My requests\" tab");
@@ -585,6 +594,7 @@ connection.onmessage = function(message) {
             r.pause();
         } else if (message_data.reply === "continue") {
             incRequestCount();
+            $("#dlDoneInfo").show();
             r.upload();
         } else if (message_data.reply === "downloadResponse") {
             downloadFile(message_data);
