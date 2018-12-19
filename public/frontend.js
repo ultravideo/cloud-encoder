@@ -478,6 +478,7 @@ r.on('complete', function(){
 
 r.on('fileSuccess', function(file,message){
     $('.resumable-file-' + file.uniqueIdentifier + ' .resumable-file-progress').html('(completed)');
+    $("#browseButton").prop("disabled", false);
     uploadInProgress = false;
     numFiles = 0, fileID = null, uploadFileToken = null, r.files = [];
 });
@@ -499,6 +500,7 @@ r.on('cancel', function(){
     $('.resumable-file-progress').html('canceled');
     $('.progress-container').css( "background-color", "red" );
     $("#submitButton").prop("disabled", true);
+    $("#browseButton").prop("disabled", false);
 
     if (uploadInProgress === true) {
         // inform server that upload has been cancelled
@@ -555,6 +557,7 @@ connection.onmessage = function(message) {
                 $(".resumable-progress .progress-resume-link").hide();
                 $(".resumable-progress .progress-pause-link").show();
                 $("#submitButton").prop("disabled", true);
+                $("#browseButton").prop("disabled", true);
 
                 uploadFileToken = message_data.token;
                 uploadInProgress = true;
