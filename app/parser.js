@@ -34,7 +34,7 @@ function matchValueWithExpected(key, inputValue, validValues) {
             }
 
             if (i == validValues.length - 1) {
-                reject(new Error("Invalid parameter for parameter " + key));
+                reject(new Error("Invalid value for parameter " + key));
             }
         }
     });
@@ -96,9 +96,21 @@ module.exports = {
 
     validateKvazaarOptions : function(options) {
         return new Promise((resolve, reject) => {
+            options = options.trim();
+
             let argv = require("minimist")(options.split(" "));
-            let validatedOptions = [ ];
             delete argv['_'];
+
+            // user may have entered extra white spaces between parameters
+            // minimist interpets these as values for parameter so they need
+            // to be deleted manually
+            Object.keys(argv).forEach(function(key) {
+                if (argv[key] === "") {
+                    argv[key] = true;
+                }
+            });
+
+            let validatedOptions = [ ];
 
             const kvazaarOptions = {
                 // first all ignored values
