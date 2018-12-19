@@ -172,9 +172,7 @@ function handleTaskResponse(response) {
 function handleTaskUpdate(response) {
     if ($("#table" + response.token).length == 0) {
         // ignore update, "My requests" tab is not active
-        console.log("table not present");
     } else {
-        console.log("table is present", response.status);
         if (response.status === 4) {
             $("#table" + response.token + " #btnDownload").prop("disabled", false);
             $("#table" + response.token + " #btnDownload").removeAttr("onclick");
@@ -272,6 +270,7 @@ $('#submitButton').click(function(){
         alert("select file!");
         return;
     }
+    $("#submitButton").prop("disabled", false);
 
     var other_options = {}, kvz_options = {};
     $(".kvz_options").serializeArray().map(function(x){kvz_options[x.name] = x.value;});
@@ -436,6 +435,7 @@ r.on('complete', function(){
 r.on('fileSuccess', function(file,message){
     $('.resumable-file-' + file.uniqueIdentifier + ' .resumable-file-progress').html('(completed)');
     uploadInProgress = false;
+    numFiles = 0, fileID = null, uploadFileToken = null, r.files = [];
 });
 
 r.on('fileError', function(file, message){
@@ -443,6 +443,7 @@ r.on('fileError', function(file, message){
     $('.progress-container').css( "background", "red" );
 
     uploadInProgress = false;
+    numFiles = 0, fileID = null, uploadFileToken = null;
 });
 
 r.on('fileProgress', function(file){
@@ -456,7 +457,6 @@ r.on('cancel', function(){
     $("#submitButton").prop("disabled", true);
 
     if (uploadInProgress === true) {
-        console.log("upload in progress..");
         // inform server that upload has been cancelled
         connection.send(JSON.stringify({
             token: uploadFileToken,
@@ -465,15 +465,12 @@ r.on('cancel', function(){
 
         decRequestCount();
         numFiles = 0, fileID = null, uploadFileToken = null;
-    } else {
-        console.log("upload is NOT in progress", uploadInProgress);
     }
 
     uploadInProgress = false;
 });
 
 r.on('uploadStart', function(){
-    uploadInProgress = true;
     $('.resumable-progress .progress-resume-link').hide();
     $('.resumable-progress .progress-pause-link').show();
     $('.resumable-progress .progress-cancel-link').show();
@@ -509,7 +506,6 @@ connection.onmessage = function(message) {
 
     // server send us message regarding resumable upload process
     if (message_data.type === "action") {
-        console.log(message_data);
         if (message_data.reply === "uploadResponse") {
             if (message_data.status === "upload") {
                 $(".resumable-progress .progress-resume-link").hide();
