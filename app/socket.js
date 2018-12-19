@@ -349,8 +349,8 @@ function handleTaskRequest(client, message) {
     });
 }   
 
-// user cancelled the file upload, remove task AND file 
-// from database
+// user cancelled the file upload, remove task AND file from database
+// and remove all chunks files
 function handleUploadCancellation(client, message) {
 
     db.getTask(message.token).then((taskRow) => {
@@ -358,6 +358,15 @@ function handleUploadCancellation(client, message) {
             console.log(message.token, " doesn't exist!");
             return;
         }
+
+        // remove all chunk files
+        fs.readdirSync("/tmp/cloud_uploads/").forEach(function(file) {
+            if (file.includes(taskRow.file_id)) {
+                fs.unlink("/tmp/cloud_uploads/" + file, function(err) {
+                    if (err) console.log(err);
+                });
+            }
+        });
 
         return Promise.all([
             db.removeFile(taskRow.file_id),
