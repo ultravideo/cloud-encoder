@@ -6,8 +6,8 @@ var fileIds = [];
 var fileID = null;
 var response = null;
 var connection = new WebSocket('ws://127.0.0.1:8083');
-var userToken  = null;
-var numRequests = 0; // TODO save this info to cookie
+var userToken = getUserToken();
+var numRequests = 0;
 var uploadInProgress = false;
 var uploadFileToken = null;
 
@@ -21,6 +21,20 @@ var r = new Resumable({
         token: userToken
     }
 });
+
+function getUserToken() {
+    let token = Cookies.get("cloudUserToken");
+
+    if (!token) {
+        token = generate_random_string(64);
+
+        Cookies.set("cloudUserToken", token,
+            { expires: 365, path: "" }
+        );
+    }
+
+    return token;
+}
 
 function generate_random_string(string_length){
     let random_string = '';
@@ -351,6 +365,9 @@ r.on('fileAdded', function(file){
     // hide raw video related warnings
     $(".rawVideoWarning").hide();
 
+    // reset progress-container color
+    $('.progress-container').css( "background", "#9CBD94" );
+
     $('.resumable-progress, .resumable-list').show();
     $('.resumable-progress .progress-resume-link').hide();
     $('.resumable-progress .progress-pause-link').hide();
@@ -412,18 +429,20 @@ r.on('pause', function(){
 });
 
 r.on('complete', function(){
-    uploadInProgress = false;
-    $('.resumable-progress .progress-resume-link, .resumable-progress .progress-pause-link').hide();
+    $('.resumable-progress .progress-cancel-link').hide();
+    $('.resumable-progress .progress-pause-link').hide();
 });
 
 r.on('fileSuccess', function(file,message){
-    // Reflect that the file upload has completed
-    $('.resumable-file-'+file.uniqueIdentifier+' .resumable-file-progress').html('(completed)');
+    $('.resumable-file-' + file.uniqueIdentifier + ' .resumable-file-progress').html('(completed)');
+    uploadInProgress = false;
 });
 
 r.on('fileError', function(file, message){
-    uploadInProgress = false;
     $('.resumable-file-'+file.uniqueIdentifier+' .resumable-file-progress').html('(file could not be uploaded: '+message+')');
+    $('.progress-container').css( "background", "red" );
+
+    uploadInProgress = false;
 });
 
 r.on('fileProgress', function(file){
@@ -433,16 +452,23 @@ r.on('fileProgress', function(file){
 
 r.on('cancel', function(){
     $('.resumable-file-progress').html('canceled');
+    $('.progress-container').css( "background-color", "red" );
     $("#submitButton").prop("disabled", true);
 
-    // inform server that upload has been cancelled
-    connection.send(JSON.stringify({
-        token: uploadFileToken,
-        type: "cancelInfo"
-    }));
+    if (uploadInProgress === true) {
+        console.log("upload in progress..");
+        // inform server that upload has been cancelled
+        connection.send(JSON.stringify({
+            token: uploadFileToken,
+            type: "cancelInfo"
+        }));
 
-    decRequestCount();
-    numFiles = 0, fileID = null, uploadFileToken = null;
+        decRequestCount();
+        numFiles = 0, fileID = null, uploadFileToken = null;
+    } else {
+        console.log("upload is NOT in progress", uploadInProgress);
+    }
+
     uploadInProgress = false;
 });
 
@@ -450,6 +476,7 @@ r.on('uploadStart', function(){
     uploadInProgress = true;
     $('.resumable-progress .progress-resume-link').hide();
     $('.resumable-progress .progress-pause-link').show();
+    $('.resumable-progress .progress-cancel-link').show();
 });
 
 
@@ -457,33 +484,16 @@ r.on('uploadStart', function(){
 connection.onopen = function() {
     console.log("connection established");
 
-    let type = "";
-    userToken = Cookies.get("cloudUserToken");
+    connection.send(JSON.stringify({
+        type: "init",
+        token: userToken,
+    }));
 
-    if (userToken) {
-        connection.send(JSON.stringify({
-            type: "reinit",
-            token: userToken,
-        }));
-        console.log("reinit", userToken);
-
-        connection.send(JSON.stringify({
-            user: userToken,
-            type: "taskQuery"
-        }));
-    } else {
-        userToken = generate_random_string(64);
-
-        Cookies.set("cloudUserToken", userToken,
-            { expires: 365, path: "" }
-        );
-
-        connection.send(JSON.stringify({
-            type: "init",
-            token: userToken,
-        }));
-        console.log("init", userToken);
-    }
+    connection.send(JSON.stringify({
+        user: userToken,
+        type: "taskQuery"
+    }));
+    console.log("init", userToken);
 };
 
 connection.onmessage = function(message) {
@@ -499,11 +509,15 @@ connection.onmessage = function(message) {
 
     // server send us message regarding resumable upload process
     if (message_data.type === "action") {
+        console.log(message_data);
         if (message_data.reply === "uploadResponse") {
             if (message_data.status === "upload") {
                 $(".resumable-progress .progress-resume-link").hide();
                 $(".resumable-progress .progress-pause-link").show();
+                $("#submitButton").prop("disabled", true);
+
                 uploadFileToken = message_data.token;
+                uploadInProgress = true;
                 r.upload();
             } else if (message_data.status === "request_ok") {
                 resetResumable();
@@ -524,9 +538,9 @@ connection.onmessage = function(message) {
             });
 
             $(".resumable-list").html(html);
-        } else if (message_data.reply == "pause") {
+        } else if (message_data.reply === "pause") {
             r.pause();
-        } else if (message_data.reply == "continue") {
+        } else if (message_data.reply === "continue") {
             incRequestCount();
             r.upload();
         } else if (message_data.reply === "downloadResponse") {

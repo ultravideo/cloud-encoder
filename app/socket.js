@@ -69,8 +69,19 @@ socket.on('connection', function(client) {
         if (message.type === "init") {
             if (message.token) {
                 parser.validateUserToken(message.token).then((validatedToken) => {
-                    clients.saveClient(validatedToken, client);
-                    console.log("user", message.token, "has connected!");
+
+                    if (clients.clientList.hasOwnProperty(validatedToken)) {
+                        clients.clientList[validatedToken] = client;
+                    } else {
+                        clients.saveClient(validatedToken, client);
+                    }
+
+                    console.log(validatedToken, "connected!");
+
+                    // if (clients.clientList.hasOwnProperty(validatedToken)) {
+                    // }
+                    // clients.clientList[validatedToken] = client;
+                    // console.log("user", message.token, "has connected!");
                 })
                 .catch(function(err) {
                     console.log(err);
@@ -336,13 +347,22 @@ function handleTaskRequest(client, message) {
             });
         });
     });
-}
+}   
 
-// user cancelled the file upload, remove task from database
-// this is just a cleanup task
+// user cancelled the file upload, remove task AND file 
+// from database
 function handleUploadCancellation(client, message) {
-    db.removeTask(message.token).then(() => {
-        console.log("task removed from database");
+
+    db.getTask(message.token).then((taskRow) => {
+        if (!taskRow) {
+            console.log(message.token, " doesn't exist!");
+            return;
+        }
+
+        return Promise.all([
+            db.removeFile(taskRow.file_id),
+            db.removeTask(message.token)
+        ]);
     })
     .catch(function(err) {
         console.log(err);
