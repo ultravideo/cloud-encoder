@@ -78,8 +78,13 @@ socket.on('connection', function(client) {
             }
 
         } else if (message.type === "reinit") {
-            console.log("reiniting connection for ", message.token);
-            clients.clientList[message.token] = client;
+            parser.validateUserToken(message.token).then((validatedToken) => {
+                console.log("reiniting connection for ", message.token);
+                clients.clientList[validatedToken] = client;
+            })
+            .catch(function(err) {
+                console.log(err);
+            });
 
         } else if (message.type === "downloadRequest") {
             handleDownloadRequest(client, message.token);
@@ -97,150 +102,8 @@ socket.on('connection', function(client) {
             handleUploadCancellation(client, message);
 
         } else if (message.type === "uploadRequest") {
-            let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar, message.kvazaar_extra);
-            let validatedFilePromise = validateFileOptions(message.other);
-
-            // first validated both kvazaar options and file info
-            Promise.all([validatedKvazaarPromise, validatedFilePromise]).then(function(values) {
-                let kvazaarPromise = db.getOptions(values[0][0].hash);
-                let filePromise = db.getFile(values[1].uniq_id);
-                let taskPromise = db.getTask(message.token, values[1].uniq_id, values[0][0].hash);
-
-                // data validation ok, check if database already has these values
-                Promise.all([kvazaarPromise, filePromise, taskPromise]).then((data) => {
-                    // return both database response and validated options
-                    return {
-                        options: {
-                            kvazaar: values[0],
-                            file: values[1],
-                            task: {
-                                token: message.token
-                            },
-                        },
-                        db: {
-                            kvazaar: data[0],
-                            file: data[1],
-                            task: data[2]
-                        }
-                    };
-                })
-                .then((data) => {
-                    // now check what info has already been stored. Save all insert queries 
-                    // to promisesToResolve array which is then executed with Promise.all. 
-                    // We can execute all queries at once because the insert queries 
-                    // dont depend on each other
-                    const token = crypto.randomBytes(64).toString('hex');
-                    let promisesToResolve = [ ];
-                    let uploadApproved = false;
-                    let requestApproved = false;
-                    let message = "";
-
-                    // make sure connected user hasn't already done this request
-                    if (!data.db.task ||
-                        data.db.task.file_id != data.options.file.uniq_id ||
-                        data.db.task.ops_id  != data.options.kvazaar[0].hash)
-                    {
-                        requestApproved = true;
-                        message =  "Upload rejected (file already on the server), " + 
-                                   "file has been added to work queue. ";
-
-                        promisesToResolve.push(
-                            db.insertTask({
-                                status: -1, // upload hasn't started
-                                owner_id: data.options.task.token, // saved so that worker can send messages to this user
-                                token: token, // used for the download link
-                                ops_id: data.options.kvazaar[0].hash,
-                                file_id: data.options.file.uniq_id,
-                            })
-                        );
-
-                        // enqueue task to kue's work queue if file is already on the server
-                        if (data.db.file) {
-                            let job = queue.create('process_file', {
-                                task_token: token
-                            })
-                            .save(function(err) {
-                                if (err) {
-                                    console.log("err", err);
-                                }
-                                console.log("job " + job.id + " saved to queue");
-                            });
-                        }
-                    } else {
-                        message = "Upload rejected (file already on the server), file already in the work queue. ";
-                        // TODO send token and create download button
-                    }
-
-                    // this combination of options doesn't exist in the database
-                    if (!data.db.kvazaar) {
-                        promisesToResolve.push(
-                            db.insertOptions({
-                                preset: data.options.kvazaar[0].preset,
-                                container: data.options.kvazaar[0].container,
-                                hash: data.options.kvazaar[0].hash,
-                                extra: data.options.kvazaar[1]
-                            })
-                        );
-                    }
-
-                    // file doesn't exist in the database
-                    if (!data.db.file) {
-                        uploadApproved = true;
-                        message = "Starting file upload...\n";
-
-                        promisesToResolve.push(
-                            db.insertFile({
-                                name: data.options.file.name,
-                                resolution: data.options.file.resolution,
-                                raw_video: data.options.file.raw_video,
-                                fps: data.options.file.fps,
-                                bit_depth: data.options.file.bit_depth,
-                                uniq_id: data.options.file.uniq_id
-                            })
-                        );
-                    }
-
-                    Promise.all(promisesToResolve).then(() => {
-                        return {
-                            approved: uploadApproved,
-                            message: message
-                        };
-                    })
-                    .then((uploadInfo) => {
-                        console.log("uniq id", data.options.file.uniq_id);
-                        client.send(
-                            JSON.stringify({
-                                type: "action",
-                                reply: "uploadResponse",
-                                status: uploadApproved ? "upload" : requestApproved ? "request_ok" : "request_nok",
-                                token: token,
-                                message: uploadInfo.message
-                            })
-                        );
-                    })
-                    .catch(function(err) {
-                        client.send(
-                            JSON.stringify({
-                                type: "action",
-                                token: data.options.file.uniq_id,
-                                reply: "cancel",
-                                message: "Error, try again later"
-                            })
-                        );
-                        console.log("Something failed with database", err);
-                        return;
-                    });
-                })
-            }).catch(function(err) {
-                client.send(
-                    JSON.stringify({
-                        type: "action",
-                        reply: "cancel",
-                        message: err.toString()
-                    })
-                );
-                return;
-            });
+            handleUploadRequest(client, message);
+            
         }
 
         client.on('close', function(connection) {
@@ -259,6 +122,9 @@ socket.on('connection', function(client) {
 
 // --------------- socket stuff end --------------- 
 
+// file options require validation only if the input file is raw video
+// For raw video, resolution, bit depth and fps are validated and if
+// all validations pass, function returns validated options
 function validateFileOptions(fileOptions) {
     return new Promise((resolve, reject) => {
         let validatedOptions = {
@@ -293,6 +159,13 @@ function validateFileOptions(fileOptions) {
     });
 }
 
+// Kvazaar options are validated in two phases, first validated the options
+// that have their own form items (right now container and preset) 
+// If that validation passes, then all extra options that are given
+// using textarea are validated.
+//
+// If both validations pass, function returns all validated options in an array
+// TODO calculate checksum for extra options (HOW??)
 function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 
     const validOptions = {
@@ -411,6 +284,7 @@ function handleDeleteRequest(client, token) {
     });
 }
 
+// user clicked "My requests" tab and queried all tasks
 function handleTaskRequest(client, message) {
     db.getTasks("owner_id", message.user).then((rows) => {
         if (!rows || rows.length === 0) {
@@ -464,6 +338,8 @@ function handleTaskRequest(client, message) {
     });
 }
 
+// user cancelled the file upload, remove task from database
+// this is just a cleanup task
 function handleUploadCancellation(client, message) {
     db.removeTask(message.token).then(() => {
         console.log("task removed from database");
@@ -478,4 +354,160 @@ function handleCancelRequest(client, token) {
     // TODO if it is -> remove and update database
     // TODO if not -> find out who is working on it
     // TODO needs supervisor???
+}
+
+// first validate file and kvazaar options. If validation is OK,
+// query database to make sure that user hasn't already made this request
+// (this file and these options).
+//
+// If this is unique request, save file and options info to database and create task
+// for this request. Then inform the frontend that upload can be started
+//
+//
+// If at any point error is encoutered (invalid options, request already made etc.)
+// file upload is rejected and user is informed about this
+function handleUploadRequest(client, message) {
+    let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar, message.kvazaar_extra);
+    let validatedFilePromise = validateFileOptions(message.other);
+
+    // first validated both kvazaar options and file info
+    Promise.all([validatedKvazaarPromise, validatedFilePromise]).then(function(values) {
+        let kvazaarPromise = db.getOptions(values[0][0].hash);
+        let filePromise = db.getFile(values[1].uniq_id);
+        let taskPromise = db.getTask(message.token, values[1].uniq_id, values[0][0].hash);
+
+        // data validation ok, check if database already has these values
+        Promise.all([kvazaarPromise, filePromise, taskPromise]).then((data) => {
+            // return both database response and validated options
+            return {
+                options: {
+                    kvazaar: values[0],
+                    file: values[1],
+                    task: {
+                        token: message.token
+                    },
+                },
+                db: {
+                    kvazaar: data[0],
+                    file: data[1],
+                    task: data[2]
+                }
+            };
+        })
+        .then((data) => {
+            // now check what info has already been stored. Save all insert queries 
+            // to promisesToResolve array which is then executed with Promise.all. 
+            // We can execute all queries at once because the insert queries 
+            // dont depend on each other
+            const token = crypto.randomBytes(64).toString('hex');
+            let promisesToResolve = [ ];
+            let uploadApproved = false;
+            let requestApproved = false;
+            let message = "";
+
+            // make sure connected user hasn't already done this request
+            if (!data.db.task ||
+                data.db.task.file_id != data.options.file.uniq_id ||
+                data.db.task.ops_id  != data.options.kvazaar[0].hash)
+            {
+                requestApproved = true;
+                message =  "Upload rejected (file already on the server), " + 
+                           "file has been added to work queue. ";
+
+                promisesToResolve.push(
+                    db.insertTask({
+                        status: -1, // upload hasn't started
+                        owner_id: data.options.task.token, // saved so that worker can send messages to this user
+                        token: token, // used for the download link
+                        ops_id: data.options.kvazaar[0].hash,
+                        file_id: data.options.file.uniq_id,
+                    })
+                );
+
+                // enqueue task to kue's work queue if file is already on the server
+                if (data.db.file) {
+                    let job = queue.create('process_file', {
+                        task_token: token
+                    })
+                    .save(function(err) {
+                        if (err) {
+                            console.log("err", err);
+                        }
+                        console.log("job " + job.id + " saved to queue");
+                    });
+                }
+            } else {
+                message = "Upload rejected (file already on the server), file already in the work queue. ";
+            }
+
+            // this combination of options doesn't exist in the database
+            if (!data.db.kvazaar) {
+                promisesToResolve.push(
+                    db.insertOptions({
+                        preset: data.options.kvazaar[0].preset,
+                        container: data.options.kvazaar[0].container,
+                        hash: data.options.kvazaar[0].hash,
+                        extra: data.options.kvazaar[1]
+                    })
+                );
+            }
+
+            // file doesn't exist in the database
+            if (!data.db.file) {
+                uploadApproved = true;
+                message = "Starting file upload...\n";
+
+                promisesToResolve.push(
+                    db.insertFile({
+                        name: data.options.file.name,
+                        resolution: data.options.file.resolution,
+                        raw_video: data.options.file.raw_video,
+                        fps: data.options.file.fps,
+                        bit_depth: data.options.file.bit_depth,
+                        uniq_id: data.options.file.uniq_id
+                    })
+                );
+            }
+
+            Promise.all(promisesToResolve).then(() => {
+                return {
+                    approved: uploadApproved,
+                    message: message
+                };
+            })
+            .then((uploadInfo) => {
+                console.log("uniq id", data.options.file.uniq_id);
+                client.send(
+                    JSON.stringify({
+                        type: "action",
+                        reply: "uploadResponse",
+                        status: uploadApproved ? "upload" : requestApproved ? "request_ok" : "request_nok",
+                        token: token,
+                        message: uploadInfo.message
+                    })
+                );
+            })
+            .catch(function(err) {
+                client.send(
+                    JSON.stringify({
+                        type: "action",
+                        token: data.options.file.uniq_id,
+                        reply: "cancel",
+                        message: "Error, try again later"
+                    })
+                );
+                console.log("Something failed with database", err);
+                return;
+            });
+        })
+    }).catch(function(err) {
+        client.send(
+            JSON.stringify({
+                type: "action",
+                reply: "cancel",
+                message: err.toString()
+            })
+        );
+        return;
+    });
 }
