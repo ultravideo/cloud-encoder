@@ -357,6 +357,7 @@ $("#linkUpload").click(function() {
         if ($("#rawVideoCheck").is(":checked") === true) {
             $("#rawVideoCheck").click();
             $("#rawDiv").hide();
+            $("#kvazaarExtraOptionsDiv").hide();
         }
     }
 
@@ -432,6 +433,25 @@ r.on('fileAdded', function(file){
 
         if (res && res.length != 0) {
             $("#rawVideoCheck").click();
+
+            // try to match file resolution, fps and bit depth from file name
+            let res  = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g), resVal = "";
+            if (res && res.length != 0) {
+                resVal = res[0];
+            }
+            $("#resValue").val(resVal);
+
+            let fps = fname.match(/[1-9]{1}[0-9]{0,2}[-_\s]?(FPS)/ig), fpsVal = "";
+            if (fps && fps.length != 0) {
+                fpsVal = fps[0].match(/[1-9]{1}[0-9]{0,2}/)[0]; // extract only the number
+            }
+            $("#inputFPSValue").val(fpsVal);
+
+            let bitDepth = fname.match(/([89]|1[0-6])[_-\s]?(bit)/ig), bitDepthVal = "";
+            if (bitDepth && bitDepth.length != 0) {
+                bitDepthVal = bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
+            }
+            $("#bitDepthValue").val(bitDepthVal);
         } 
     } else {
         let res  = fname.match(/\.yuv$/g);
@@ -441,33 +461,6 @@ r.on('fileAdded', function(file){
             $("#resValue").val("");
         } 
     }
-
-    console.log("validating raw video optoins...");
-
-    // try to match file resolution, fps and bit depth from file name
-    let res  = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g), resVal = "";
-    if (res && res.length != 0) {
-        resVal = res[0];
-    } else {
-        console.log("invalid resoltuion");
-    }
-    $("#resValue").val(resVal);
-
-    let fps = fname.match(/[1-9]{1}[0-9]{0,2}[-_\s]?(FPS)/ig), fpsVal = "";
-    if (fps && fps.length != 0) {
-        fpsVal = fps[0].match(/[1-9]{1}[0-9]{0,2}/)[0]; // extract only the number
-    } else {
-        console.log("invalid fps");
-    }
-    $("#inputFPSValue").val(fpsVal);
-
-    let bitDepth = fname.match(/([89]|1[0-6])[_-\s]?(bit)/ig), bitDepthVal = "";
-    if (bitDepth && bitDepth.length != 0) {
-        bitDepthVal = bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
-    } else {
-        console.log("invalid bith depth!");
-    }
-    $("#bitDepthValue").val(bitDepthVal);
 
     $("#submitButton").prop("disabled", false);
 });
