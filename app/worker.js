@@ -131,10 +131,17 @@ function ffmpegContainerize(videoPath, audioPath, container) {
     });
 }
 
-function moveToOutputFolder(path) {
+function moveToOutputFolder(name, path) {
     return new Promise((resolve, reject) => {
-        const fileName = path.split("/").pop().replace("_new", "");
-        const newPath  = "/tmp/cloud_uploads/output/" + fileName;
+        const outputFileExt = path.split(".")[1];
+        const origNameNoExt = name.split(".").slice(0, -1).join(".");
+        let newPath = "/tmp/cloud_uploads/output/";
+
+        if (outputFileExt === "hevc") {
+            newPath += origNameNoExt + ".hevc";
+        } else {
+            newPath += origNameNoExt + ".hevc." + outputFileExt;
+        }
 
         fs.rename(path, newPath, function(err) {
             if (err)
@@ -313,7 +320,7 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
         return encodedVideoName;
     })
     .then((path) => {
-        return moveToOutputFolder(path);
+        return moveToOutputFolder(fileOptions.name, path);
     })
     .then((newPath) => {
         db.updateTask(taskInfo.taskID, { file_path : newPath }).then(() => {
