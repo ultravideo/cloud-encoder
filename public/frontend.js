@@ -1,14 +1,11 @@
 // if user is running mozilla then use it's built-in WebSocket
 window.WebSocket = window.WebSocket || window.MozWebSocket;
 
-var numFiles = 0;
-var fileIds = [];
 var fileID = null;
-var response = null;
+// var response = null;
 var connection = new WebSocket('ws://127.0.0.1:8083');
 var userToken = getUserToken();
 var numRequests = 0;
-var uploadInProgress = false;
 var uploadFileToken = null;
 
 var r = new Resumable({
@@ -207,12 +204,18 @@ function handleDeleteResponse(response) {
     }
 }
 
+function resetUploadFileInfo() {
+    fileID = null;
+    uploadFileToken = null;
+    r.files = [];
+};
+
 function resetResumable() {
     $(".resumable-list").empty();
     $(".resumable-progress").hide();
     $("#submitButton").prop("disabled", true);
 
-    fileID = null, numFiles = 0, r.files = [];
+    resetUploadFileInfo();
 }
 
 function validateResolution(str) {
@@ -296,7 +299,7 @@ $("#kvazaarCmdButton").click(function() {
 });
 
 $('#submitButton').click(function(){
-    if (numFiles == 0) {
+    if (fileID === null) {
         return;
     }
 
@@ -352,7 +355,7 @@ function activateView(name) {
 }
 
 $("#linkUpload").click(function() {
-    if ($("#divUpload").is(":hidden") && !uploadInProgress) {
+    if ($("#divUpload").is(":hidden") && !r.isUploading()) {
         resetResumable();
         if ($("#rawVideoCheck").is(":checked") === true) {
             $("#rawVideoCheck").click();
@@ -430,7 +433,6 @@ r.on('fileAdded', function(file){
     $('.resumable-file-'+file.uniqueIdentifier+' .resumable-file-name').html(file.fileName);
 
     fileID = file.uniqueIdentifier;
-    numFiles = 1;
 
     let fname = r.files[r.files.length - 1].fileName.toString();
 
@@ -488,18 +490,15 @@ r.on('complete', function(){
 
 r.on('fileSuccess', function(file,message){
     $('.resumable-file-' + file.uniqueIdentifier + ' .resumable-file-progress').html('(completed)');
-    $("#browseButton").prop("disabled", false);
 
-    uploadInProgress = false;
-    numFiles = 0, fileID = null, uploadFileToken = null, r.files = [];
+    resetUploadFileInfo();
 });
 
 r.on('fileError', function(file, message){
     $('.resumable-file-'+file.uniqueIdentifier+' .resumable-file-progress').html('(file could not be uploaded: '+message+')');
     $('.progress-container').css( "background", "red" );
 
-    uploadInProgress = false;
-    numFiles = 0, fileID = null, uploadFileToken = null;
+    resetUploadFileInfo();
 });
 
 r.on('fileProgress', function(file){
@@ -511,9 +510,8 @@ r.on('cancel', function(){
     $('.resumable-file-progress').html('canceled');
     $('.progress-container').css( "background-color", "red" );
     $("#submitButton").prop("disabled", true);
-    $("#browseButton").prop("disabled", false);
 
-    if (uploadInProgress === true) {
+    if (r.isUploading()) {
         // inform server that upload has been cancelled
         connection.send(JSON.stringify({
             token: uploadFileToken,
@@ -521,10 +519,9 @@ r.on('cancel', function(){
         }));
 
         decRequestCount();
-        numFiles = 0, fileID = null, uploadFileToken = null;
+        resetUploadFileInfo();
+        resetUploadFileInfo();
     }
-
-    uploadInProgress = false;
 });
 
 r.on('uploadStart', function(){
@@ -568,10 +565,8 @@ connection.onmessage = function(message) {
                 $(".resumable-progress .progress-resume-link").hide();
                 $(".resumable-progress .progress-pause-link").show();
                 $("#submitButton").prop("disabled", true);
-                $("#browseButton").prop("disabled", true);
 
                 uploadFileToken = message_data.token;
-                uploadInProgress = true;
                 r.upload();
             } else if (message_data.status === "request_ok") {
                 resetResumable();

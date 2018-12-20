@@ -61,6 +61,9 @@
 		<div id="divUpload">
 			<div id="formData">
 				<div class="form-group">
+					<div id="resumableUpload" class="resumable-drop">
+						Drop video file here to upload or <a class="resumable-browse"><u>select from your computer</u></a>
+					</div><br>
 					<label>Preset</label>
 					<select class="form-control kvz_options" name="preset">
 						<option value="ultrafast">Ultrafast</option>
@@ -106,8 +109,9 @@
 					<textarea id="kvazaarExtraOptions" class="form-control"
 						placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50"></textarea>
 				</div>
-				<button id="browseButton" id="browseButton" class="btn btn-primary">Browse...</button><br>
+				<!-- <button id="browseButton" id="browseButton" class="btn btn-primary">Browse...</button><br> -->
 				<button id="submitButton" class="btn btn-primary" disabled>Submit</button>
+
 
 				<div class="resumable-progress">
 					<table>
