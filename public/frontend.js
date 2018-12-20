@@ -280,7 +280,8 @@ function appendToDiv(message_data) {
 if(!r.support) {
     $('.resumable-error').show();
 } else {
-    r.assignBrowse($('#browseButton'));
+    r.assignDrop($('.resumable-drop')[0]);
+    r.assignBrowse($('.resumable-browse')[0]);
 }
 
 $("#rawVideoCheck").click(function() {
@@ -296,10 +297,9 @@ $("#kvazaarCmdButton").click(function() {
 
 $('#submitButton').click(function(){
     if (numFiles == 0) {
-        console.log("no files");
-        alert("select file!");
         return;
     }
+
     $("#submitButton").prop("disabled", false);
 
     var other_options = {}, kvz_options = {};
@@ -435,38 +435,41 @@ r.on('fileAdded', function(file){
     let fname = r.files[r.files.length - 1].fileName.toString();
 
     // set raw video to true if file extension is yuv
-    if ($("#rawVideoCheck").is(":checked") === false) {
-        let res  = fname.match(/\.yuv$/g);
+    // if ($("#rawVideoCheck").is(":checked") === false) {
+    let res  = fname.match(/\.yuv$/g);
+    let checked = $("#rawVideoCheck").is(":checked");
 
+    if (res && res.length != 0) {
+        if (checked === false) {
+            $("#rawVideoCheck").click();
+        }
+
+        // try to match file resolution, fps and bit depth from file name
+        let res  = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g), resVal = "";
         if (res && res.length != 0) {
+            resVal = res[0];
+        }
+        $("#resValue").val(resVal);
+
+        let fps = fname.match(/[1-9]{1}[0-9]{0,2}[-_\s]?(FPS)/ig), fpsVal = "";
+        if (fps && fps.length != 0) {
+            fpsVal = fps[0].match(/[1-9]{1}[0-9]{0,2}/)[0]; // extract only the number
+        }
+        $("#inputFPSValue").val(fpsVal);
+
+        let bitDepth = fname.match(/([89]|1[0-6])[_-\s]?(bit)/ig), bitDepthVal = "";
+        if (bitDepth && bitDepth.length != 0) {
+            bitDepthVal = bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
+        }
+        $("#bitDepthValue").val(bitDepthVal);
+    }  else {
+        if (checked === true) {
             $("#rawVideoCheck").click();
+        }
 
-            // try to match file resolution, fps and bit depth from file name
-            let res  = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g), resVal = "";
-            if (res && res.length != 0) {
-                resVal = res[0];
-            }
-            $("#resValue").val(resVal);
-
-            let fps = fname.match(/[1-9]{1}[0-9]{0,2}[-_\s]?(FPS)/ig), fpsVal = "";
-            if (fps && fps.length != 0) {
-                fpsVal = fps[0].match(/[1-9]{1}[0-9]{0,2}/)[0]; // extract only the number
-            }
-            $("#inputFPSValue").val(fpsVal);
-
-            let bitDepth = fname.match(/([89]|1[0-6])[_-\s]?(bit)/ig), bitDepthVal = "";
-            if (bitDepth && bitDepth.length != 0) {
-                bitDepthVal = bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
-            }
-            $("#bitDepthValue").val(bitDepthVal);
-        } 
-    } else {
-        let res  = fname.match(/\.yuv$/g);
-
-        if (!res) {
-            $("#rawVideoCheck").click();
-            $("#resValue").val("");
-        } 
+        $("#resValue").val("");
+        $("#bitDepthValue").val("");
+        $("#inputFPSValue").val("");
     }
 
     $("#submitButton").prop("disabled", false);
