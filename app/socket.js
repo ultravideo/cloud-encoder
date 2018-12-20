@@ -335,7 +335,10 @@ function handleTaskRequest(client, message) {
                     case  3:  msg = "Post-processing";   break;
                 }
 
-                delete values[1]['hash'];
+                const kvazaarOps = {
+                    "Container": values[1]["container"],
+                    "Options":   values[1]["extra"]
+                };
 
                 message.data.push({
                     name: values[0].name,
@@ -344,7 +347,7 @@ function handleTaskRequest(client, message) {
                     message: msg,
                     download_count: taskRow.download_count,
                     token: taskRow.token,
-                    options: values[1]
+                    options: kvazaarOps
                 });
 
                 client.send(JSON.stringify(message));

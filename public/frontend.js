@@ -134,13 +134,14 @@ function drawFileTable(file) {
         newHTML +=
             "<tr><td align='left'><button id='btnDownload' class='btn btn-success' " +
             "onclick=\"sendDownloadRequest('" + file.token + "')\">Download</button>" +
-            "<button id='btnDelete' class='btn btn-danger' " + 
-            "onclick=\"sendDeleteRequest('" + file.token + "')\">Delete</button></td>";
+            "<button class='btn btn-danger' data-toggle='modal'" + 
+            "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button></td>";
     } else {
         newHTML +=
             "<tr><td align='left'><button id='btnDownload' class='btn btn-success' disabled>Download</button>" +
             "<button id='btnDelete'   class='btn btn-danger' " +
-            "onclick=\"cancelTask('" + file.token + "')\">Cancel</button></td>";
+            "<button class='btn btn-danger' data-toggle='modal'" + 
+            "data-href='" + file.token + "' data-target='#confirm-cancel'>Cancel</button></td>";
     }
 
     newHTML += "</tr></table></span><br><br>";
@@ -177,8 +178,7 @@ function handleTaskUpdate(response) {
 
             // remove Cancel button and add Delete button
             $("#table" + response.token + " #btnDelete").text("Delete");
-            $("#table" + response.token + " #btnDelete").removeAttr("onclick");
-            $("#table" + response.token + " #btnDelete").attr("onClick", "sendDeleteRequest('" + response.token + "');");
+            $("#table" + response.token + " #btnDelete").attr("data-target", "#confirm-delete");
         } 
 
         $("#table" + response.token + " #tdStatus").html(response.message)
@@ -298,6 +298,14 @@ $("#kvazaarCmdButton").click(function() {
     }
 });
 
+$('#confirm-delete').on('show.bs.modal', function(e) {
+    $(this).find('.btn-ok').attr('onclick', "sendDeleteRequest('" +  $(e.relatedTarget).data('href') + "')");
+});
+
+$('#confirm-cancel').on('show.bs.modal', function(e) {
+    $(this).find('.btn-ok').attr('onclick', "sendCancelRequest('" +  $(e.relatedTarget).data('href') + "')");
+});
+
 $('#submitButton').click(function(){
     if (fileID === null) {
         return;
@@ -366,6 +374,7 @@ $("#linkUpload").click(function() {
 
     if (!r.isUploading()) {
         $("#dlDoneInfo").hide();
+        $(".resumable-drop").show();
     }
 
     deActivate("About");
@@ -592,9 +601,11 @@ connection.onmessage = function(message) {
                 incRequestCount();
                 $(".resumable-list").html("<br><br><br>File already in the server, request has been added to work queue");
                 $("#dlDoneInfo").show();
+                $(".resumable-drop").show();
             } else {
                 resetResumable();
                 $(".resumable-list").html("<br><br><br>You have already made this request, check \"My requests\" tab");
+                $(".resumable-drop").show();
             }
         } else if (message_data.reply == "cancel") {
             r.cancel();
