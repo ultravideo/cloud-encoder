@@ -364,10 +364,13 @@ $("#linkUpload").click(function() {
         }
     }
 
+    if (!r.isUploading()) {
+        $("#dlDoneInfo").hide();
+    }
+
     deActivate("About");
     deActivate("Requests");
     activateView("Upload")
-    $("#dlDoneInfo").hide();
 });
 
 function showRequests() {
@@ -422,8 +425,13 @@ r.on('fileAdded', function(file){
     // hide raw video related warnings
     $(".rawVideoWarning").hide();
 
+    // hide drag and drop
+    $(".resumable-drop").hide();
+
     // hide download info
     $("#dlDoneInfo").hide();
+
+    $(".progress-cancel-link").show();
 
     // reset progress-container color
     $('.progress-container').css( "background", "#9CBD94" );
@@ -498,6 +506,7 @@ r.on('complete', function(){
 r.on('fileSuccess', function(file,message){
     $('.resumable-file-' + file.uniqueIdentifier + ' .resumable-file-progress').html('(completed)');
 
+    $(".resumable-drop").show();
     resetUploadFileInfo();
 });
 
@@ -517,8 +526,11 @@ r.on('cancel', function(){
     $('.resumable-file-progress').html('canceled');
     $('.progress-container').css( "background-color", "red" );
     $("#submitButton").prop("disabled", true);
+    $(".resumable-drop").show();
+    $(".progress-cancel-link").hide();
+    $("#dlDoneInfo").hide();
 
-    if (r.isUploading()) {
+    if (r.isUploading) {
         // inform server that upload has been cancelled
         connection.send(JSON.stringify({
             token: uploadFileToken,

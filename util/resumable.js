@@ -587,7 +587,7 @@
         $h.each($.chunks, function(chunk){
           if(chunk.status()=='uploading') {
             uploading = true;
-            return(false);
+            return(uploading);
           }
         });
         return(uploading);
