@@ -176,7 +176,6 @@ function validateFileOptions(fileOptions) {
 // using textarea are validated.
 //
 // If both validations pass, function returns all validated options in an array
-// TODO calculate checksum for extra options (HOW??)
 function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 
     const PRESETS = [
@@ -194,21 +193,24 @@ function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
             reject(new Error("Invalid container!"));
         }
 
-        kvazaarOptions.preset = PRESETS[kvazaarOptions.preset - 1];
-
-        const ops = JSON.stringify(kvazaarOptions);
-        const hash = crypto.createHash("sha256").update(ops);
-        kvazaarOptions['hash'] = hash.digest("hex");
+        const SELECTED_PRESET = "preset " + PRESETS[kvazaarOptions.preset - 1];
+        delete kvazaarOptions["preset"];
 
         if (kvazaarExtraOptions && kvazaarExtraOptions.length > 0) {
             parser.validateKvazaarOptions(kvazaarExtraOptions).then((validatedExtraOptions) => {
-                resolve([kvazaarOptions, validatedExtraOptions]);
+                let sortedOps = validatedExtraOptions.sort(validatedExtraOptions);
+                sortedOps.unshift(SELECTED_PRESET);
+
+                kvazaarOptions.hash = crypto.createHash("sha256").update(sortedOps.join()).digest("hex");
+
+                resolve([kvazaarOptions, sortedOps]);
             })
             .catch(function(err) {
                 reject(err);
             });
         } else {
-            resolve([kvazaarOptions, ""]);
+            kvazaarOptions.hash = crypto.createHash("sha256").update(SELECTED_PRESET).digest("hex");
+            resolve([kvazaarOptions, SELECTED_PRESET]);
         }
     });
 }
@@ -475,7 +477,6 @@ function handleUploadRequest(client, message) {
             if (!data.db.kvazaar) {
                 promisesToResolve.push(
                     db.insertOptions({
-                        preset: data.options.kvazaar[0].preset,
                         container: data.options.kvazaar[0].container,
                         hash: data.options.kvazaar[0].hash,
                         extra: data.options.kvazaar[1]

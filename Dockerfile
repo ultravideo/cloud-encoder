@@ -2,8 +2,7 @@ FROM ubuntu:18.04
 FROM node:8
 
 ENV CLOUD_UTILS ffmpeg redis-server sqlite3 psmisc
-# ENV CLOUD_HOST "10.21.25.26"
-ENV CLOUD_HOST "localhost"
+ENV CLOUD_HOST "10.21.25.26"
 ENV REQUIRED_PACKAGES automake autoconf libtool m4 build-essential git yasm pkgconf
 
 RUN apt-get update \
@@ -20,7 +19,7 @@ RUN apt-get update \
     && mkdir -p /tmp /tmp/cloud_uploads /tmp/cloud_uploads/misc /tmp/cloud_uploads/output \
     && export CLOUD_HOST=$CLOUD_HOST \
     && touch src/cloud.db \
-    && sqlite3 src/cloud.db "CREATE TABLE 'kvz_options' (preset TEXT, container TEXT, hash TEXT, extra TEXT)" \
+    && sqlite3 src/cloud.db "CREATE TABLE 'kvz_options' (container TEXT, hash TEXT, extra TEXT)" \
     && sqlite3 src/cloud.db "CREATE TABLE 'files' (name TEXT, hash TEXT, file_path TEXT, resolution TEXT, \
                              uniq_id TEXT, raw_video INTEGER, fps INTEGER, bit_depth INTEGER)" \
     && sqlite3 src/cloud.db "CREATE TABLE 'work_queue' (taskID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, file_id TEXT, \
