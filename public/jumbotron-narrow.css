@@ -34,7 +34,7 @@ body {
 /* Customize container */
 @media (min-width: 768px) {
   .container {
-    max-width: 730px;
+    max-width: 800px;
   }
 }
 .container-narrow > hr {
@@ -46,22 +46,14 @@ body {
   border-bottom: 1px solid #e5e5e5;
 }
 
-/* .requests { */
-/*   text-align: center; */
-/* } */
-
-/* .jumbotron .btn { */
-/*   font-size: 21px; */
-/*   padding: 14px 24px; */
-/* } */
-
-/* Supporting marketing content */
-.marketing {
-  margin: 40px 0;
+.requests {
+  text-align: center;
 }
-.marketing p + h4 {
-  margin-top: 28px;
+
+.container > div > label {
+	margin-top: 10px;
 }
+
 
 /* Responsive: Portrait tablets and up */
 @media screen and (min-width: 768px) {

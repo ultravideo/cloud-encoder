@@ -405,6 +405,13 @@ $("#bitDepthValue").focusout(function() {
     validateBithDepth($("#bitDepthValue").val());
 });
 
+$("#presetDropDown").change(function() {
+    $("#presetSlider").val($("#presetDropDown").val());
+});
+
+$("#presetSlider").change(function() {
+    $("#presetDropDown").val($("#presetSlider").val());
+});
 
 // ------------------------------- Resumablejs stuff ------------------------------- 
 r.on('fileAdded', function(file){

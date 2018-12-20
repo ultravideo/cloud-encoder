@@ -179,20 +179,22 @@ function validateFileOptions(fileOptions) {
 // TODO calculate checksum for extra options (HOW??)
 function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 
-    const validOptions = {
-        'preset' : ["ultrafast", "superfast", "medium", "placebo"],
-        'container' : ["none", "mp4", "mkv"],
-    };
+    const PRESETS = [
+        "placebo", "veryslow", "slower", "slow", "medium",
+        "fast", "faster", "veryfast","superfast", "ultrafast",
+    ];
 
     return new Promise((resolve, reject) => {
-        for (let key in kvazaarOptions) {
-            if (validOptions.hasOwnProperty(key)) {
-                if (validOptions[key].indexOf(kvazaarOptions[key]) === -1)
-                    reject(new Error("Invalid Kvazaar options!"));
-            } else {
-                reject(new Error("Invalid Kvazaar options!"));
-            }
+        if (kvazaarOptions.preset < 1 || kvazaarOptions.preset > 10) {
+            reject(new Error("Invalid preset!"));
         }
+
+        if (kvazaarOptions.container != "none" && kvazaarOptions.container != "mp4" &&
+            kvazaarOptions.container != "mkv") {
+            reject(new Error("Invalid container!"));
+        }
+
+        kvazaarOptions.preset = PRESETS[kvazaarOptions.preset - 1];
 
         const ops = JSON.stringify(kvazaarOptions);
         const hash = crypto.createHash("sha256").update(ops);
