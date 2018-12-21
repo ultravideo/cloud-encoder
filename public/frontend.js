@@ -7,6 +7,7 @@ var connection = new WebSocket('ws://127.0.0.1:8083');
 var userToken = getUserToken();
 var numRequests = 0;
 var uploadFileToken = null;
+let selectedOptions = { };
 
 var r = new Resumable({
     target: '/upload',
@@ -304,6 +305,63 @@ $('#confirm-delete').on('show.bs.modal', function(e) {
 
 $('#confirm-cancel').on('show.bs.modal', function(e) {
     $(this).find('.btn-ok').attr('onclick', "sendCancelRequest('" +  $(e.relatedTarget).data('href') + "')");
+});
+
+// add clicked option to kvazaar extra options if it hasnt' been added yet
+// Use separate hashmap for storing all options to make searching faster
+$(document).on('click', '.kvzExtraOption', function(){
+
+    if (selectedOptions[$(this).val()] === undefined) {
+        var txt = $.trim($("#kvazaarExtraOptions").val());
+        $("#kvazaarExtraOptions").val(txt + " --" + $(this).val() + " ");
+
+        selectedOptions[$(this).val()] = 3;
+
+        if ($(this).hasClass("paramRequired")) {
+            $("#kvazaarExtraOptions").focus();
+        }
+    } else {
+        console.log("already has value");
+    }
+});
+
+$("#kvazaarExtraOptions").focusout(function() {
+    // extrat parameter names from textarea and remove -- from parameter name
+    let values = this.value.split(" ").filter(x => x.startsWith("--")).map(x => x.slice(2, x.length));
+    let keys   = Object.keys(selectedOptions);
+
+    // number of parameters didn't change, check if user "changed" some parameter
+    if (values.length === keys.length) {
+        values = values.sort();
+        keys   = keys.sort();
+
+        for (let i = 0; i < keys.length; ++i) {
+            if (values[i] !== keys[i]) {
+                delete selectedOptions[keys[i]];
+                selectedOptions[values[i]] = 1;
+            }
+        }
+    }
+    // user deleted manually some parameters, find and remove them from selectedOptions
+    // to make buttons work correctly
+    else if (values.length < keys.length) {
+        let set = new Set(values);
+        let deletedKeys = keys.filter(x => !set.has(x));
+
+        deletedKeys.forEach((key) => {
+            delete selectedOptions[key];
+        });
+    }
+    // user added manually some parameters, find and add them to selectedOptions
+    // to make buttons work correctly
+    else {
+        let set = new Set(keys)
+        let addedKeys = values.filter(x => !set.has(x));
+
+        addedKeys.forEach((key) => {
+            selectedOptions[key] = 1;
+        });
+    }
 });
 
 $('#submitButton').click(function(){

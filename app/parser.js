@@ -141,7 +141,7 @@ module.exports = {
                 // then values that don't take any parameters
                 "aud":               { ignored: false, expected_value: [ true, false ] },
                 "cpuid":             { ignored: false, expected_value: [ true, false ] },
-                "pnrs":              { ignored: false, expected_value: [ true, false ] },
+                "psnr":              { ignored: false, expected_value: [ true, false ] },
                 "info":              { ignored: false, expected_value: [ true, false ] },
                 "open-gop":          { ignored: false, expected_value: [ true, false ] },
                 "lossless":          { ignored: false, expected_value: [ true, false ] },
@@ -163,7 +163,7 @@ module.exports = {
                 "high-tier":         { ignored: false, expected_value: [ true ] }, // TODO DEPENDS ON --level!!! 
 
                 // and then all values that require parameters
-                "deblock":              { ignored: false, expected_value: [ true, false, /(-)?[0-6]{1}\:(-)?[0-6]{1}/ ]},
+                "deblock":              { ignored: false, expected_value: [ false, /(-)?[0-6]{1}\:(-)?[0-6]{1}/ ]},
                 "n":                    { ignored: false, expected_value: [ /[0-9]{1,}/ ] },
                 "frames":               { ignored: false, expected_value: [ /[0-9]{1,}/ ] },
                 "seek":                 { ignored: false, expected_value: [ /[0-9]{1,}/ ] },

@@ -72,7 +72,7 @@
 						<label>Good quality</label>
 					</div>
 					<div class="col col-md-8">
-						<input type="range" min="1" max="10" id="presetSlider" class="form-control"/>
+						<input type="range" value="10" min="1" max="10" id="presetSlider" class="form-control"/>
 					</div>
 					<div class="col col-md-2 mt-10">
 						<label>High speed</label>
@@ -82,11 +82,11 @@
 				<div class="form-group">
 					<label>Preset</label>
 					<select class="form-control kvz_options" id="presetDropDown" name="preset">
-						<option value="10">Ultrafast</option>
+						<option value="10" selected>Ultrafast</option>
 						<option value="9">Superfast</option>
 						<option value="8">Veryfast</option>
 						<option value="7">Faster</option>
-						<option value="6" selected>Fast</option>
+						<option value="6">Fast</option>
 						<option value="5">Medium</option>
 						<option value="4">Slow</option>
 						<option value="3">Slower</option>
@@ -124,16 +124,170 @@
 					</div><br>
 				</div>
 
-				<button id="kvazaarCmdButton" class="btn btn-primary">Add more kvazaar options</button><br>
+				<button id="kvazaarCmdButton" class="btn btn-primary">Add more Kvazaar options</button><br>
 				<div id="kvazaarExtraOptionsDiv" class="form-group"><br>
 					<a class="" target="_blank"
-					   href="https://github.com/ultravideo/kvazaar#parameters">List of Kvazaar parameters</a><br>
+					   href="https://github.com/ultravideo/kvazaar#parameters">List of Kvazaar parameters</a><br><br>
+
+					<div class="form-group">
+						<label>Input</label><br>
+						<div class="btn-group" role="group" aria-label="">
+							<button value="frames" class="btn btn-secondary kvzExtraOption paramRequired">
+								--frames &lt;integer&gt;
+							</button>
+							<button value="seek" class="btn btn-secondary kvzExtraOption paramRequired">
+								--seek &lt;integer&gt;
+							</button>
+							<button value="source-scan-type" class="btn btn-secondary kvzExtraOption paramRequired">
+								--source-scan-type &lt;string&gt;
+							</button>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label>Options</label><br>
+						<div class="btn-group" role="group" aria-label="">
+							<button value="aud" class="btn btn-secondary kvzExtraOption" title="Use access unit delimiters.">--aud</button>
+							<button value="cpuid" class="btn btn-secondary kvzExtraOption">--cpuid</button>
+							<button value="hash" class="btn btn-secondary kvzExtraOption paramRequired">
+								--hash &lt;string&gt;
+							</button>
+							<button value="psnr" class="btn btn-secondary kvzExtraOption">--psnr</button>
+							<button value="info" class="btn btn-secondary kvzExtraOption">--info</button>
+							<button value="key" class="btn btn-secondary kvzExtraOption paramRequired">
+								--key &lt;string&gt;
+							</button>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label>Video structure</label><br>
+						<div class="btn-group" role="group" aria-label="">
+							<button value="qp" class="btn btn-secondary kvzExtraOption paramRequired">
+								--qp &lt;integer&gt;
+							</button>
+							<button value="period" class="btn btn-secondary kvzExtraOption paramRequired">
+								--period &lt;integer&gt;
+							</button>
+							<button value="vps-period" class="btn btn-secondary kvzExtraOption paramRequired">
+								--vps-period &lt;integer&gt;
+							</button>
+							<button value="ref" class="btn btn-secondary kvzExtraOption paramRequired">
+								--ref &lt;integer&gt;
+							</button>
+							<button value="open-gop" class="btn btn-secondary kvzExtraOption">--open-gop</button>
+							<button value="bitrate" class="btn btn-secondary kvzExtraOption paramRequired">
+								--bitrate &lt;integer&gt;
+							</button>
+							<button value="lossless" class="btn btn-secondary kvzExtraOption">--lossless</button>
+							<button value="mv-constraint" class="btn btn-secondary kvzExtraOption paramRequired">
+								--mv-constraint &lt;string&gt;
+							</button>
+							<button value="set-qp-in-cu" class="btn btn-secondary kvzExtraOption">--set-qp-in-cu</button>
+							<button value="erp-aqp" class="btn btn-secondary kvzExtraOption">--erp-aqp</button>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label>Compression tools</label><br>
+						<div class="btn-group" role="group" aria-label="">
+							<button value="deblock" class="btn btn-secondary kvzExtraOption paramRequired">
+								--deblock &lt;beta:tc&gt;
+							</button>
+							<button value="sao" class="btn btn-secondary kvzExtraOption paramRequired">
+								--sao &lt;string&gt;
+							</button>
+							<button value="rdoq" class="btn btn-secondary kvzExtraOption">--rdoq</button>
+							<button value="rdoq-skip" class="btn btn-secondary kvzExtraOption">--rdoq-skip</button>
+							<button value="signhide" class="btn btn-secondary kvzExtraOption">--signhide</button>
+							<button value="smp" class="btn btn-secondary kvzExtraOption">--smp</button>
+							<button value="amp" class="btn btn-secondary kvzExtraOption">--amp</button>
+							<button value="rd" class="btn btn-secondary kvzExtraOption paramRequired">
+								--rd &lt;integer&gt;
+							</button>
+							<button value="mv-rdo" class="btn btn-secondary kvzExtraOption">--mv-rdo</button>
+							<button value="full-intra-search" class="btn btn-secondary kvzExtraOption">--full-intra-search</button>
+							<button value="transform-skip" class="btn btn-secondary kvzExtraOption">--transform-skip</button>
+							<button value="me" class="btn btn-secondary kvzExtraOption paramRequired">
+								--me  &lt;string&gt;
+							</button>
+							<button value="me-steps" class="btn btn-secondary kvzExtraOption paramRequired">
+								--me-step &lt;string&gt;
+							</button>
+							<button value="subme" class="btn btn-secondary kvzExtraOption paramRequired">
+								--subme &lt;integer&gt;
+							</button>
+							<button value="pu-depth-inter" class="btn btn-secondary kvzExtraOption paramRequired">
+								--pu-depth-inter &lt;int&gt;-&lt;int&gt;
+							</button>
+							<button value="pu-depth-intra" class="btn btn-secondary kvzExtraOption paramRequired">
+								--pu-depth-intra &lt;int&gt;-&lt;int&gt;
+							</button>
+							<button value="tr-depth-intra" class="btn btn-secondary kvzExtraOption paramRequired">
+								--tr-depth-intra &lt;integer&gt;
+							</button>
+							<button value="bipred" class="btn btn-secondary kvzExtraOption">--bipred</button>
+							<button value="cu-split-termination" class="btn btn-secondary kvzExtraOption paramRequired">
+								--cu-split-termination &lt;string&gt;
+							</button>
+							<button value="me-early-termination" class="btn btn-secondary kvzExtraOption paramRequired">
+								--me-early-termination &lt;string&gt;
+							</button>
+							<button value="fast-residual-cost" class="btn btn-secondary kvzExtraOption paramRequired">
+								--fast-residual-cost &lt;integer&gt;
+							</button>
+							<button value="intra-rdo-et" class="btn btn-secondary kvzExtraOption">--intra-rdo-et</button>
+							<button value="implicit-rdpcm" class="btn btn-secondary kvzExtraOption">--implicit-rdpcm</button>
+							<button value="tmvp" class="btn btn-secondary kvzExtraOption">--tmvp</button>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label>Parallel processing</label><br>
+						<div class="btn-group" role="group" aria-label="">
+							<button value="owf" class="btn btn-secondary kvzExtraOption paramRequired">
+								--owf &lt;integer&gt;
+							</button>
+							<button value="wpp" class="btn btn-secondary kvzExtraOption">--wpp</button>
+							<button value="tiles" class="btn btn-secondary kvzExtraOption paramRequired">
+								--tiles &lt;int&gt;x&lt;int&gt;
+							</button>
+							<button value="slices" class="btn btn-secondary kvzExtraOption paramRequired">
+								--slices &lt;string&gt;
+							</button>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label>Video Usability Information</label>
+						<div class="btn-group" role="group" aria-label="">
+							<button value="sar" class="btn btn-secondary kvzExtraOption paramRequired">
+								--sar &lt;width:height&gt;
+							</button>
+							<button value="overscan" class="btn btn-secondary kvzExtraOption paramRequired">
+								--overscan &lt;string&gt;
+							</button>
+							<button value="range" class="btn btn-secondary kvzExtraOption paramRequired">
+								--range &lt;string&gt;
+							</button>
+							<button value="colorprim" class="btn btn-secondary kvzExtraOption paramRequired">
+								--colorprim &lt;string&gt;
+							</button>
+							<button value="transfer" class="btn btn-secondary kvzExtraOption paramRequired">
+								--transfer &lt;string&gt;
+							</button>
+							<button value="colormatrix" class="btn btn-secondary kvzExtraOption paramRequired">
+								--colormatrix &lt;string&gt;
+							</button>
+							<button value="chromaloc" class="btn btn-secondary kvzExtraOption paramRequired">
+								--chromaloc &lt;integer&gt;
+							</button>
+						</div>
+					</div>
 					<textarea id="kvazaarExtraOptions" class="form-control"
 						placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50"></textarea>
 				</div>
-				<!-- <button id="browseButton" id="browseButton" class="btn btn-primary">Browse...</button><br> -->
 				<button id="submitButton" class="btn btn-primary" disabled>Submit</button>
-
 
 				<div class="resumable-progress">
 					<table>
