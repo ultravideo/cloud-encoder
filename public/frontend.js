@@ -131,6 +131,7 @@ function drawFileTable(file) {
         "<tr><td id='tdDownloadCount' align='left'>Downloads left: " + (2 - file.download_count) + "</td></tr>" +
         "<tr><td id='tdStatus' align='left'>Status: " + file.message + "</td></tr>";
 
+    // request done
     if (file.status === 4) {
         newHTML +=
             "<tr><td align='left'><button id='btnDownload' class='btn btn-success' " +
@@ -139,10 +140,18 @@ function drawFileTable(file) {
             "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button></td>";
     } else {
         newHTML +=
-            "<tr><td align='left'><button id='btnDownload' class='btn btn-success' disabled>Download</button>" +
-            "<button id='btnDelete'   class='btn btn-danger' " +
-            "<button class='btn btn-danger' data-toggle='modal'" + 
-            "data-href='" + file.token + "' data-target='#confirm-cancel'>Cancel</button></td>";
+            "<tr><td align='left'><button id='btnDownload' class='btn btn-success' disabled>Download</button>";
+
+        // file cancelled or request failed
+        if (file.status <= -2) {
+            newHTML +=
+                "<button class='btn btn-danger' id='btnDelete' data-toggle='modal'" + 
+                "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button></td>";
+        } else {
+            newHTML +=
+                "<button class='btn btn-danger' id='btnDelete' data-toggle='modal'" + 
+                "data-href='" + file.token + "' data-target='#confirm-cancel'>Cancel</button></td>";
+        }
     }
 
     newHTML += "</tr></table></span><br><br>";
@@ -176,11 +185,14 @@ function handleTaskUpdate(response) {
             $("#table" + response.token + " #btnDownload").prop("disabled", false);
             $("#table" + response.token + " #btnDownload").removeAttr("onclick");
             $("#table" + response.token + " #btnDownload").attr("onClick", "sendDownloadRequest('" + response.token + "');");
+        } 
 
+        // request succeeded, failed or got cancelled -> show delete button
+        if (response.status === 4 || response.status <= -2) {
             // remove Cancel button and add Delete button
             $("#table" + response.token + " #btnDelete").text("Delete");
             $("#table" + response.token + " #btnDelete").attr("data-target", "#confirm-delete");
-        } 
+        }
 
         $("#table" + response.token + " #tdStatus").html(response.message)
     }
@@ -197,7 +209,6 @@ function handleCancelResponse(response) {
 
 function handleDeleteResponse(response) {
     if (response.status === "ok") {
-        console.log("deleting table", response.token);
         decRequestCount();
         $("#table" + response.token).remove();
     } else {
