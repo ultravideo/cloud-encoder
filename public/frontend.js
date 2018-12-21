@@ -597,7 +597,7 @@ r.on('cancel', function(){
     $(".progress-cancel-link").hide();
     $("#dlDoneInfo").hide();
 
-    if (r.isUploading) {
+    if (r.isUploading()) {
         // inform server that upload has been cancelled
         connection.send(JSON.stringify({
             token: uploadFileToken,
