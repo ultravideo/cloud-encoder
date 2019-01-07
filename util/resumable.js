@@ -247,7 +247,8 @@
         dt.effectAllowed = "none";
       }
     };
-
+    var onClick_ = null;
+    var onChange_ = null;
     /**
      * processes a single upload item (file or directory)
      * @param {Object} item item to upload, may be file or directory entry
@@ -1006,13 +1007,15 @@
           input = document.createElement('input');
           input.setAttribute('type', 'file');
           input.style.display = 'none';
-          domNode.addEventListener('click', function(){
+          onClick_ = function() {
             input.style.opacity = 0;
             input.style.display='block';
             input.focus();
             input.click();
             input.style.display='none';
-          }, false);
+          };
+
+          domNode.addEventListener('click', onClick_, false);
           domNode.appendChild(input);
         }
         var maxFiles = $.getOpt('maxFiles');
@@ -1040,13 +1043,15 @@
           input.removeAttribute('accept');
         }
         // When new files are added, simply append them to the overall list
-        input.addEventListener('change', function(e){
+        onChange_ = function(e) {
           appendFilesFromFileList(e.target.files,e);
           var clearInput = $.getOpt('clearInput');
           if (clearInput) {
             e.target.value = '';
           }
-        }, false);
+        };
+
+        input.addEventListener('change', onChange_, false);
       });
     };
     $.assignDrop = function(domNodes){
@@ -1059,6 +1064,7 @@
         domNode.addEventListener('drop', onDrop, false);
       });
     };
+
     $.unAssignDrop = function(domNodes) {
       if (typeof(domNodes.length) == 'undefined') domNodes = [domNodes];
 
@@ -1069,6 +1075,18 @@
         domNode.removeEventListener('drop', onDrop);
       });
     };
+
+    $.unAssignBrowse = function(domNodes) {
+      if (typeof(domNodes.length) == 'undefined') domNodes = [domNodes];
+
+        console.log("removing event listener...");
+      $h.each(domNodes, function(domNode) {
+        domNode.removeEventListener('click', onClick_);
+        domNode.removeEventListener('change', onChange_);
+      });
+    };
+
+
     $.isUploading = function(){
       var uploading = false;
       $h.each($.files, function(file){

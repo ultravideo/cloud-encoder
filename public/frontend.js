@@ -6,6 +6,7 @@ var fileID = null;
 var connection = new WebSocket('ws://127.0.0.1:8083');
 var userToken = getUserToken();
 var numRequests = 0;
+var uploading = false;
 var uploadFileToken = null;
 let selectedOptions = { };
 
@@ -291,6 +292,22 @@ function appendToDiv(message_data) {
     $("#" + message_data.token).append(message);
 }
 
+function enableFileBrowse() {
+    $("#resumableBrowse").removeClass("resumable-browse-disabled");
+    $("#resumableBrowse").addClass("resumable-browse");
+
+    r.assignDrop($('.resumable-drop')[0]);
+    r.assignBrowse($('.resumable-browse')[0]);
+}
+
+function disableFileBrowse() {
+    r.unAssignDrop($('.resumable-drop')[0]);
+    r.unAssignBrowse($('.resumable-browse')[0]);
+
+    $("#resumableBrowse").addClass("resumable-browse-disabled");
+    $("#resumableBrowse").removeClass("resumable-browse");
+}
+
 // Resumable.js isn't supported, fall back on a different method
 if(!r.support) {
     $('.resumable-error').show();
@@ -306,7 +323,10 @@ $("#rawVideoCheck").click(function() {
 $("#kvazaarCmdButton").click(function() {
     if ($("#kvazaarExtraOptionsDiv").is(":hidden")) {
         $("#kvazaarExtraOptionsDiv").show();
-        $("<br>").insertAfter("#kvazaarExtraOptions");
+        $("#kvazaarCmdButton").text("Hide options");
+    } else {
+        $("#kvazaarCmdButton").text("Add more Kvazaar options");
+        $("#kvazaarExtraOptionsDiv").hide();
     }
 });
 
@@ -381,6 +401,20 @@ $('#submitButton').click(function(){
     }
 
     $("#submitButton").prop("disabled", false);
+    disableFileBrowse();
+
+    $(".progress-cancel-link").show();
+
+    // reset progress-container color
+    $('.progress-container').css( "background", "#9CBD94" );
+    $('.resumable-progress').show();
+    $('.resumable-list').show();
+    $("#selectedFile").hide();
+    
+    $('.resumable-progress .progress-resume-link').hide();
+    $('.resumable-progress .progress-pause-link').hide();
+    $('.resumable-file-'+ fileID +' .resumable-file-progress').html(0 + '%');
+    $('.progress-bar').css({width:0 + '%'});
 
     var other_options = {}, kvz_options = {};
     $(".kvz_options").serializeArray().map(function(x){kvz_options[x.name] = x.value;});
@@ -446,6 +480,8 @@ $("#linkUpload").click(function() {
         $(".resumable-drop").show();
     }
 
+    $("#selectedFile").html("");
+
     deActivate("About");
     deActivate("Requests");
     activateView("Upload")
@@ -503,28 +539,19 @@ r.on('fileAdded', function(file){
     // hide raw video related warnings
     $(".rawVideoWarning").hide();
 
-    // hide drag and drop
-    $(".resumable-drop").hide();
-
     // hide download info
     $("#dlDoneInfo").hide();
 
-    $(".progress-cancel-link").show();
-
-    // reset progress-container color
-    $('.progress-container').css( "background", "#9CBD94" );
-
-    $('.resumable-progress, .resumable-list').show();
-    $('.resumable-progress .progress-resume-link').hide();
-    $('.resumable-progress .progress-pause-link').hide();
-    $('.resumable-file-'+file.uniqueIdentifier+' .resumable-file-progress').html(0 + '%');
-    $('.progress-bar').css({width:0 + '%'});
-
-    // Add the file to the list
+    // Add the file to the list but don't show the list yet
     $('.resumable-list').append('<li class="resumable-file-'+file.uniqueIdentifier+'">'
         + '<span class="resumable-file-name"></span> <span class="resumable-file-progress">ready for upload</span>');
     $('.resumable-file-'+file.uniqueIdentifier+' .resumable-file-name').html(file.fileName);
+    $('.resumable-progress').hide();
+    $('.resumable-list').hide();
 
+    $("#selectedFile").html("<label>Selected file: " + file.fileName  + "</label><br>");
+    $("#selectedFile").show();
+    
     fileID = file.uniqueIdentifier;
 
     let fname = r.files[r.files.length - 1].fileName.toString();
@@ -586,6 +613,8 @@ r.on('fileSuccess', function(file,message){
 
     $(".resumable-drop").show();
     resetUploadFileInfo();
+    enableFileBrowse();
+    uploading = false;
 });
 
 r.on('fileError', function(file, message){
@@ -593,6 +622,8 @@ r.on('fileError', function(file, message){
     $('.progress-container').css( "background", "red" );
 
     resetUploadFileInfo();
+    enableFileBrowse();
+    uploading = false;
 });
 
 r.on('fileProgress', function(file){
@@ -608,7 +639,7 @@ r.on('cancel', function(){
     $(".progress-cancel-link").hide();
     $("#dlDoneInfo").hide();
 
-    if (r.isUploading()) {
+    if (uploading) {
         // inform server that upload has been cancelled
         connection.send(JSON.stringify({
             token: uploadFileToken,
@@ -619,12 +650,16 @@ r.on('cancel', function(){
         resetUploadFileInfo();
         resetUploadFileInfo();
     }
+
+    uploading = false;
+    enableFileBrowse();
 });
 
 r.on('uploadStart', function(){
     $('.resumable-progress .progress-resume-link').hide();
     $('.resumable-progress .progress-pause-link').show();
     $('.resumable-progress .progress-cancel-link').show();
+    uploading = true;
 });
 
 
@@ -671,10 +706,12 @@ connection.onmessage = function(message) {
                 $(".resumable-list").html("<br><br><br>File already in the server, request has been added to work queue");
                 $("#dlDoneInfo").show();
                 $(".resumable-drop").show();
+                enableFileBrowse();
             } else {
                 resetResumable();
                 $(".resumable-list").html("<br><br><br>You have already made this request, check \"My requests\" tab");
                 $(".resumable-drop").show();
+                enableFileBrowse();
             }
         } else if (message_data.reply == "cancel") {
             r.cancel();
