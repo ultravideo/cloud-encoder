@@ -19,8 +19,9 @@ let queue = kue.createQueue({
 });
 
 const workerStatus = Object.freeze({
-    "CANCELLED": -3,
-    "FAILURE": -2,
+    "CANCELLED": -4,
+    "FAILURE": -3,
+    "PREPROCESSING": -2,
     "UPLOADING": -1,
     "WAITING": 0,
     "DECODING" : 1,

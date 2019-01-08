@@ -338,13 +338,14 @@ function handleTaskRequest(client, message) {
             ]).then((values) => {
                 let msg = "Done";
                 switch (taskRow.status) {
-                    case -3:  msg = "Request cancelled"; break;
-                    case -2:  msg = "Request failed!";   break;
-                    case -1:  msg = "Uploading file";    break;
-                    case  0:  msg = "Queued";            break;
-                    case  1:  msg = "Decoding";          break;
-                    case  2:  msg = "Encoding";          break;
-                    case  3:  msg = "Post-processing";   break;
+                    case -4:  msg = "Request cancelled";  break;
+                    case -3:  msg = "Request failed!";    break;
+                    case -2:  msg = "Preprocessing file"; break;
+                    case -1:  msg = "Uploading file";     break;
+                    case  0:  msg = "Queued";             break;
+                    case  1:  msg = "Decoding";           break;
+                    case  2:  msg = "Encoding";           break;
+                    case  3:  msg = "Post-processing";    break;
                 }
 
                 const kvazaarOps = {

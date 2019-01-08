@@ -149,6 +149,42 @@ function checkFileValidity(identifier, chunkFile) {
     });
 }
 
+// update every task in database having file_id identifier and
+// inform user about the change in status (-1 -> -2)
+function updateFileStatusToPreprocessing(identifier) {
+    return new Promise((resolve, reject) => {
+        db.getTasks("file_id", identifier).then((rows) => {
+            for (let i = 0; i < rows.length; ++i) {
+                db.updateTask(rows[i].taskID, { status: -2 }).then(() => {
+                    console.log("sending message", rows[i].owner_id);
+
+                    if (i + 1 == rows.length) {
+                        resolve();
+                    }
+
+                    nrp.emit('message', {
+                        user: rows[i].owner_id,
+                        file_id: rows[i].file_id,
+                        token: rows[i].token,
+                        type: "action",
+                        reply: "taskUpdate",
+                        status: -2,
+                        message: "Preprocessing file"
+                    });
+
+                    i++;
+                })
+                .catch(function(err) {
+                    reject(err);
+                });
+            }
+        })
+        .catch(function(err) {
+            reject(err);
+        });
+    });
+}
+
 // concatenate chunks, 
 function processUploadedFile(req, identifier, original_filename) {
     return new Promise((resolve, reject) => {
@@ -165,7 +201,7 @@ function processUploadedFile(req, identifier, original_filename) {
                     return;
                 }
                 tasks.forEach(function(task) {
-                    if (task.status === -1) {
+                    if (task.status === -2) {
                         db.updateTask(task.taskID, { status: 0 }).then(() => {
                             let job = queue.create('process_file', {
                                 task_token: task.token
@@ -224,8 +260,12 @@ app.post('/upload', function(req, res) {
 
                 // input file was smaller than one chunk (1MB), it must be processes 
                 // explicitly here
-                processUploadedFile(req, identifier, original_filename).then(() => {
-                    console.log("file ready");
+                //
+                // first update the status from upload to preprocessing so that
+                // connection can be closed without wreacking havoc with other requests
+                // db.updateTasks(identifier, { status: -3  }).then(() => {
+                updateFileStatusToPreprocessing(identifier).then(() => {
+                    return processUploadedFile(req, identifier, original_filename);
                 })
                 .catch(function(err) {
                     sendMessage(req.query.token, identifier, "status", null, err.toString());
@@ -241,13 +281,13 @@ app.post('/upload', function(req, res) {
         } else if (status === "done") {
             res.send(status);
 
-            processUploadedFile(req, identifier, original_filename).then(() => {
-                console.log("file ready!");
-            })
-            .catch(function(err) {
-                sendMessage(req.query.token, identifier, "status", null, err.toString());
-                console.log(err);
-            });
+                updateFileStatusToPreprocessing(identifier).then(() => {
+                    return processUploadedFile(req, identifier, original_filename);
+                })
+                .catch(function(err) {
+                    sendMessage(req.query.token, identifier, "status", null, err.toString());
+                    console.log(err);
+                });
         } else {
             res.send(status);
         }

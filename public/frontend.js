@@ -144,7 +144,7 @@ function drawFileTable(file) {
             "<tr><td align='left'><button id='btnDownload' class='btn btn-success' disabled>Download</button>";
 
         // file cancelled or request failed
-        if (file.status <= -2) {
+        if (file.status < -2) {
             newHTML +=
                 "<button class='btn btn-danger' id='btnDelete' data-toggle='modal'" + 
                 "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button></td>";
@@ -189,7 +189,7 @@ function handleTaskUpdate(response) {
         } 
 
         // request succeeded, failed or got cancelled -> show delete button
-        if (response.status === 4 || response.status <= -2) {
+        if (response.status === 4 || response.status < -2) {
             // remove Cancel button and add Delete button
             $("#table" + response.token + " #btnDelete").text("Delete");
             $("#table" + response.token + " #btnDelete").attr("data-target", "#confirm-delete");
@@ -735,6 +735,7 @@ connection.onmessage = function(message) {
         } else if (message_data.reply === "taskResponse") {
             handleTaskResponse(message_data);
         }  else if (message_data.reply === "taskUpdate") {
+            console.log("got message!");
             handleTaskUpdate(message_data);
         } else if (message_data.reply === "deleteResponse") {
             handleDeleteResponse(message_data);
