@@ -57,6 +57,17 @@ function getUserTokenBySocket(socket) {
     });
 }
 
+function removeChunks(file_id) {
+    fs.readdirSync("/tmp/cloud_uploads/").forEach(function(file) {
+        if (file.includes(file_id)) {
+            fs.unlink("/tmp/cloud_uploads/" + file, function(err) {
+                if (err)
+                    console.log(err);
+            });
+        }
+    });
+}
+
 socket.on('connection', function(client) {
     client.on('message', function(msg) {
         try {
@@ -116,17 +127,18 @@ socket.on('connection', function(client) {
             handleUploadRequest(client, message);
             
         }
+    });
 
-        client.on('close', function(connection) {
-            getUserTokenBySocket(connection).then((key) => {
-                console.log(key, "disconnected!");
-                delete clients.clientList[key];
-            })
-            .catch(function(err) {
-                // NOTE: client may no longer be in the array
-                // (gc may have cleaned it) so ignore error
-            });
+    client.on('close', function(connection) {
+        getUserTokenBySocket(client).then((key) => {
+            // terminate ongoing download if such exists and remove user from client array
+            terminateOngoingUpload(key);
+            delete clients.clientList[key];
         })
+        .catch(function(err) {
+            // NOTE: client may no longer be in the array
+            // (gc may have cleaned it) so ignore error
+        });
     });
 });
 
@@ -366,14 +378,10 @@ function handleUploadCancellation(client, message) {
             return;
         }
 
-        // remove all chunk files
-        fs.readdirSync("/tmp/cloud_uploads/").forEach(function(file) {
-            if (file.includes(taskRow.file_id)) {
-                fs.unlink("/tmp/cloud_uploads/" + file, function(err) {
-                    if (err) console.log(err);
-                });
-            }
-        });
+        // remove all uploaded chunk files, task and file records
+        //
+        // TODO fix user A user B file abc.mp4 problem here too
+        removeChunks(taskRow.file_id);
 
         return Promise.all([
             db.removeFile(taskRow.file_id),
@@ -544,5 +552,30 @@ function handleUploadRequest(client, message) {
             })
         );
         return;
+    });
+}
+
+function terminateOngoingUpload(key) {
+    db.getTasks("owner_id", key).then((rows) => {
+        rows.forEach(row => {
+            // file upload ongoing
+            if (row.status === -1) {
+                // file can be removed because the upload was approved
+                // (ie the server didn't have the file before upload)
+                //
+                // TODO this approach has one problem that'll be addresses in the near future
+                let promises = [
+                    db.removeTask(row.taskID),
+                    db.removeFile(row.file_id)
+                ];
+
+                Promise.all(promises).then(() => {
+                    removeChunks(row.file_id);
+                })
+                .catch(function(err) {
+                    console.log(err);
+                });
+            }
+        });
     });
 }
