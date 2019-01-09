@@ -13,6 +13,7 @@ var ffprobe = require('ffprobe');
 var ffprobeStatic = require('ffprobe-static');
 var NRP = require('node-redis-pubsub');
 const { fork, spawn } = require('child_process');
+const workerStatus = require("./constants");
 
 // worker queue
 var queue = kue.createQueue({
@@ -155,7 +156,7 @@ function updateFileStatusToPreprocessing(identifier) {
     return new Promise((resolve, reject) => {
         db.getTasks("file_id", identifier).then((rows) => {
             for (let i = 0; i < rows.length; ++i) {
-                db.updateTask(rows[i].taskID, { status: -2 }).then(() => {
+                db.updateTask(rows[i].taskID, { status: workerStatus.PREPROCESSING }).then(() => {
                     if (i + 1 == rows.length) {
                         resolve();
                     }
@@ -166,7 +167,7 @@ function updateFileStatusToPreprocessing(identifier) {
                         token: rows[i].token,
                         type: "action",
                         reply: "taskUpdate",
-                        status: -2,
+                        status: workerStatus.PREPROCESSING,
                         message: "Preprocessing file"
                     });
 
@@ -199,8 +200,8 @@ function processUploadedFile(req, identifier, original_filename) {
                     return;
                 }
                 tasks.forEach(function(task) {
-                    if (task.status === -2) {
-                        db.updateTask(task.taskID, { status: 0 }).then(() => {
+                    if (task.status === workerStatus.PREPROCESSING) {
+                        db.updateTask(task.taskID, { status: workerStatus.WAITING }).then(() => {
                             let job = queue.create('process_file', {
                                 task_token: task.token
                             }).save(function(err) {
@@ -279,13 +280,13 @@ app.post('/upload', function(req, res) {
         } else if (status === "done") {
             res.send(status);
 
-                updateFileStatusToPreprocessing(identifier).then(() => {
-                    return processUploadedFile(req, identifier, original_filename);
-                })
-                .catch(function(err) {
-                    sendMessage(req.query.token, identifier, "status", null, err.toString());
-                    console.log(err);
-                });
+            updateFileStatusToPreprocessing(identifier).then(() => {
+                return processUploadedFile(req, identifier, original_filename);
+            })
+            .catch(function(err) {
+                sendMessage(req.query.token, identifier, "status", null, err.toString());
+                console.log(err);
+            });
         } else {
             res.send(status);
         }
@@ -306,7 +307,7 @@ app.get('/download/:hash', function(req, res) {
             res.send("file does not exists!");
             res.status(404).end();
         } else {
-            if (taskInfo.status != 4) {
+            if (taskInfo.status != workerStatus.READY) {
                 res.send("file is not ready");
                 res.status(403).end();
                 res.end();

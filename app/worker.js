@@ -9,6 +9,7 @@ let process = require('process');
 var NRP = require('node-redis-pubsub');
 const { spawn } = require('child_process');
 const fsPromises = require('fs').promises;
+const workerStatus = require("./constants");
 
 let kue = require('kue');
 let queue = kue.createQueue({
@@ -16,24 +17,6 @@ let queue = kue.createQueue({
         port: 7776,
         host: "127.0.0.1"
     }
-});
-
-const workerStatus = Object.freeze({
-    "CANCELLED": -4,
-    "FAILURE": -3,
-    "PREPROCESSING": -2,
-    "UPLOADING": -1,
-    "WAITING": 0,
-    "DECODING" : 1,
-    "ENCODING" : 2,
-    "POSTPROCESSING" : 3,
-    "READY" : 4,
-});
-
-const workStatus = Object.freeze({
-    "STARTING": 1,
-    "DONE": 2,
-    "FAILED": 3,
 });
 
 var nrp = new NRP({

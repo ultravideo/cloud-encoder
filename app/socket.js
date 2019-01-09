@@ -5,6 +5,7 @@ let parser = require("./parser");
 let crypto = require('crypto');
 let kue = require('kue');
 var NRP = require('node-redis-pubsub');
+const workerStatus = require("./constants");
 
 var queue = kue.createQueue({
     redis: {
@@ -239,7 +240,7 @@ function handleDownloadRequest(client, token) {
                 status: "deleted",
             }));
         } else {
-            if (taskInfo.status != 4) {
+            if (taskInfo.status != workerStatus.READY) {
                 client.send(JSON.stringify({
                     type: "action",
                     reply: "downloadResponse",
@@ -338,14 +339,14 @@ function handleTaskRequest(client, message) {
             ]).then((values) => {
                 let msg = "Done";
                 switch (taskRow.status) {
-                    case -4:  msg = "Request cancelled";  break;
-                    case -3:  msg = "Request failed!";    break;
-                    case -2:  msg = "Preprocessing file"; break;
-                    case -1:  msg = "Uploading file";     break;
-                    case  0:  msg = "Queued";             break;
-                    case  1:  msg = "Decoding";           break;
-                    case  2:  msg = "Encoding";           break;
-                    case  3:  msg = "Post-processing";    break;
+                    case workerStatus.CANCELLED:      msg = "Request cancelled";  break;
+                    case workerStatus.FAILURE:        msg = "Request failed!";    break;
+                    case workerStatus.PREPROCESSING:  msg = "Preprocessing file"; break;
+                    case workerStatus.UPLOADING:      msg = "Uploading file";     break;
+                    case workerStatus.WAITING:        msg = "Queued";             break;
+                    case workerStatus.DECODING:       msg = "Decoding";           break;
+                    case workerStatus.ENCODING:       msg = "Encoding";           break;
+                    case workerStatus.POSTPROCESSING: msg = "Post-processing";    break;
                 }
 
                 const kvazaarOps = {
@@ -489,10 +490,10 @@ function handleUploadRequest(client, message) {
                 // inserting new data task data to db
                 //
                 // This can be checked easily because files that are not ready have their file_path set to NULL
-                let status = -1; // -1 == uploading
+                let status = workerStatus.UPLOADING;
 
                 if (data.db.file) {
-                    status = 0; // task queued
+                    status = workerStatus.WAITING;
 
                     // file_path is not null (file upload is not in progress),
                     // add task to work queue right away
@@ -571,7 +572,7 @@ function terminateOngoingUpload(key) {
     db.getTasks("owner_id", key).then((rows) => {
         rows.forEach(row => {
             // file upload ongoing
-            if (row.status === -1) {
+            if (rows.status == workerStatus.UPLOADING) {
                 // file can be removed because the upload was approved
                 // (ie the server didn't have the file before upload)
                 //
