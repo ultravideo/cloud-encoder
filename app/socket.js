@@ -238,7 +238,7 @@ function handleDownloadRequest(client, token) {
                 type: "action",
                 reply: "downloadResponse",
                 status: "deleted",
-            }));
+        }));
         } else {
             if (taskInfo.status != workerStatus.READY) {
                 client.send(JSON.stringify({
@@ -355,7 +355,7 @@ function handleTaskRequest(client, message) {
                 };
 
                 message.data.push({
-                    name: values[0].name,
+                    name: values[0] ? values[0].name : "Error",
                     uniq_id: taskRow.file_id,
                     status: taskRow.status,
                     message: msg,
@@ -373,7 +373,6 @@ function handleTaskRequest(client, message) {
 // user cancelled the file upload, remove task AND file from database
 // and remove all chunks files
 function handleUploadCancellation(client, message) {
-
     db.getTask(message.token).then((taskRow) => {
         if (!taskRow) {
             console.log(message.token, " doesn't exist!");
@@ -381,14 +380,29 @@ function handleUploadCancellation(client, message) {
         }
 
         // remove all uploaded chunk files, task and file records
-        //
-        // TODO fix user A user B file abc.mp4 problem here too
         removeChunks(taskRow.file_id);
 
-        return Promise.all([
-            db.removeFile(taskRow.file_id),
-            db.removeTask(message.token)
-        ]);
+        // update all other tasks that depend on this (cancelled) file
+        // their state is now failed and user must re-submit the request
+        let promisesToResolve = [ 
+            db.removeTask(message.token),
+            db.removeFile(taskRow.file_id)
+        ];
+
+        db.getTasks("file_id", taskRow.file_id).then((rows) => {
+            rows.forEach(function(row) {
+                if (row.token != message.token) {
+                    promisesToResolve.push(
+                        db.updateTask(row.taskID, { status: workerStatus.FAILURE })
+                    );
+                }
+            });
+        })
+        .catch(function(err) {
+            console.log(err);
+        });
+
+        return Promise.all(promisesToResolve);
     })
     .catch(function(err) {
         console.log(err);
