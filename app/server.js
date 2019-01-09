@@ -156,8 +156,6 @@ function updateFileStatusToPreprocessing(identifier) {
         db.getTasks("file_id", identifier).then((rows) => {
             for (let i = 0; i < rows.length; ++i) {
                 db.updateTask(rows[i].taskID, { status: -2 }).then(() => {
-                    console.log("sending message", rows[i].owner_id);
-
                     if (i + 1 == rows.length) {
                         resolve();
                     }

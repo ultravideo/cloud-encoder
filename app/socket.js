@@ -450,41 +450,6 @@ function handleUploadRequest(client, message) {
             let requestApproved = false;
             let message = "";
 
-            // make sure connected user hasn't already done this request
-            if (!data.db.task ||
-                data.db.task.file_id != data.options.file.uniq_id ||
-                data.db.task.ops_id  != data.options.kvazaar[0].hash)
-            {
-                requestApproved = true;
-                message =  "Upload rejected (file already on the server), " + 
-                           "file has been added to work queue. ";
-
-                promisesToResolve.push(
-                    db.insertTask({
-                        status: -1, // upload hasn't started
-                        owner_id: data.options.task.token, // saved so that worker can send messages to this user
-                        token: token, // used for the download link
-                        ops_id: data.options.kvazaar[0].hash,
-                        file_id: data.options.file.uniq_id,
-                    })
-                );
-
-                // enqueue task to kue's work queue if file is already on the server
-                if (data.db.file) {
-                    let job = queue.create('process_file', {
-                        task_token: token
-                    })
-                    .save(function(err) {
-                        if (err) {
-                            console.log("err", err);
-                        }
-                        console.log("job " + job.id + " saved to queue");
-                    });
-                }
-            } else {
-                message = "Upload rejected (file already on the server), file already in the work queue. ";
-            }
-
             // this combination of options doesn't exist in the database
             if (!data.db.kvazaar) {
                 promisesToResolve.push(
@@ -498,9 +463,6 @@ function handleUploadRequest(client, message) {
 
             // file doesn't exist in the database
             if (!data.db.file) {
-                uploadApproved = true;
-                message = "Starting file upload...\n";
-
                 promisesToResolve.push(
                     db.insertFile({
                         name: data.options.file.name,
@@ -513,6 +475,56 @@ function handleUploadRequest(client, message) {
                 );
             }
 
+            // user has already made this request
+            if (data.db.task) {
+                message = "Upload rejected (file already on the server), file already in the work queue. ";
+            } else {
+                // new (unique) request from user
+                requestApproved = true;
+                message = "Upload rejected (file already on the server), " +
+                          "file has been added to work queue. ";
+
+                // it's very rare but possible that user A is uploading file abc.mp4 and user B
+                // tries to do the same file. We must check what is status of file abc.mp4 before
+                // inserting new data task data to db
+                //
+                // This can be checked easily because files that are not ready have their file_path set to NULL
+                let status = -1; // -1 == uploading
+
+                if (data.db.file) {
+                    status = 0; // task queued
+
+                    // file_path is not null (file upload is not in progress),
+                    // add task to work queue right away
+                    if (data.db.file.file_path !== null) {
+                        let job = queue.create('process_file', {
+                            task_token: token
+                        })
+                        .save(function(err) {
+                            if (err) {
+                                console.log("err", err);
+                            }
+                            console.log("job " + job.id + " saved to queue");
+                        });
+                    }
+                } else {
+                    uploadApproved = true;
+
+                    message = "Starting file upload...\n";
+                    console.log("upload approved!");
+                }
+
+                promisesToResolve.push(
+                    db.insertTask({
+                        status: status,
+                        owner_id: data.options.task.token, // saved so that worker can send messages to this user
+                        token: token, // used for the download link
+                        ops_id: data.options.kvazaar[0].hash,
+                        file_id: data.options.file.uniq_id,
+                    })
+                );
+            }
+
             Promise.all(promisesToResolve).then(() => {
                 return {
                     approved: uploadApproved,
@@ -520,7 +532,6 @@ function handleUploadRequest(client, message) {
                 };
             })
             .then((uploadInfo) => {
-                console.log("uniq id", data.options.file.uniq_id);
                 client.send(
                     JSON.stringify({
                         type: "action",
