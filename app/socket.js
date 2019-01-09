@@ -214,7 +214,10 @@ function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
                 let sortedOps = validatedExtraOptions.sort(validatedExtraOptions);
                 sortedOps.unshift(SELECTED_PRESET);
 
-                kvazaarOptions.hash = crypto.createHash("sha256").update(sortedOps.join()).digest("hex");
+                kvazaarOptions.hash = crypto
+                                        .createHash("sha256")
+                                        .update(sortedOps.join() + kvazaarOptions.container)
+                                        .digest("hex");
 
                 resolve([kvazaarOptions, sortedOps]);
             })
@@ -222,7 +225,10 @@ function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
                 reject(err);
             });
         } else {
-            kvazaarOptions.hash = crypto.createHash("sha256").update(SELECTED_PRESET).digest("hex");
+            kvazaarOptions.hash = crypto
+                                    .createHash("sha256")
+                                    .update(SELECTED_PRESET + kvazaarOptions.container)
+                                    .digest("hex");
             resolve([kvazaarOptions, SELECTED_PRESET]);
         }
     });
