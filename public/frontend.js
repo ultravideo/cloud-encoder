@@ -395,6 +395,16 @@ $("#kvazaarExtraOptions").focusout(function() {
     }
 });
 
+// margin's of the last button has to be adjusted manually
+$("#idVideoUsability").click(function() {
+    console.log("clicked");
+    if ($("#idVideoUsability").hasClass("padded-bottom")) {
+        $("#idVideoUsability").removeClass("padded-bottom");
+    } else {
+        $("#idVideoUsability").addClass("padded-bottom");
+    }
+});
+
 $('#submitButton').click(function(){
     if (fileID === null) {
         return;

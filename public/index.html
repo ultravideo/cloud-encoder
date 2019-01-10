@@ -132,12 +132,15 @@
 				</div>
 
 				<button id="kvazaarCmdButton" class="btn btn-primary">Add more Kvazaar options</button><br>
-				<div id="kvazaarExtraOptionsDiv" class="form-group"><br>
+				<div id="kvazaarExtraOptionsDiv" class=""><br>
 					<a class="" target="_blank"
 					   href="https://github.com/ultravideo/kvazaar#parameters">Complete guide of parameters</a><br><br>
 
-					<div class="form-group">
-						<label>Input</label><br>
+					<button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseInput"
+							aria-expanded="false" aria-controls="collapseInput">
+						Input
+					</button>
+					<div class="form-group collapse" id="collapseInput">
 						<div class="btn-group" role="group" aria-label="">
 							<button value="frames" class="btn btn-secondary kvzExtraOption paramRequired">
 								--frames &lt;integer&gt;
@@ -151,8 +154,11 @@
 						</div>
 					</div>
 
-					<div class="form-group">
-						<label>Options</label><br>
+					<button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseGeneralOps"
+							aria-expanded="false" aria-controls="collapseGeneralOps">
+						General
+					</button>
+					<div class="form-group collapse" id="collapseGeneralOps">
 						<div class="btn-group" role="group" aria-label="">
 							<button value="aud" class="btn btn-secondary kvzExtraOption" title="Use access unit delimiters.">--aud</button>
 							<button value="cpuid" class="btn btn-secondary kvzExtraOption">--cpuid</button>
@@ -167,8 +173,11 @@
 						</div>
 					</div>
 
-					<div class="form-group">
-						<label>Video structure</label><br>
+					<button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseStructure"
+							aria-expanded="false" aria-controls="collapseStructure">
+						Video structure
+					</button>
+					<div class="form-group collapse" id="collapseStructure">
 						<div class="btn-group" role="group" aria-label="">
 							<button value="qp" class="btn btn-secondary kvzExtraOption paramRequired">
 								--qp &lt;integer&gt;
@@ -195,8 +204,11 @@
 						</div>
 					</div>
 
-					<div class="form-group">
-						<label>Compression tools</label><br>
+					<button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseCompression"
+							aria-expanded="false" aria-controls="collapseCompression">
+						Compression tools
+					</button>
+					<div class="form-group collapse"  id="collapseCompression">
 						<div class="btn-group" role="group" aria-label="">
 							<button value="deblock" class="btn btn-secondary kvzExtraOption paramRequired">
 								--deblock &lt;beta:tc&gt;
@@ -249,8 +261,11 @@
 						</div>
 					</div>
 
-					<div class="form-group">
-						<label>Parallel processing</label><br>
+					<button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseParallel"
+							aria-expanded="false" aria-controls="collapseParallel">
+						Parallel processing
+					</button>
+					<div class="form-group collapse" id="collapseParallel">
 						<div class="btn-group" role="group" aria-label="">
 							<button value="owf" class="btn btn-secondary kvzExtraOption paramRequired">
 								--owf &lt;integer&gt;
@@ -265,8 +280,12 @@
 						</div>
 					</div>
 
-					<div class="form-group">
-						<label>Video Usability Information</label>
+					<button class="btn btn-primary padded-top padded-bottom" type="button" data-toggle="collapse"
+							data-target="#collapseUsability" aria-expanded="false" id="idVideoUsability"
+							aria-controls="collapseUsability">
+						Video Usability Information
+					</button>
+					<div class="form-group collapse" id="collapseUsability">
 						<div class="btn-group" role="group" aria-label="">
 							<button value="sar" class="btn btn-secondary kvzExtraOption paramRequired">
 								--sar &lt;width:height&gt;
