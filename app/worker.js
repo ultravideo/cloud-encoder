@@ -92,6 +92,7 @@ function callFFMPEG(inputs, inputOptions, output, outputOptions) {
 function ffmpegContainerize(videoPath, audioPath, container) {
     return new Promise((resolve, reject) => {
         const newPath = videoPath.split('.')[0] + "." + container;
+        const tmpPath = videoPath.split('.')[0] + ".mp4";
 
         // check if audio track exists, user may have given us
         // raw video to encode and the containerize in which case
@@ -105,7 +106,13 @@ function ffmpegContainerize(videoPath, audioPath, container) {
                 outputOptions.push("-async", "1", "-c:a", "aac");
             }
 
-            callFFMPEG(inputs, [], newPath, outputOptions).then(() => {
+            callFFMPEG(inputs, [], tmpPath, outputOptions).then(() => {
+                if (container === "mkv")
+                    return callFFMPEG([tmpPath], [], newPath, []);
+                else
+                    resolve(newPath);
+            })
+            .then(() => {
                 resolve(newPath);
             })
             .catch(function(err) {
@@ -279,7 +286,7 @@ function updateWorkerStatus(taskInfo, fileId, currentJob) {
 // raw video doesn't require any preprocessing (at least for now)
 function preprocessRawVideo(path) {
     return new Promise((resolve, reject) => {
-        resolve(path);
+        resolve(["", path]);
     });
 }
 
