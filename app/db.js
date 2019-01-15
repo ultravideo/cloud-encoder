@@ -154,7 +154,7 @@ module.exports = {
 
     getTasks : function(fieldName, fieldValue) {
         return new Promise((resolve, reject) => {
-            const sql = "SELECT * FROM work_queue WHERE " + fieldName + " = $1";
+            const sql = "SELECT * FROM work_queue WHERE " + fieldName + " = $1 ORDER BY timestamp ASC";
 
             pool.query(sql, [fieldValue], (err, res) => {
                 if (err) {

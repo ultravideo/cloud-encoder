@@ -31,7 +31,8 @@ RUN apt-get update \
                                              uniq_id VARCHAR(128), raw_video INTEGER, fps INTEGER, bit_depth INTEGER)" \
     && sudo -u postgres psql -d cloud_db -c "CREATE TABLE work_queue(taskid SERIAL PRIMARY KEY, \
                                              file_id VARCHAR(128), ops_id VARCHAR(128), file_path VARCHAR(128), status INTEGER, \
-                                             download_count INTEGER, token VARCHAR(128), owner_id VARCHAR(128));"
+                                             download_count INTEGER, token VARCHAR(128), owner_id VARCHAR(128), \
+                                             timestamp BIGINT);"
 
 WORKDIR /src
 COPY package.json /src/package.json

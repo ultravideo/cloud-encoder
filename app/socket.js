@@ -42,10 +42,10 @@ nrp.on("message", function(msg) {
     }
 });
 
-// --------------- message queue stuff end --------------- 
+// --------------- message queue stuff end ---------------
 
 
-// --------------- socket stuff start --------------- 
+// --------------- socket stuff start ---------------
 
 function getUserTokenBySocket(socket) {
     return new Promise((resolve, reject) => {
@@ -126,7 +126,6 @@ socket.on('connection', function(client) {
 
         } else if (message.type === "uploadRequest") {
             handleUploadRequest(client, message);
-            
         }
     });
 
@@ -144,7 +143,7 @@ socket.on('connection', function(client) {
 });
 
 
-// --------------- socket stuff end --------------- 
+// --------------- socket stuff end ---------------
 
 // file options require validation only if the input file is raw video
 // For raw video, resolution, bit depth and fps are validated and if
@@ -184,7 +183,7 @@ function validateFileOptions(fileOptions) {
 }
 
 // Kvazaar options are validated in two phases, first validated the options
-// that have their own form items (right now container and preset) 
+// that have their own form items (right now container and preset)
 // If that validation passes, then all extra options that are given
 // using textarea are validated.
 //
@@ -284,7 +283,7 @@ function handleDownloadRequest(client, token) {
     });
 }
 
-// use both user token and task token to ensure that this user 
+// use both user token and task token to ensure that this user
 // really owns the task he/she is requesting the delete
 function handleDeleteRequest(client, token) {
     getUserTokenBySocket(client).then((key) => {
@@ -374,7 +373,7 @@ function handleTaskRequest(client, message) {
             });
         });
     });
-}   
+}
 
 // user cancelled the file upload, remove task AND file from database
 // and remove all chunks files
@@ -390,7 +389,7 @@ function handleUploadCancellation(client, message) {
 
         // update all other tasks that depend on this (cancelled) file
         // their state is now failed and user must re-submit the request
-        let promisesToResolve = [ 
+        let promisesToResolve = [
             db.removeTask(message.token),
             db.removeFile(taskRow.file_id)
         ];
@@ -461,9 +460,9 @@ function handleUploadRequest(client, message) {
             };
         })
         .then((data) => {
-            // now check what info has already been stored. Save all insert queries 
-            // to promisesToResolve array which is then executed with Promise.all. 
-            // We can execute all queries at once because the insert queries 
+            // now check what info has already been stored. Save all insert queries
+            // to promisesToResolve array which is then executed with Promise.all.
+            // We can execute all queries at once because the insert queries
             // dont depend on each other
             const token = crypto.randomBytes(64).toString('hex');
             let promisesToResolve = [ ];
@@ -516,7 +515,6 @@ function handleUploadRequest(client, message) {
                     status = workerStatus.WAITING;
 
                     // TODO move task queuing here!
-                    
                 } else {
                     uploadApproved = true;
 
@@ -531,6 +529,7 @@ function handleUploadRequest(client, message) {
                         token: token, // used for the download link
                         ops_id: data.options.kvazaar[0].hash,
                         file_id: data.options.file.uniq_id,
+                        timestamp: Date.now(),
                     })
                 );
             }

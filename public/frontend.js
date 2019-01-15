@@ -195,7 +195,7 @@ function handleTaskUpdate(response) {
             $("#table" + response.token + " #btnDelete").attr("data-target", "#confirm-delete");
         }
 
-        $("#table" + response.token + " #tdStatus").html(response.message)
+        $("#table" + response.token + " #tdStatus").html("Status: " + response.message)
     }
 }
 
