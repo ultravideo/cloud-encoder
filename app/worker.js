@@ -1,4 +1,4 @@
-let db = require('./db');
+let db = require("./db");
 let parser = require("./parser");
 var exec = require('child_process').exec;
 var ffmpeg = require('fluent-ffmpeg');
@@ -170,7 +170,7 @@ function validateVideoOptions(video_info) {
     ]);
 }
 
-function decodeVideo(fileOptions, kvazaarOptions) {
+function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
     let promise = new Promise((resolve, reject) => {
         ffprobe(fileOptions.file_path, { path: ffprobeStatic.path })
         .then((info) => {
@@ -207,7 +207,7 @@ function decodeVideo(fileOptions, kvazaarOptions) {
 
 // encode video using kvazaar with given options
 // when the encoding is done update the work_queue status to "encoding done"
-function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
+function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions, taskInfo) {
     return new Promise((resolve, reject) => {
         console.log("starting kvazaar!");
 
@@ -247,38 +247,49 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions) {
 }
 
 function updateWorkerStatus(taskInfo, fileId, currentJob) {
-    let message = "";
+    return new Promise((resolve, reject) => {
+        let message = "";
 
-    switch (currentJob) {
-        case workerStatus.READY:          message = "Done!";             break;
-        case workerStatus.FAILURE:        message = "Request failed!";   break;
-        case workerStatus.WAITING:        message = "Queued";            break;
-        case workerStatus.DECODING:       message = "Decoding";          break;
-        case workerStatus.ENCODING:       message = "Encoding";          break;
-        case workerStatus.CANCELLED:      message = "Request cancelled"; break;
-        case workerStatus.UPLOADING:      message = "Uploading file";    break;
-        case workerStatus.POSTPROCESSING: message = "Post-processing";   break;
-    }
+        switch (currentJob) {
+            case workerStatus.READY:          message = "Done!";             break;
+            case workerStatus.FAILURE:        message = "Request failed!";   break;
+            case workerStatus.WAITING:        message = "Queued";            break;
+            case workerStatus.DECODING:       message = "Decoding";          break;
+            case workerStatus.ENCODING:       message = "Encoding";          break;
+            case workerStatus.CANCELLED:      message = "Request cancelled"; break;
+            case workerStatus.UPLOADING:      message = "Uploading file";    break;
+            case workerStatus.POSTPROCESSING: message = "Post-processing";   break;
+        }
 
-    db.updateTask(taskInfo.taskID, { status: currentJob }).then(() => {
-        nrp.emit('message', {
-            user: taskInfo.owner_id,
-            file_id: fileId,
-            token: taskInfo.token,
-            type: "action",
-            reply: "taskUpdate",
-            status: currentJob,
-            message: message
+        db.updateTask(taskInfo.taskid, { status : currentJob }).then(() => {
+            nrp.emit('message', {
+                user: taskInfo.owner_id,
+                file_id: fileId,
+                token: taskInfo.token,
+                type: "action",
+                reply: "taskUpdate",
+                status: currentJob,
+                message: message,
+            });
+            resolve();
         });
     });
 }
 
 // raw video doesn't require any preprocessing (at least for now)
 function preprocessRawVideo(path) {
-    let promise = new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
         resolve(path);
     });
-    return promise;
+}
+
+function postProcessVideo(encodedVideoName, fileOptions) {
+    return new Promise((resolve, reject) => {
+        if (fileOptions.container !== "none")
+            resolve(ffmpegContainerize(encodedVideoName, fileOptions.tmp_path + ".wav", fileOptions.container));
+        else
+            resolve(encodedVideoName);
+    });
 }
 
 function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
@@ -287,27 +298,31 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     if (fileOptions.raw_video === 1) {
         preprocessFile = preprocessRawVideo(fileOptions.file_path);
     } else {
-        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING);
-        preprocessFile = decodeVideo(fileOptions, kvazaarOptions);
+        preprocessFile = Promise.all([
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING),
+            decodeVideo(fileOptions, kvazaarOptions, taskInfo)
+        ]);
     }
 
     preprocessFile.then((rawVideoName) => {
-        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.ENCODING);
-        return kvazaarEncode(rawVideoName, fileOptions, kvazaarOptions);
+        return Promise.all([
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.ENCODING),
+            kvazaarEncode(rawVideoName[1], fileOptions, kvazaarOptions, taskInfo)
+        ]);
     })
     .then((encodedVideoName) => {
-        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.POSTPROCESSING);
-
-        if (fileOptions.container !== "none") {
-            return ffmpegContainerize(encodedVideoName, fileOptions.tmp_path + ".wav", fileOptions.container);
-        }
-        return encodedVideoName;
+        return Promise.all([
+            updateWorkerStatus(taskInfo, fileOptions.file_id, workerStatus.POSTPROCESSING),
+            postProcessVideo(encodedVideoName[1], fileOptions)
+        ]);
     })
     .then((path) => {
-        return moveToOutputFolder(fileOptions.name, path);
+        return moveToOutputFolder(fileOptions.name, path[1]);
     })
     .then((newPath) => {
-        db.updateTask(taskInfo.taskID, { file_path : newPath }).then(() => {
+        // update file path to database so user can download the file,
+        // remove all intermediate files and end this task
+        db.updateTask(taskInfo.taskid, { file_path : newPath }).then(() => {
             removeArtifacts(fileOptions.tmp_path, fileOptions);
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.READY);
             done();

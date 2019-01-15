@@ -1,20 +1,24 @@
-let sqlite3 = require('sqlite3').verbose();
 let htmlspecialchars = require('htmlspecialchars');
+let process = require("process");
+let pg = require("pg");
 
-let db = new sqlite3.Database('./cloud.db', (err) => {
-    if (err)
-        return console.error(err.message);
-    console.log('Connected to SQlite database.');
+const pool = new pg.Pool({
+    user: process.env.POSTGRES_USER,
+    host: "127.0.0.1",
+    database: "cloud_db",
+    password: process.env.POSTGRES_PASS,
+    port: "5432"
 });
 
 function buildInsertSQL(table_name, data, callback) {
     let sql = "INSERT INTO " + table_name + "(";
     let val = " VALUES (";
     let params = [];
+    let i = 1;
 
     for (let key in data) {
         sql += key + ", ";
-        val += "?, ";
+        val += "$" + (i++) + ", ";
         params.push(htmlspecialchars(data[key]));
     }
 
@@ -28,14 +32,15 @@ function buildInsertSQL(table_name, data, callback) {
 function buildUpdateSQL(table_name, uniq_id_name, uniq_id, data, callback) {
     let sql = "UPDATE " + table_name + " SET ";
     let params = [];
+    let i = 1;
 
     for (let key in data) {
-        sql += key + " = ?, ";
+        sql += key + " = $" + (i++) + ", ";
         params.push(htmlspecialchars(data[key]));
     }
 
     sql = sql.substring(0, sql.length - 2) + 
-          " WHERE " + uniq_id_name + " = ?";
+          " WHERE " + uniq_id_name + " = $" + i;
     params.push(uniq_id);
 
     callback(sql, params);
@@ -46,11 +51,14 @@ module.exports = {
     updateFile : function(file_id, data) {
         return new Promise((resolve, reject) => {
             buildUpdateSQL("files", "uniq_id", file_id,  data, function(sql, params) {
-                db.prepare(sql).run(params, function(err) {
-                    if (err)
+                pool.query(sql, params, (err, res) => {
+                    if (err) {
+                        console.log(sql);
+                        console.log(params);
                         reject(err);
+                    }
                     resolve();
-                }).finalize();
+                });
             });
         });
     },
@@ -58,35 +66,44 @@ module.exports = {
     updateTask : function(task_id, data) {
         return new Promise((resolve, reject) => {
             buildUpdateSQL("work_queue", "taskID", task_id,  data, function(sql, params) {
-                db.prepare(sql).run(params, function(err) {
-                    if (err)
+                pool.query(sql, params, (err, res) => {
+                    if (err) {
+                        console.log(sql);
+                        console.log(params);
                         reject(err);
+                    }
                     resolve();
-                }).finalize();
+                });
             });
         });
     },
 
     insertFile : function(data) {
         return new Promise((resolve, reject) => {
-           buildInsertSQL("files", data, function(sql , params) {
-                db.prepare(sql).run(params, function(err) {
-                    if (err)
+            buildInsertSQL("files", data, function(sql , params) {
+                pool.query(sql, params, (err, res) => {
+                    if (err) {
+                        console.log(sql);
+                        console.log(params);
                         reject(err);
+                    }
                     resolve();
-                }).finalize();
-           });
+                });
+            });
         });
     },
 
     insertTask : function(data) {
         return new Promise((resolve, reject) => {
             buildInsertSQL("work_queue", data, function(sql, params) {
-                db.prepare(sql).run(params, function(err) {
-                    if (err)
+                pool.query(sql, params, (err, res) => {
+                    if (err) {
+                        console.log(sql);
+                        console.log(params);
                         reject(err);
+                    }
                     resolve();
-                }).finalize();
+                });
             });
         });
     },
@@ -94,95 +111,99 @@ module.exports = {
     insertOptions : function(data) {
         return new Promise((resolve, reject) => {
             buildInsertSQL("kvz_options", data, function(sql, params) {
-                db.prepare(sql).run(params, function(err) {
-                    if (err)
+                pool.query(sql, params, (err, res) => {
+                    if (err) {
+                        console.log(sql);
+                        console.log(params);
                         reject(err);
+                    }
                     resolve();
-                }).finalize();
+                });
             });
         });
     },
 
     getFile : function(file_id) {
         return new Promise((resolve, reject) => {
-            const sql = "SELECT * from files WHERE uniq_id = ?";
+            const sql = "SELECT * from files WHERE uniq_id = $1";
 
-            db.get(sql, [file_id], function(err, row) {
-                if (err)
-                    reject(err)
-                resolve(row);
+            pool.query(sql, [file_id], (err, res) => {
+                if (err) {
+                    console.log(sql);
+                    reject(err);
+                }
+                resolve(res.rowCount > 0 ? res.rows[0] : null);
             });
         });
     },
 
     getOptions : function(options_id) {
         return new Promise((resolve, reject) => {
-            const sql = "SELECT * from kvz_options WHERE hash = ?";
+            const sql = "SELECT * from kvz_options WHERE hash = $1";
 
-            db.get(sql, [options_id], function(err, row) {
-                if (err)
-                    reject(err)
-                resolve(row);
-            });
-        });
-    },
-
-    getLastInsertedId : function() {
-        return new Promise((resolve, reject) => {
-            const sql = "SELECT last_insert_rowid() as id";
-
-            db.get(sql, [], function(err, row) {
-                if (err)
+            pool.query(sql, [options_id], (err, res) => {
+                if (err) {
                     reject(err);
-                resolve(row.id);
+                    console.log(sql);
+                    console.log(params);
+                }
+                resolve(res.rowCount > 0 ? res.rows[0] : null);
             });
         });
     },
 
     getTasks : function(fieldName, fieldValue) {
         return new Promise((resolve, reject) => {
-            const sql = "SELECT * FROM work_queue WHERE " + fieldName + " = ?";
+            const sql = "SELECT * FROM work_queue WHERE " + fieldName + " = $1";
 
-            db.all(sql, [fieldValue], function(err, rows) {
-                if (err)
+            pool.query(sql, [fieldValue], (err, res) => {
+                if (err) {
+                    console.log(sql);
                     reject(err);
-                resolve(rows);
+                }
+                resolve(res.rowCount > 0 ? res.rows : null);
             });
         });
     },
 
     getTaskUsingTaskID : function(taskID) {
         return new Promise((resolve, reject) => {
-            const sql = "SELECT * from work_queue WHERE taskID = ?";
+            const sql = "SELECT * from work_queue WHERE taskID = $1";
 
-            db.get(sql, [taskID], function(err, row) {
-                if (err)
+            pool.query(sql, [taskID], (err, res) => {
+                if (err) {
+                    console.log(sql);
                     reject(err);
-                resolve(row);
+                }
+                resolve(res.rowCount > 0 ? res.rows[0] : null);
             });
         });
     },
 
     getTaskUsingToken : function(token) {
         return new Promise((resolve, reject) => {
-            const sql = "SELECT * from work_queue WHERE token = ?";
+            const sql = "SELECT * from work_queue WHERE token = $1";
 
-            db.get(sql, [token], function(err, row) {
-                if (err)
+            pool.query(sql, [token], (err, res) => {
+                if (err) {
+                    console.log(sql);
                     reject(err);
-                resolve(row);
+                }
+                resolve(res.rowCount > 0 ? res.rows[0] : null);
             });
         });
     },
 
     getTaskUsingOwnerFileOptions : function(owner, file_id, options_id) {
         return new Promise((resolve, reject) => {
-            const sql = "SELECT * from work_queue WHERE file_id = ? AND ops_id = ? AND owner_id = ?";
+            const sql = "SELECT * from work_queue WHERE file_id = $1 AND ops_id = $2 AND owner_id = $3";
 
-            db.get(sql, [file_id, options_id, owner], function(err, row) {
-                if (err)
+            pool.query(sql, [file_id, options_id, owner], (err, res) => {
+                if (err) {
+                    console.log(sql);
                     reject(err);
-                resolve(row);
+                }
+                resolve(res.rowCount > 0 ? res.rows[0] : null);
             });
         });
     },
@@ -211,10 +232,11 @@ module.exports = {
         return new Promise((resolve, reject) => {
             const sql = "DELETE FROM work_queue WHERE taskID = ?";
 
+            throw "function not implemented!"; /*
             db.prepare(sql).run([taskID], function(err) {
                 if (err) reject(err);
                 resolve();
-            }).finalize();
+            }).finalize();*/
         });
     },
 
@@ -222,10 +244,11 @@ module.exports = {
         return new Promise((resolve, reject) => {
             const sql = "DELETE FROM work_queue WHERE token = ?";
 
+            throw "function not implemented!"; /*
             db.prepare(sql).run([token], function(err) {
                 if (err) reject(err);
                 resolve();
-            }).finalize();
+            }).finalize();*/
         });
     },
 
@@ -244,12 +267,13 @@ module.exports = {
 
     removeFile : function(fileID) {
         return new Promise((resolve, reject) => {
-            const sql = "DELETE FROM files WHERE uniq_id = ?";
+            const sql = "DELETE FROM files WHERE uniq_id = $1";
 
+            throw "function not implemented!"; /*
             db.prepare(sql).run([fileID], function(err) {
                 if (err) reject(err);
                 resolve();
-            }).finalize();
+            }).finalize();*/
         });
     }
 };

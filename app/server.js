@@ -6,7 +6,6 @@ var crypto = require('crypto');
 var WebSocketServer = require('websocket').server;
 var http = require('http');
 var fs = require('fs');
-var sqlite3 = require('sqlite3').verbose();
 var kue = require('kue');
 var db = require('./db');
 var ffprobe = require('ffprobe');
@@ -137,7 +136,7 @@ function checkFileValidity(identifier, chunkFile) {
                     .catch(function(err) {
                         db.getTasks("file_id", identifier).then((tasks) => {
                             reject(err);
-                            return Promise.all([ db.removeTask(tasks[0].taskID), db.removeFile(identifier) ]);
+                            return Promise.all([ db.removeTask(tasks[0].taskid), db.removeFile(identifier) ]);
                         })
                         .catch(function(err) {
                             reject(err);
@@ -156,7 +155,7 @@ function updateFileStatusToPreprocessing(identifier) {
     return new Promise((resolve, reject) => {
         db.getTasks("file_id", identifier).then((rows) => {
             for (let i = 0; i < rows.length; ++i) {
-                db.updateTask(rows[i].taskID, { status: workerStatus.PREPROCESSING }).then(() => {
+                db.updateTask(rows[i].taskid, { status: workerStatus.PREPROCESSING }).then(() => {
                     if (i + 1 == rows.length) {
                         resolve();
                     }
@@ -201,7 +200,7 @@ function processUploadedFile(req, identifier, original_filename) {
                 }
                 tasks.forEach(function(task) {
                     if (task.status === workerStatus.PREPROCESSING) {
-                        db.updateTask(task.taskID, { status: workerStatus.WAITING }).then(() => {
+                        db.updateTask(task.taskid, { status: workerStatus.WAITING }).then(() => {
                             let job = queue.create('process_file', {
                                 task_token: task.token
                             }).save(function(err) {
@@ -237,7 +236,7 @@ app.post('/upload', function(req, res) {
             sendMessage(req.query.token, identifier, "action", "cancel", "File is too large");
             db.getTasks("file_id", identifier)
             .then((tasks) => {
-                return Promise.all([ db.removeTask(tasks[0].taskID), db.removeFile(identifier) ]);
+                return Promise.all([ db.removeTask(tasks[0].taskid), db.removeFile(identifier) ]);
             })
             .catch(function(err) {
                 console.log(err);
@@ -312,11 +311,11 @@ app.get('/download/:hash', function(req, res) {
                 res.status(403).end();
                 res.end();
             }  else if (taskInfo.download_count >= 2) {
-                db.removeTask(taskInfo.taskID).then(() => {
+                db.removeTask(taskInfo.taskid).then(() => {
                     fs.unlink(taskInfo.file_path, function(err) {
                         if (err)
                             console.log(err);
-                        console.log(taskInfo.taskID, " has been removed from the database");
+                        console.log(taskInfo.taskid, " has been removed from the database");
                     });
 
                     res.send("download limit for this file has been exceeded");
@@ -329,7 +328,7 @@ app.get('/download/:hash', function(req, res) {
                     if (err) {
                         console.log(err);
                     }
-                    db.updateTask(taskInfo.taskID, { download_count: taskInfo.download_count + 1 });
+                    db.updateTask(taskInfo.taskid, { download_count: taskInfo.download_count + 1 });
                 });
             }
         }

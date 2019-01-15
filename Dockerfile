@@ -1,8 +1,10 @@
 FROM ubuntu:18.04
 FROM node:8
 
-ENV CLOUD_UTILS ffmpeg redis-server sqlite3 psmisc
+ENV CLOUD_UTILS ffmpeg redis-server postgresql psmisc sudo
 ENV CLOUD_HOST "10.21.25.26"
+ENV POSTGRES_USER "postgres"
+ENV POSTGRES_PASS "postgres"
 ENV REQUIRED_PACKAGES automake autoconf libtool m4 build-essential git yasm pkgconf
 
 RUN apt-get update \
@@ -18,19 +20,24 @@ RUN apt-get update \
     && mkdir src src/public src/util src/app \
     && mkdir -p /tmp /tmp/cloud_uploads /tmp/cloud_uploads/misc /tmp/cloud_uploads/output \
     && export CLOUD_HOST=$CLOUD_HOST \
-    && touch src/cloud.db \
-    && sqlite3 src/cloud.db "CREATE TABLE 'kvz_options' (container TEXT, hash TEXT, extra TEXT)" \
-    && sqlite3 src/cloud.db "CREATE TABLE 'files' (name TEXT, hash TEXT, file_path TEXT, resolution TEXT, \
-                             uniq_id TEXT, raw_video INTEGER, fps INTEGER, bit_depth INTEGER)" \
-    && sqlite3 src/cloud.db "CREATE TABLE 'work_queue' (taskID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, file_id TEXT, \
-                             ops_id TEXT, file_path TEXT, status INTEGER DEFAULT 0, download_count INTEGER DEFAULT 0, token TEXT, \
-                             owner_id TEXT )"
+    && sudo service postgresql start \
+    && sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';" \
+    && sudo -u postgres psql -c "CREATE DATABASE cloud_db;" \
+    && sudo -u postgres psql -c "ALTER DATABASE cloud_db SET TIMEZONE TO 'UTC';" \
+    && sudo -u postgres psql -d cloud_db -c "CREATE TABLE kvz_options(container VARCHAR(16), \
+                                            hash VARCHAR(128), extra VARCHAR(1024));" \
+    && sudo -u postgres psql -d cloud_db -c "CREATE TABLE files(name VARCHAR(128), hash VARCHAR(128), \
+                                             file_path VARCHAR(512), resolution VARCHAR(16), \
+                                             uniq_id VARCHAR(128), raw_video INTEGER, fps INTEGER, bit_depth INTEGER)" \
+    && sudo -u postgres psql -d cloud_db -c "CREATE TABLE work_queue(taskid SERIAL PRIMARY KEY, \
+                                             file_id VARCHAR(128), ops_id VARCHAR(128), file_path VARCHAR(128), status INTEGER, \
+                                             download_count INTEGER, token VARCHAR(128), owner_id VARCHAR(128));"
 
 WORKDIR /src
 COPY package.json /src/package.json
 RUN npm install --silent
 
-COPY app/server.js app/worker.js app/parser.js app/socket.js app/db.js /src/app/
+COPY app/server.js app/worker.js app/parser.js app/socket.js app/db.js app/constants.js /src/app/
 COPY util/resumable.js public/frontend.js util/resumable-node.js /src/util/
 COPY util/logo.png /tmp/cloud_uploads/misc/
 COPY public/ /src/public/
@@ -38,4 +45,6 @@ COPY public/ /src/public/
 EXPOSE 8080
 EXPOSE 8083
 
-CMD redis-server --port 7776 --daemonize yes && node app/server.js
+CMD sudo service postgresql start \
+    && redis-server --port 7776 --daemonize yes \
+    && node app/server.js

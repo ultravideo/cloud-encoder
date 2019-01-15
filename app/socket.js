@@ -515,19 +515,8 @@ function handleUploadRequest(client, message) {
                 if (data.db.file) {
                     status = workerStatus.WAITING;
 
-                    // file_path is not null (file upload is not in progress),
-                    // add task to work queue right away
-                    if (data.db.file.file_path !== null) {
-                        let job = queue.create('process_file', {
-                            task_token: token
-                        })
-                        .save(function(err) {
-                            if (err) {
-                                console.log("err", err);
-                            }
-                            console.log("job " + job.id + " saved to queue");
-                        });
-                    }
+                    // TODO move task queuing here!
+                    
                 } else {
                     uploadApproved = true;
 
@@ -553,6 +542,22 @@ function handleUploadRequest(client, message) {
                 };
             })
             .then((uploadInfo) => {
+                if (!uploadApproved && requestApproved) {
+                    // file_path is not null (file upload is not in progress),
+                    // add task to work queue right away
+                    if (data.db.file.file_path !== null) {
+                        let job = queue.create('process_file', {
+                            task_token: token
+                        })
+                        .save(function(err) {
+                            if (err) {
+                                console.log("err", err);
+                            }
+                            console.log("job " + job.id + " saved to queue");
+                        });
+                    }
+                }
+
                 client.send(
                     JSON.stringify({
                         type: "action",
