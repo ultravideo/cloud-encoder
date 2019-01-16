@@ -532,12 +532,14 @@ $("#bitDepthValue").focusout(function() {
     validateBithDepth($("#bitDepthValue").val());
 });
 
-$("#presetDropDown").change(function() {
-    $("#presetSlider").val($("#presetDropDown").val());
-});
-
 $("#presetSlider").change(function() {
-    $("#presetDropDown").val($("#presetSlider").val());
+    const presets = [
+        "Placebo", "Veryslow (slowest, highest quality)",
+        "Slower", "Slow", "Medium", "Fast", "Faster",
+        "Veryfast", "Superfast", "Ultrafast (fastest, lowest quality)"
+    ];
+
+    $("#idSelectedPreset").text("Selected preset: " + presets[$("#presetSlider").val() - 1]);
 });
 
 // ------------------------------- Resumablejs stuff ------------------------------- 
