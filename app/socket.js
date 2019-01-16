@@ -284,7 +284,7 @@ function handleDownloadRequest(client, token) {
 }
 
 // use both user token and task token to ensure that this user
-// really owns the task he/she is requesting the delete
+// really owns the task he/she is requesting to delete
 function handleDeleteRequest(client, token) {
     getUserTokenBySocket(client).then((key) => {
         db.getTask(token).then((row) => {

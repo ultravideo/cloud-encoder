@@ -230,25 +230,29 @@ module.exports = {
 
     removeTaskUsingID : function(taskID) {
         return new Promise((resolve, reject) => {
-            const sql = "DELETE FROM work_queue WHERE taskID = ?";
+            const sql = "DELETE FROM work_queue WHERE taskID = $1";
 
-            throw "function not implemented!"; /*
-            db.prepare(sql).run([taskID], function(err) {
-                if (err) reject(err);
+            pool.query(sql, [taskID], (err, res) => {
+                if (err) {
+                    console.log(sql);
+                    reject(err);
+                }
                 resolve();
-            }).finalize();*/
+            });
         });
     },
 
     removeTaskUsingToken : function(token) {
         return new Promise((resolve, reject) => {
-            const sql = "DELETE FROM work_queue WHERE token = ?";
+            const sql = "DELETE FROM work_queue WHERE token = $1";
 
-            throw "function not implemented!"; /*
-            db.prepare(sql).run([token], function(err) {
-                if (err) reject(err);
+            pool.query(sql, [token], (err, res) => {
+                if (err) {
+                    console.log(sql);
+                    reject(err);
+                }
                 resolve();
-            }).finalize();*/
+            });
         });
     },
 
@@ -269,11 +273,13 @@ module.exports = {
         return new Promise((resolve, reject) => {
             const sql = "DELETE FROM files WHERE uniq_id = $1";
 
-            throw "function not implemented!"; /*
-            db.prepare(sql).run([fileID], function(err) {
-                if (err) reject(err);
+            pool.query(sql, [fileID], (err, res) => {
+                if (err) {
+                    console.log(sql);
+                    reject(err);
+                }
                 resolve();
-            }).finalize();*/
+            });
         });
     }
 };
