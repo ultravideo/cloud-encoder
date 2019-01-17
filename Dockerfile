@@ -16,6 +16,11 @@ RUN apt-get update \
     && make \
     && make install \
     && make clean \
+	&& sed -i "s/define KVZ_BIT_DEPTH 8/define KVZ_BIT_DEPTH 10/" src/kvazaar.h \
+	&& ./configure --disable-shared --program-suffix="_10bit" \
+    && make \
+    && make install \
+    && make clean \
     && cd .. \
     && mkdir src src/public src/util src/app \
     && mkdir -p /tmp /tmp/cloud_uploads /tmp/cloud_uploads/misc /tmp/cloud_uploads/output \

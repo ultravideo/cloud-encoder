@@ -231,7 +231,13 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions, taskInfo) {
                 options.push(kvazaarOptions[key]);
         }
 
-        const child = spawn("kvazaar", options);
+        let kvz_exec = "kvazaar";
+
+        if (kvazaarOptions["input-bitdepth"] === 10) {
+            kvz_exec = "kvazaar_10bit";
+        }
+
+        const child = spawn(kvz_exec, options);
 
         let stderr = "";
         child.stdout.on("data", function(data) { });
