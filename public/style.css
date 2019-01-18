@@ -22,8 +22,13 @@ body {text-align:left; margin:40px;}
 	font-style: italic;
 }
 
+/* #divUpload { */
+/* 	margin-top: 0px; */
+/* } */
+
 .resumable-drop {
 	padding: 15px;
+	padding-top: 25px;
 	font-size: 13px;
 	text-align: left;
 	color: #666;
