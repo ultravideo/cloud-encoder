@@ -5,7 +5,13 @@ let parser = require("./parser");
 let crypto = require('crypto');
 let kue = require('kue');
 var NRP = require('node-redis-pubsub');
+var redis_client = require('redis').createClient();
 const workerStatus = require("./constants");
+
+// store kue's job id to redis so we can cancel tasks in constant time
+redis_client.on('connect', function() {
+    console.log('connected');
+});
 
 var queue = kue.createQueue({
     redis: {
@@ -89,11 +95,6 @@ socket.on('connection', function(client) {
                     }
 
                     console.log(validatedToken, "connected!");
-
-                    // if (clients.clientList.hasOwnProperty(validatedToken)) {
-                    // }
-                    // clients.clientList[validatedToken] = client;
-                    // console.log("user", message.token, "has connected!");
                 })
                 .catch(function(err) {
                     console.log(err);
@@ -415,10 +416,44 @@ function handleUploadCancellation(client, message) {
 }
 
 function handleCancelRequest(client, token) {
-    // TODO check if task is still in the queue
-    // TODO if it is -> remove and update database
-    // TODO if not -> find out who is working on it
-    // TODO needs supervisor???
+
+    redis_client.get(token, function(err, reply) {
+        if (err || !reply) {
+            console.log(err);
+            return;
+        }
+
+        kue.Job.get(reply, function(err, job) {
+            // If job.started_at is undefined it means that the task is still
+            // waiting in the queue and we can just remove it, update database
+            // and send status update to client
+            //
+            // If it's NOT undefined, we must signal the worker to stop executing.
+            // The worker working on the task will update the database
+            //
+            // After the task has been stopped, remove the key-value pair from redis
+            if (job.started_at === undefined) {
+                job.remove(function() {
+                    db.updateTask(token, { status: workerStatus.CANCELLED })
+                    .then(() => {
+                        getUserTokenBySocket(client).then((userToken) => {
+                            handleTaskRequest(client, { user: userToken });
+                        });
+                    })
+                    .catch(function(err) {
+                        console.log(err);
+                    });
+                });
+            } else {
+                nrp.emit('message', {
+                    type: "cancelRequest",
+                    token: token,
+                });
+            }
+        });
+    });
+
+    redis_client.del(token);
 }
 
 // first validate file and kvazaar options. If validation is OK,
@@ -513,8 +548,6 @@ function handleUploadRequest(client, message) {
 
                 if (data.db.file) {
                     status = workerStatus.WAITING;
-
-                    // TODO move task queuing here!
                 } else {
                     uploadApproved = true;
 
@@ -549,10 +582,11 @@ function handleUploadRequest(client, message) {
                             task_token: token
                         })
                         .save(function(err) {
-                            if (err) {
+                            if (err)
                                 console.log("err", err);
-                            }
-                            console.log("job " + job.id + " saved to queue");
+
+                            redis_client.set(token, job.id);
+                            console.log("socket: job " + job.id + " saved to queue");
                         });
                     }
                 }
@@ -594,6 +628,9 @@ function handleUploadRequest(client, message) {
 
 function terminateOngoingUpload(key) {
     db.getTasks("owner_id", key).then((rows) => {
+        if (!rows)
+            return;
+
         rows.forEach(row => {
             // file upload ongoing
             if (rows.status == workerStatus.UPLOADING) {

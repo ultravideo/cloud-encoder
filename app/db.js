@@ -63,7 +63,7 @@ module.exports = {
         });
     },
 
-    updateTask : function(task_id, data) {
+    updateTaskUsingTaskId : function(task_id, data) {
         return new Promise((resolve, reject) => {
             buildUpdateSQL("work_queue", "taskID", task_id,  data, function(sql, params) {
                 pool.query(sql, params, (err, res) => {
@@ -75,6 +75,35 @@ module.exports = {
                     resolve();
                 });
             });
+        });
+    },
+
+    updateTaskUsingToken : function(token, data) {
+        return new Promise((resolve, reject) => {
+            buildUpdateSQL("work_queue", "token", token,  data, function(sql, params) {
+                pool.query(sql, params, (err, res) => {
+                    if (err) {
+                        console.log(sql);
+                        console.log(params);
+                        reject(err);
+                    }
+                    resolve();
+                });
+            });
+        });
+    },
+
+
+    updateTask : function() {
+        return new Promise((resolve, reject) => {
+            if (typeof(arguments[0]) === "number")
+            {
+                resolve(this.updateTaskUsingTaskId(arguments[0], arguments[1]));
+            } else if (typeof(arguments[0]) === "string") {
+                resolve(this.updateTaskUsingToken(arguments[0], arguments[1]));
+            } else {
+                reject(new Error("invalid parameters when calling updateTask"));
+            }
         });
     },
 

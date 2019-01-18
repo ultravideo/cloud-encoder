@@ -16,8 +16,8 @@ RUN apt-get update \
     && make \
     && make install \
     && make clean \
-	&& sed -i "s/define KVZ_BIT_DEPTH 8/define KVZ_BIT_DEPTH 10/" src/kvazaar.h \
-	&& ./configure --disable-shared --program-suffix="_10bit" \
+    && sed -i "s/define KVZ_BIT_DEPTH 8/define KVZ_BIT_DEPTH 10/" src/kvazaar.h \
+    && ./configure --disable-shared --program-suffix="_10bit" \
     && make \
     && make install \
     && make clean \

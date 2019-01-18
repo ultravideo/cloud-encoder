@@ -11,8 +11,14 @@ var db = require('./db');
 var ffprobe = require('ffprobe');
 var ffprobeStatic = require('ffprobe-static');
 var NRP = require('node-redis-pubsub');
+var redis_client = require('redis').createClient();
 const { fork, spawn } = require('child_process');
 const workerStatus = require("./constants");
+
+// store kue's job id to redis so we can cancel tasks in constant time
+redis_client.on('connect', function() {
+    console.log('connected');
+});
 
 // worker queue
 var queue = kue.createQueue({
@@ -21,6 +27,7 @@ var queue = kue.createQueue({
         host: "127.0.0.1"
     }
 });
+
 for (var i = 0; i < 5; ++i) {
     console.log("forked!");
     fork('./app/worker');
@@ -49,6 +56,18 @@ function sendMessage(user, token, type, reply, message) {
         token: token,
         type: type,
         reply: reply,
+        message: message
+    });
+}
+
+function sendStatusMessage(user, file_id, token, type, reply, status, message) {
+    nrp.emit('message', {
+        user: user,
+        file_id: file_id, 
+        token: token,
+        type: type,
+        reply: reply,
+        status: status,
         message: message
     });
 }
@@ -160,15 +179,9 @@ function updateFileStatusToPreprocessing(identifier) {
                         resolve();
                     }
 
-                    nrp.emit('message', {
-                        user: rows[i].owner_id,
-                        file_id: rows[i].file_id,
-                        token: rows[i].token,
-                        type: "action",
-                        reply: "taskUpdate",
-                        status: workerStatus.PREPROCESSING,
-                        message: "Preprocessing file"
-                    });
+                    sendStatusMessage(rows[i].owner_id, rows[i].file_id,
+                                      rows[i].token, "action", "taskUpdate",
+                                      workerStatus.PREPROCESSING, "Preprocessing file");
 
                     i++;
                 })
@@ -201,12 +214,19 @@ function processUploadedFile(req, identifier, original_filename) {
                 tasks.forEach(function(task) {
                     if (task.status === workerStatus.PREPROCESSING) {
                         db.updateTask(task.taskid, { status: workerStatus.WAITING }).then(() => {
+
+                            sendStatusMessage(task.owner_id, task.file_id, task.token, "action",
+                                              "taskUpdate", workerStatus.WAITING, "Queued");
+
                             let job = queue.create('process_file', {
                                 task_token: task.token
-                            }).save(function(err) {
+                            })
+                            .save(function(err) {
                                 if (err)
-                                    reject(err);
-                                resolve();
+                                    console.log("err", err);
+
+                                redis_client.set(task.token, job.id);
+                                console.log("server: job " + job.id + " saved to queue");
                             });
                         }, (reason) => {
                             reject(reason);

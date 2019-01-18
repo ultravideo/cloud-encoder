@@ -19,6 +19,7 @@ let queue = kue.createQueue({
     }
 });
 
+// ------------------- message queue stuff ------------------- 
 var nrp = new NRP({
     port: 7776,
     scope: "msg_queue"
@@ -34,6 +35,34 @@ function sendMessage(user, fileId, message, status, misc) {
         misc: misc,
     });
 }
+
+// this variable holds the PID of currently running external program
+// It's updaded every time task moves forward (e.g. from decoding to encoding)
+let currentJobPid = null;
+
+// This variable is checked before updating the fault state of task
+// If true, task's status is set to CANCELLED otherwise FAILURE
+let taskCancelled = false;
+
+// this variable holds the token of current task
+// It's set when processing the task is started
+let currentJobToken = null;
+
+// user pressed cancel button and socket send us cancel request
+// check if we're processing the request and if we are, kill the process
+nrp.on("message", function(msg) {
+    if (msg.type === "cancelRequest" && msg.token === currentJobToken) {
+
+        taskCancelled = true;
+
+        // currently executing process (kvazaar or ffmpeg) will catch this signal
+        // and reject the Promise. processFile shall then clean up all intermediate
+        // files and set the status of taks to CANCELLED
+        process.kill(currentJobPid);
+    }
+});
+
+// ------------------- /message queue stuff ------------------- 
 
 // remove original file, extracted audio file and
 // raw video if the videos was containerized
@@ -72,6 +101,9 @@ function callFFMPEG(inputs, inputOptions, output, outputOptions) {
         options.push(output);
 
         const child = spawn("ffmpeg", options);
+
+        // update currentJobPid so we can kill the process if user so requests
+        currentJobPid = child.pid;
 
         let stderr_out = "";
         child.stderr.on("data", function(data) { stderr_out += data.toString(); });
@@ -239,6 +271,9 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions, taskInfo) {
 
         const child = spawn(kvz_exec, options);
 
+        // update currentJobPid so we can kill the process if user so requests
+        currentJobPid = child.pid;
+
         let stderr = "";
         child.stdout.on("data", function(data) { });
         child.stderr.on("data", function(data) { stderr += data.toString(); });
@@ -340,15 +375,23 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.READY);
             done();
         }, (reason) => {
+            console.log("here");
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.FAILURE);
             removeArtifacts(fileOptions.tmp_path, fileOptions);
             console.log(reason);
+            done();
         });
     })
     .catch(function(reason) {
-        updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.FAILURE);
+        let taskStatus = workerStatus.FAILURE;
+
+        if (taskCancelled === true)
+            taskStatus = workerStatus.CANCELLED;
+
+        updateWorkerStatus(taskInfo, fileOptions.uniq_id, taskStatus);
         removeArtifacts(fileOptions.tmp_path, fileOptions);
         console.log(reason);
+        done();
     });
 }
 
@@ -388,6 +431,9 @@ queue.process("process_file", function(job, done) {
             // use generated token to handle all intermediate files (.hevc, .acc, _logo.hevc etc)
             // this way N users can create request for the same file without "corrupting" each others processes
             values[0]["tmp_path"] = "/tmp/cloud_uploads/" + taskRow.token;
+
+            // update currentJobToken so that cancel request can be processed
+            currentJobToken = job.data.task_token;
 
             processFile(values[0], values[1], taskRow, done);
         });

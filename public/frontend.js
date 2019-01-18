@@ -81,6 +81,14 @@ function sendDeleteRequest(token) {
     }));
 }
 
+function sendCancelRequest(token) {
+    console.log("sending cancel request...");
+    connection.send(JSON.stringify({
+        type: "cancelRequest",
+        token: token,
+    }));
+};
+
 // task is active -> stop all work on it,
 // remove it from work queue and from database
 function cancelTask(token) {
