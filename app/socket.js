@@ -53,6 +53,8 @@ nrp.on("message", function(msg) {
 
 // --------------- socket stuff start ---------------
 
+// try to find the user token from socket list using the socket object
+// Promise is rejected if the client can't be found
 function getUserTokenBySocket(socket) {
     return new Promise((resolve, reject) => {
         for (let key in clients.clientList) {
@@ -84,6 +86,8 @@ socket.on('connection', function(client) {
             return;
         }
 
+        // user token is sent to cloud when user's WebSocket is initialized
+        // user token persist if user has enabled cookies
         if (message.type === "init") {
             if (message.token) {
                 parser.validateUserToken(message.token).then((validatedToken) => {
@@ -236,7 +240,6 @@ function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 
 // check if the requested file is available
 // NOTE: these response messagse use incorrectly the misc field
-// TODO: create *CLEAR* spec for client<->server messages and freeze the spec
 function handleDownloadRequest(client, token) {
     db.getTask(token).then(function(taskInfo) {
         if (!taskInfo) {
@@ -415,6 +418,14 @@ function handleUploadCancellation(client, message) {
     });
 }
 
+// If job.started_at is undefined it means that the task is still
+// waiting in the queue and we can just remove it, update database
+// and send status update to client
+//
+// If it's NOT undefined, we must signal the worker to stop executing.
+// The worker working on the task will update the database
+//
+// After the task has been stopped, remove the key-value pair from redis
 function handleCancelRequest(client, token) {
 
     redis_client.get(token, function(err, reply) {
@@ -424,14 +435,6 @@ function handleCancelRequest(client, token) {
         }
 
         kue.Job.get(reply, function(err, job) {
-            // If job.started_at is undefined it means that the task is still
-            // waiting in the queue and we can just remove it, update database
-            // and send status update to client
-            //
-            // If it's NOT undefined, we must signal the worker to stop executing.
-            // The worker working on the task will update the database
-            //
-            // After the task has been stopped, remove the key-value pair from redis
             if (job.started_at === undefined) {
                 job.remove(function() {
                     db.updateTask(token, { status: workerStatus.CANCELLED })
@@ -626,6 +629,8 @@ function handleUploadRequest(client, message) {
     });
 }
 
+// If user disconnects while uploading a file,
+// we must remove all chunks files and remove the task from db
 function terminateOngoingUpload(key) {
     db.getTasks("owner_id", key).then((rows) => {
         if (!rows)
@@ -636,8 +641,6 @@ function terminateOngoingUpload(key) {
             if (rows.status == workerStatus.UPLOADING) {
                 // file can be removed because the upload was approved
                 // (ie the server didn't have the file before upload)
-                //
-                // TODO this approach has one problem that'll be addresses in the near future
                 let promises = [
                     db.removeTask(row.taskID),
                     db.removeFile(row.file_id)

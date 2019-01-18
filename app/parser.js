@@ -14,7 +14,7 @@ function getLongParameterName(name) {
 // check if validValues contain the input value and if it does,
 // return command name and its value or just the command name.
 // Substitute short command names (e.g. "-r" or "q" with full command name)
-// For example: "--no-cpuid" and "-r 3"
+// For example: "--no-cpuid" and "--ref 3"
 function matchValueWithExpected(key, inputValue, validValues) {
     return new Promise((resolve, reject) => {
         for (let i = 0; i < validValues.length; ++i) {
@@ -94,6 +94,10 @@ module.exports = {
         });
     },
 
+    // kvazaar options can be validated using 3 different ways:
+    //  - true/false values
+    //  - matching strings
+    //  - using regex
     validateKvazaarOptions : function(options) {
         return new Promise((resolve, reject) => {
             options = options.trim();

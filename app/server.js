@@ -43,12 +43,12 @@ fork("./app/socket");
 // ------------------------------ INTERNAL FUNCTIONS ------------------------------
 
 // type can be either "action" or "status"
-// "action" means that server is sending the client info regarding resumablejs 
-// upload (upload accept/rejected) and "status" means that server is sending 
+// "action" means that server is sending the client info regarding resumablejs
+// upload (upload accept/rejected) and "status" means that server is sending
 // the client status messages
 //
 // { type: "action", reply: "upload" }, { type: "action", reply: "cancel" } and
-// { type: "status", reply: null } are all valid action/reply pairs that the 
+// { type: "status", reply: null } are all valid action/reply pairs that the
 // client side code understand and knows how to act upon
 function sendMessage(user, token, type, reply, message) {
     nrp.emit('message', {
@@ -63,7 +63,7 @@ function sendMessage(user, token, type, reply, message) {
 function sendStatusMessage(user, file_id, token, type, reply, status, message) {
     nrp.emit('message', {
         user: user,
-        file_id: file_id, 
+        file_id: file_id,
         token: token,
         type: type,
         reply: reply,
@@ -138,6 +138,7 @@ function checkIsVideoFile(inputFile) {
     });
 }
 
+// make sure uploaded file is video and that it's duration is <= 30min
 function checkFileValidity(identifier, chunkFile) {
     return new Promise((resolve, reject) => {
         db.getFile(identifier).then(function(row) {
@@ -196,7 +197,8 @@ function updateFileStatusToPreprocessing(identifier) {
     });
 }
 
-// concatenate chunks, 
+// after the file upload has completed, we must concatenate the chunks, update tasks's status to WAITING
+// and inform user about this change in state.
 function processUploadedFile(req, identifier, original_filename) {
     return new Promise((resolve, reject) => {
         concatChunks(req.query.resumableChunkNumber, identifier, original_filename, function(err, hash, path) {
@@ -265,9 +267,12 @@ app.post('/upload', function(req, res) {
             res.status(400).end();
             return;
         } else if (req.query.resumableChunkNumber == 1) {
+            // we got the first chunk from user, this chunks has the video header so we can check the validity of upload
+            // pause the file upload while we're checking file validity and continue it if the file's valid
             res.send(status);
             sendMessage(req.query.token, identifier, "action", "pause", null);
 
+            // checkFileValidity rejects promise if the file is invalid
             checkFileValidity(identifier, chunkFile).then(() => {
                 sendMessage(req.query.token, identifier, "action", "continue", null);
 
@@ -276,7 +281,7 @@ app.post('/upload', function(req, res) {
                     return;
                 }
 
-                // input file was smaller than one chunk (1MB), it must be processes 
+                // input file was smaller than one chunk (1MB), it must be processes
                 // explicitly here
                 //
                 // first update the status from upload to preprocessing so that
@@ -299,6 +304,7 @@ app.post('/upload', function(req, res) {
         } else if (status === "done") {
             res.send(status);
 
+            // file upload, done, concat chunks and add the file work queue
             updateFileStatusToPreprocessing(identifier).then(() => {
                 return processUploadedFile(req, identifier, original_filename);
             })

@@ -21,6 +21,9 @@ var r = new Resumable({
     }
 });
 
+
+// user token is stored in a cookie, if the cloudUserToken is not set,
+// create user token and cookie for the user
 function getUserToken() {
     let token = Cookies.get("cloudUserToken");
 
@@ -48,6 +51,7 @@ function generate_random_string(string_length){
     return random_string
 }
 
+// helper functions for updating request count shown in navbar
 function updateRequestCount() {
     $("#linkRequests").text("My requests (" + numRequests + ")");
 }
@@ -81,6 +85,9 @@ function sendDeleteRequest(token) {
     }));
 }
 
+// cancel task. Task may be in the work queue waiting to be processed
+// in which case the task is just deleted or it may be already under work
+// which means we have to kill the process and then remove all intermediate files
 function sendCancelRequest(token) {
     console.log("sending cancel request...");
     connection.send(JSON.stringify({
@@ -113,11 +120,6 @@ function downloadFile(response) {
     } else if (response.status === "rejected") {
         alert(response.message);
     } else if (response.status === "exceeded") {
-        // TODO use bootstrap modal here
-        confirm(response.message);
-
-        console.log(response);
-
         decRequestCount();
         $("#" + response.token).remove();
         $("#table" + response.token).remove();
@@ -125,11 +127,12 @@ function downloadFile(response) {
     }
 }
 
-// TODO comment
+// My requests view consists of tables. Each request has it's own table to make the ordering easy
+// These tables are drawn every time user clicks the My requests link
 function drawFileTable(file) {
 
-    let newHTML = 
-        "<span class='border'>" + 
+    let newHTML =
+        "<span class='border'>" +
         "<table id='table" + file.token + "'><tr><td><h4>" + file.name + "</h4></td></tr>";
 
     Object.keys(file.options).forEach(function(key) {
@@ -145,7 +148,7 @@ function drawFileTable(file) {
         newHTML +=
             "<tr><td align='left'><button id='btnDownload' class='btn btn-success' " +
             "onclick=\"sendDownloadRequest('" + file.token + "')\">Download</button>" +
-            "<button class='btn btn-danger' data-toggle='modal'" + 
+            "<button class='btn btn-danger' data-toggle='modal'" +
             "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button></td>";
     } else {
         newHTML +=
@@ -154,11 +157,11 @@ function drawFileTable(file) {
         // file cancelled or request failed
         if (file.status < -2) {
             newHTML +=
-                "<button class='btn btn-danger' id='btnDelete' data-toggle='modal'" + 
+                "<button class='btn btn-danger' id='btnDelete' data-toggle='modal'" +
                 "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button></td>";
         } else {
             newHTML +=
-                "<button class='btn btn-danger' id='btnDelete' data-toggle='modal'" + 
+                "<button class='btn btn-danger' id='btnDelete' data-toggle='modal'" +
                 "data-href='" + file.token + "' data-target='#confirm-cancel'>Cancel</button></td>";
         }
     }
@@ -168,7 +171,7 @@ function drawFileTable(file) {
     return newHTML;
 }
 
-// TODO comment
+// we got a response for our task query. Draw task file tables
 function handleTaskResponse(response) {
     $("#divRequests").empty();
 
@@ -185,16 +188,18 @@ function handleTaskResponse(response) {
     }
 }
 
-// TODO comment
+// worker, socket or server sent us task update regarding one of our files
+// Update the task if My requests view is active
 function handleTaskUpdate(response) {
     if ($("#table" + response.token).length == 0) {
         // ignore update, "My requests" tab is not active
     } else {
+        // request ready
         if (response.status === 4) {
             $("#table" + response.token + " #btnDownload").prop("disabled", false);
             $("#table" + response.token + " #btnDownload").removeAttr("onclick");
             $("#table" + response.token + " #btnDownload").attr("onClick", "sendDownloadRequest('" + response.token + "');");
-        } 
+        }
 
         // request succeeded, failed or got cancelled -> show delete button
         if (response.status === 4 || response.status < -2) {
@@ -269,37 +274,7 @@ function validateBithDepth(str) {
     $("#bitDepthValue").val(bitDepthVal);
 }
 
-// append new message to request's own div
-//
-// create div if it doesn't exist
-function appendToDiv(message_data) {
-    $('#files').show();
-
-    if ($("#" + message_data.token).length == 0) {
-        $("#files").append("<br><div id='" + message_data.token + "' class='file-request'></div>");
-        $("#" + message_data.token).append("<h2>" + r.files[r.files.length - 1].fileName + "</h2>");
-        $("#" + message_data.token).show();
-    }
-
-    var message = "";
-
-    if (message_data.status === 1) {
-        message = "<div class='status-msg-starting'>" + message_data.message + "</div><br>";
-    } else if (message_data.status === 2) {
-        $("#" + message_data.token + " div:last").hide();
-        message = "<div class='status-msg-ready'>" + message_data.message + "</div><br>";
-    } else if (message_data.status === 3) {
-        message = "<div class='status-msg-error'>" + message_data.message + "</div><br>";
-    } else if (message_data.misc === undefined) {
-        message = "<div>" + message_data.message + "</div>"
-    } else {
-        message = "<div>" + "<button onclick=\"sendDownloadRequest('" + message_data.misc +
-                  "')\">Download video</button>" + "</div><br>";
-    }
-
-    $("#" + message_data.token).append(message);
-}
-
+// enable file browse again when the file upload is completed
 function enableFileBrowse() {
     $("#resumableBrowse").removeClass("resumable-browse-disabled");
     $("#resumableBrowse").addClass("resumable-browse");
@@ -308,6 +283,7 @@ function enableFileBrowse() {
     r.assignBrowse($('.resumable-browse')[0]);
 }
 
+// file browse is disabled for the duration of file upload
 function disableFileBrowse() {
     r.unAssignDrop($('.resumable-drop')[0]);
     r.unAssignBrowse($('.resumable-browse')[0]);
@@ -428,18 +404,28 @@ $('#submitButton').click(function(){
     $('.resumable-progress').show();
     $('.resumable-list').show();
     $("#selectedFile").hide();
-    
+
     $('.resumable-progress .progress-resume-link').hide();
     $('.resumable-progress .progress-pause-link').hide();
     $('.resumable-file-'+ fileID +' .resumable-file-progress').html(0 + '%');
     $('.progress-bar').css({width:0 + '%'});
 
     var other_options = {}, kvz_options = {};
+
+    // kvazaar options (preset and container)
     $(".kvz_options").serializeArray().map(function(x){kvz_options[x.name] = x.value;});
+
+    // raw video options
     $(".options").serializeArray().map(function(x){other_options[x.name] = x.value;});
 
-    var options = { 'type' : 'uploadRequest', 'token': userToken, 'kvazaar' : kvz_options,
-                    'kvazaar_extra' : $("#kvazaarExtraOptions").val(), 'other' : other_options };
+    var options = {
+        'type' : 'uploadRequest',
+        'token': userToken,
+        'kvazaar' : kvz_options,
+        'kvazaar_extra' : $("#kvazaarExtraOptions").val(),
+        'other' : other_options
+    };
+
     options['other']['file_id'] = fileID;
     options['other']['name'] = r.files[r.files.length - 1].fileName.toString();
 
@@ -550,7 +536,7 @@ $("#presetSlider").change(function() {
     $("#idSelectedPreset").text("Selected preset: " + presets[$("#presetSlider").val() - 1]);
 });
 
-// ------------------------------- Resumablejs stuff ------------------------------- 
+// ------------------------------- Resumablejs stuff -------------------------------
 r.on('fileAdded', function(file){
     // remove previously selected files
     $('.resumable-list').empty();
@@ -571,7 +557,7 @@ r.on('fileAdded', function(file){
 
     $("#selectedFile").html("<label>Selected file: " + file.fileName  + "</label><br>");
     $("#selectedFile").show();
-    
+
     fileID = file.uniqueIdentifier;
 
     let fname = r.files[r.files.length - 1].fileName.toString();
@@ -617,6 +603,7 @@ r.on('fileAdded', function(file){
     $("#submitButton").prop("disabled", false);
 });
 
+
 r.on('pause', function(){
     // Show resume, hide pause
     $('.resumable-progress .progress-resume-link').show();
@@ -659,8 +646,9 @@ r.on('cancel', function(){
     $(".progress-cancel-link").hide();
     $("#dlDoneInfo").hide();
 
+    // if the file upload has been started, we must inform the server that now it has been cancelled
+    // and we must remove all chunks files and remove the task from database
     if (uploading) {
-        // inform server that upload has been cancelled
         connection.send(JSON.stringify({
             token: uploadFileToken,
             type: "cancelInfo"
@@ -683,7 +671,7 @@ r.on('uploadStart', function(){
 });
 
 
-// ------------------------------- WebSocket stuff ------------------------------- 
+// ------------------------------- WebSocket stuff -------------------------------
 connection.onopen = function() {
     console.log("connection established");
 
@@ -714,6 +702,7 @@ connection.onmessage = function(message) {
     if (message_data.type === "action") {
         if (message_data.reply === "uploadResponse") {
             if (message_data.status === "upload") {
+                // file upload has been approved, the file doesn't exist on the server
                 $(".resumable-progress .progress-resume-link").hide();
                 $(".resumable-progress .progress-pause-link").show();
                 $("#submitButton").prop("disabled", true);
@@ -721,6 +710,7 @@ connection.onmessage = function(message) {
                 uploadFileToken = message_data.token;
                 r.upload();
             } else if (message_data.status === "request_ok") {
+                // file request was ok (unique set of options + file) but file already on the server
                 resetResumable();
                 incRequestCount();
                 $(".resumable-list").html("<br><br><br>File already in the server, request has been added to work queue");
@@ -728,12 +718,15 @@ connection.onmessage = function(message) {
                 $(".resumable-drop").show();
                 enableFileBrowse();
             } else {
+                // 
                 resetResumable();
                 $(".resumable-list").html("<br><br><br>You have already made this request, check \"My requests\" tab");
                 $(".resumable-drop").show();
                 enableFileBrowse();
             }
         } else if (message_data.reply == "cancel") {
+            // file upload was cancelled (the file may be invalid, of invalid length or something similar)
+            // inform user about this
             r.cancel();
             resetResumable();
 
@@ -744,12 +737,18 @@ connection.onmessage = function(message) {
             });
 
             $(".resumable-list").html(html);
+
         } else if (message_data.reply === "pause") {
+            // file upload is paused for the duration of file validity check
+            // (uploaded file IS video and that the duration is <30min)
             r.pause();
+
         } else if (message_data.reply === "continue") {
+            // file has approved (it was a video file of valid length), continue upload
             incRequestCount();
             $("#dlDoneInfo").show();
             r.upload();
+
         } else if (message_data.reply === "downloadResponse") {
             downloadFile(message_data);
         } else if (message_data.reply === "taskResponse") {
@@ -761,7 +760,6 @@ connection.onmessage = function(message) {
             handleDeleteResponse(message_data);
         } else if (message_data.reply === "cancelResponse") {
             handleCancelResponse(message_data);
-            
         }
     }
 };

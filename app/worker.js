@@ -19,7 +19,7 @@ let queue = kue.createQueue({
     }
 });
 
-// ------------------- message queue stuff ------------------- 
+// ------------------- message queue stuff -------------------
 var nrp = new NRP({
     port: 7776,
     scope: "msg_queue"
@@ -62,7 +62,7 @@ nrp.on("message", function(msg) {
     }
 });
 
-// ------------------- /message queue stuff ------------------- 
+// ------------------- /message queue stuff -------------------
 
 // remove original file, extracted audio file and
 // raw video if the videos was containerized
@@ -89,6 +89,11 @@ function removeArtifacts(path, fileOptions) {
     });
 }
 
+// generic ffmepg function.
+// @inputs: array of input files
+// @inputOptions: array of input options
+// @output: output file name
+// @outputOptions: array of output options
 function callFFMPEG(inputs, inputOptions, output, outputOptions) {
     return new Promise((resolve, reject) => {
         let options = inputOptions;
@@ -113,14 +118,16 @@ function callFFMPEG(inputs, inputOptions, output, outputOptions) {
             if (code === 0) {
                 resolve();
             } else {
-                reject(new Error("ffmpeg failed with error code " + code));
-                console.log(stderr_out);
                 console.log(options);
+                console.log(stderr_out);
+                reject(new Error("ffmpeg failed with error code " + code));
             }
         });
     });
 }
 
+// user requested that the output file is in container (eg. not just HEVC video)
+// add hevc video and original audio track to requested container
 function ffmpegContainerize(videoPath, audioPath, container) {
     return new Promise((resolve, reject) => {
         const newPath = videoPath.split('.')[0] + "." + container;
@@ -138,6 +145,9 @@ function ffmpegContainerize(videoPath, audioPath, container) {
                 outputOptions.push("-async", "1", "-c:a", "aac");
             }
 
+            // There's a bug somewhere in ffmpeg, cloud or kvazaar which causes
+            // mkv containers not to work (something about missing timestamps)
+            // this bug can be mitigated by first using mp4 and converting the mp4 to mkv
             callFFMPEG(inputs, [], tmpPath, outputOptions).then(() => {
                 if (container === "mkv")
                     return callFFMPEG([tmpPath], [], newPath, []);
@@ -294,6 +304,7 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions, taskInfo) {
     });
 }
 
+// subtask has been finished, update db and send status message to user
 function updateWorkerStatus(taskInfo, fileId, currentJob) {
     return new Promise((resolve, reject) => {
         let message = "";
@@ -331,6 +342,7 @@ function preprocessRawVideo(path) {
     });
 }
 
+// post-processing is needed only if user wants the output to be in container
 function postProcessVideo(encodedVideoName, fileOptions) {
     return new Promise((resolve, reject) => {
         if (fileOptions.container !== "none")
@@ -340,6 +352,8 @@ function postProcessVideo(encodedVideoName, fileOptions) {
     });
 }
 
+// the driving force of worker, all steps are sequential
+// and f.ex. video decoding must finish before we can start encoding it
 function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     let preprocessFile = null;
 
@@ -375,7 +389,6 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.READY);
             done();
         }, (reason) => {
-            console.log("here");
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.FAILURE);
             removeArtifacts(fileOptions.tmp_path, fileOptions);
             console.log(reason);
