@@ -196,12 +196,12 @@ function validateFileOptions(fileOptions) {
 function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 
     const PRESETS = [
-        "placebo", "veryslow", "slower", "slow", "medium",
+        "veryslow", "slower", "slow", "medium",
         "fast", "faster", "veryfast","superfast", "ultrafast",
     ];
 
     return new Promise((resolve, reject) => {
-        if (kvazaarOptions.preset < 1 || kvazaarOptions.preset > 10) {
+        if (kvazaarOptions.preset < 1 || kvazaarOptions.preset > 9) {
             reject(new Error("Invalid preset!"));
         }
 

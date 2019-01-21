@@ -528,9 +528,9 @@ $("#bitDepthValue").focusout(function() {
 
 $("#presetSlider").change(function() {
     const presets = [
-        "Placebo", "Veryslow (slowest, highest quality)",
-        "Slower", "Slow", "Medium", "Fast", "Faster",
-        "Veryfast", "Superfast", "Ultrafast (fastest, lowest quality)"
+        "Veryslow (slowest, highest quality)", "Slower",
+        "Slow", "Medium", "Fast", "Faster", "Veryfast",
+        "Superfast", "Ultrafast (fastest, lowest quality)"
     ];
 
     $("#idSelectedPreset").text("Selected preset: " + presets[$("#presetSlider").val() - 1]);
