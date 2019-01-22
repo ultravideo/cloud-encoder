@@ -31,11 +31,11 @@ RUN apt-get update \
     && sudo -u postgres psql -c "ALTER DATABASE cloud_db SET TIMEZONE TO 'UTC';" \
     && sudo -u postgres psql -d cloud_db -c "CREATE TABLE kvz_options(container VARCHAR(16), \
                                             hash VARCHAR(128), extra VARCHAR(1024));" \
-    && sudo -u postgres psql -d cloud_db -c "CREATE TABLE files(name VARCHAR(128), hash VARCHAR(128), \
+    && sudo -u postgres psql -d cloud_db -c "CREATE TABLE files(name VARCHAR(1024), hash VARCHAR(128), \
                                              file_path VARCHAR(512), resolution VARCHAR(16), \
                                              uniq_id VARCHAR(128), raw_video INTEGER, fps INTEGER, bit_depth INTEGER)" \
     && sudo -u postgres psql -d cloud_db -c "CREATE TABLE work_queue(taskid SERIAL PRIMARY KEY, \
-                                             file_id VARCHAR(128), ops_id VARCHAR(128), file_path VARCHAR(128), status INTEGER, \
+                                             file_id VARCHAR(1024), ops_id VARCHAR(128), file_path VARCHAR(1024), status INTEGER, \
                                              download_count INTEGER, token VARCHAR(128), owner_id VARCHAR(128), \
                                              timestamp BIGINT);"
 
