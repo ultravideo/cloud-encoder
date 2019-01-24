@@ -106,6 +106,13 @@ function cancelTask(token) {
     }));
 }
 
+function sendOptionsValidationRequest(options) {
+    connection.send(JSON.stringify({
+        type: "optionsValidationRequest",
+        options: options
+    }));
+}
+
 // server gave us response regarding file download
 // the download request may have been rejected (file doesn't exist or
 // download limit has been exceeded) in which case we remove this div
@@ -379,6 +386,8 @@ $("#kvazaarExtraOptions").focusout(function() {
             selectedOptions[key] = 1;
         });
     }
+
+    sendOptionsValidationRequest(this.value);
 });
 
 // margin's of the last button has to be adjusted manually
@@ -753,15 +762,29 @@ connection.onmessage = function(message) {
 
         } else if (message_data.reply === "downloadResponse") {
             downloadFile(message_data);
+
         } else if (message_data.reply === "taskResponse") {
             handleTaskResponse(message_data);
+
         }  else if (message_data.reply === "taskUpdate") {
             console.log("got message!");
             handleTaskUpdate(message_data);
+
         } else if (message_data.reply === "deleteResponse") {
             handleDeleteResponse(message_data);
+
         } else if (message_data.reply === "cancelResponse") {
             handleCancelResponse(message_data);
+
+        } else if (message_data.reply === "optionsValidationReply") {
+            if (message_data.valid === true) {
+                $("#invalidOptions").hide();
+            } else {
+                $("#invalidOptions").show();
+                $("#invalidOptions").html(
+                    "<font color='red'><b>" + message_data.message + "</b></font>"
+                );
+			}
         }
     }
 };

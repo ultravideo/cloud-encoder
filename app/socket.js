@@ -131,6 +131,9 @@ socket.on('connection', function(client) {
 
         } else if (message.type === "uploadRequest") {
             handleUploadRequest(client, message);
+
+        } else if (message.type === "optionsValidationRequest") {
+            handleoptionsValidationRequest(client, message.options);
         }
     });
 
@@ -239,7 +242,7 @@ function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 }
 
 // check if the requested file is available
-// NOTE: these response messagse use incorrectly the misc field
+// NOTE: these response message use incorrectly the misc field
 function handleDownloadRequest(client, token) {
     db.getTask(token).then(function(taskInfo) {
         if (!taskInfo) {
@@ -654,5 +657,24 @@ function terminateOngoingUpload(key) {
                 });
             }
         });
+    });
+}
+
+function handleoptionsValidationRequest(client, options) {
+    parser.validateKvazaarOptions(options).then((validatedExtraOptions) => {
+        client.send(JSON.stringify({
+            type: "action",
+            reply: "optionsValidationReply",
+            valid: true,
+        }));
+
+    })
+    .catch(function(err) {
+        client.send(JSON.stringify({
+            type: "action",
+            reply: "optionsValidationReply",
+            valid: false,
+            message: err
+        }));
     });
 }
