@@ -95,7 +95,7 @@
 				<hr class="separator"></hr>
 				<div class="form-group">
 					<label style="font-size: 1.25em">Output container</label>
-					<select class="form-control kvz_options" name="container">
+					<select class="form-control kvz_options" id="containerSelect" name="container">
 						<option value="none">None (HEVC video)</option>
 						<option value="mp4">mp4</option>
 						<option value="mkv">mkv</option>
@@ -477,7 +477,6 @@
 					placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50">
 				</textarea>
 				<div id="invalidOptions">
-					<font color='red'><b>Invalid options</b></font>
 				</div>
 				</div>
 				<button id="submitButton" class="btn btn-success" style="margin-top: 5px" disabled>Encode</button>

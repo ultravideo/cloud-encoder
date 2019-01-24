@@ -547,6 +547,29 @@ $("#presetSlider").change(function() {
     $("#idSelectedPreset").text("Selected encoding level: " + presets[$("#presetSlider").val() - 1]);
 });
 
+// reset all views and made changes when user presses f5
+// (this doesn't for whatevereason happen automatically)
+$(document.body).on("keydown", this, function (event) {
+
+    if (event.keyCode == 116) {
+        resetUploadFileInfo();
+        resetResumable();
+
+        if ($("#rawVideoCheck").is(":checked")) {
+            $("#rawVideoCheck").click();
+        }
+
+        $("#kvazaarExtraOptions").val("");
+        $("#inputFPSValue").val("");
+        $("#resValue").val("");
+
+        $("#presetSlider").val(9);
+        $("#containerSelect").val("none");
+
+        selectedOptions = { };
+    }
+});
+
 // ------------------------------- Resumablejs stuff -------------------------------
 r.on('fileAdded', function(file){
     // remove previously selected files
