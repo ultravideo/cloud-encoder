@@ -43,6 +43,7 @@
 	<body>
 	<div class="container">
 		<h4><img src="ultravideo-logo.png"></img></h4>
+		<h3>Kvazaar cloud encoder/transcoder</h3><br>
 		<nav class="navbar navbar-expand navbar-light bg-light">
 			<div class="collapse navbar-collapse" id="navbarNav">
 				<ul class="navbar-nav">
@@ -50,7 +51,7 @@
 						<a class="nav-link" id="linkUpload" href="#">Home</a>
 					</li>
 					<li class="nav-item">
-						<a class="nav-link" id="linkRequests" href="#">My requests (0)</a>
+						<a class="nav-link" id="linkRequests" href="#">My videos (0)</a>
 					</li>
 					<li class="nav-item">
 						<a class="nav-link" id="linkAbout" href="#">About</a>
@@ -62,6 +63,7 @@
 	<div class="jumbotron">
 		<div id="divUpload">
 			<div id="formData">
+				<p>Cloud accepts raw video in YUV420P format and is able to transcode video from H.264 to H.265</p><br>
 				<div id="selectedFile"></div>
 				<div class="form-group">
 					<div id="resumableUpload" class="resumable-drop">
@@ -72,8 +74,11 @@
 					</div>
 				</div>
 
+				<hr class="separator"></hr>
 				<div class="container">
-					<label id="idSelectedPreset">Selected preset: Ultrafast (fastest, lowest quality)</label><br>
+					<label id="idSelectedPreset" style="font-size: 1.25em">
+						Selected encoding level: Ultrafast (fastest, lowest quality)
+					</label><br>
 					<div class="form-row">
 						<div class="col-md-2">
 							<label style="margin-top:10px; padding 0px;">Good quality</label>
@@ -87,14 +92,16 @@
 							</div>
 						</div>
 					</div>
+				<hr class="separator"></hr>
 				<div class="form-group">
-					<label>Output container</label>
+					<label style="font-size: 1.25em">Output container</label>
 					<select class="form-control kvz_options" name="container">
 						<option value="none">None (HEVC video)</option>
 						<option value="mp4">mp4</option>
 						<option value="mkv">mkv</option>
 					</select>
 				</div>
+				<hr class="separator"></hr>
 				<div class="form-check">
 					<input type="checkbox" id="rawVideoCheck" name="raw_video" class="options form-check-input"/>
 					<label class="form-check-label" for="rawVideoCheck" style="margin-top: 5px">
@@ -116,16 +123,19 @@
 					</div><br>
 
 					<label>Bit depth</label>
-					<input type="text" name="bitDepth" id="bitDepthValue" class="options form-control" placeholder="8"/>
+					<select class="form-control options" name="bitDepth" id="bitDepthValue">
+						<option value="8" selected>8</option>
+						<option value="10">10</option>
+					</select>
 					<div id="bitDepthMissing" style="display:none" class="rawVideoWarning">
 						<font color='red'><b>Bit depth must be given for raw video</b></font>
 					</div>
 				</div>
 
-				<button id="kvazaarCmdButton" class="btn btn-primary">Add more Kvazaar options</button><br>
+				<button id="kvazaarCmdButton" class="btn btn-primary">Kvazaar options</button><br>
 				<div id="kvazaarExtraOptionsDiv" class=""><br>
 					<a class="" target="_blank"
-					   href="https://github.com/ultravideo/kvazaar#parameters">Complete guide of parameters</a><br><br>
+					   href="https://github.com/ultravideo/kvazaar#parameters">Description of Kvazaar input parameters</a><br><br>
 
 				   <div class="accordion" id="accordionExample">
 					<div class="card">
@@ -466,7 +476,7 @@
 				<textarea id="kvazaarExtraOptions" class="form-control" style="margin-bottom: 10px; margin-top: 5px"
 					placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50"></textarea>
 				</div>
-				<button id="submitButton" class="btn btn-primary" disabled>Submit</button>
+				<button id="submitButton" class="btn btn-success" style="margin-top: 5px" disabled>Encode</button>
 
 				<div class="resumable-progress">
 					<table>
@@ -495,20 +505,14 @@
 		</div> <!-- end of divUpload -->
 		<div id="divRequests"></div>
 		<div id="divAbout">
-			<h1>Who we are</h1>
-				<p class="lead">Ultra Video Group is a research group in the 
-				<a target="_blank" href="http://www.tut.fi/en/research/research-fields/pervasive-computing/index.htm">
-							Laboratory of Pervasive Computing
-				</a> at <a href="http://www.tut.fi" target="_blank">Tampere University of Technology</a>, Finland.
-				We have over 15-year experience in conducting pioneering research on video/image processing systems. 
-				All our research is being carried out in a tight collaboration with industry.</p>
-				<br/>
+			<h2>Kvazaar Cloud Encoder</h2>
+			<p>Maybe Jarno has something here?</p>
 
-				<h4>Disclaimer</h4>
+				<h2>Disclaimer</h2>
 
 				<p>All the information and any part thereof provided on this website are provided « AS IS » without warranty of any kind either expressed or implied including, without limitation, warranties of merchantability, fitness for a particular purpose or non infringement of intellectual property rights.
 
-				TUT makes no representations or warranties as to the accuracy or completeness of any materials and information incorporated thereto and contained on this website. TUT makes no representations or warranties that access to this website will be uninterrupted or error-free, that this website (the materials and/or any information incorporated thereto) will be secure and free of virus or other harmful components.</p>
+				Tuni makes no representations or warranties as to the accuracy or completeness of any materials and information incorporated thereto and contained on this website. Tuni makes no representations or warranties that access to this website will be uninterrupted or error-free, that this website (the materials and/or any information incorporated thereto) will be secure and free of virus or other harmful components.</p>
 		</div>
 	</div>
 

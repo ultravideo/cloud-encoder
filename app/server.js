@@ -128,7 +128,7 @@ function checkIsVideoFile(inputFile) {
             let numSeconds = parseInt(result, 10);
 
             if (isNaN(numSeconds)) {
-                reject(new Error("Failed to extract duration, file rejected"));
+                reject(new Error("Failed to extract duration, file rejected. Maybe the input file wasn't video file or you forgot to mark it was raw video (check the \"Additional specifications for raw video\" and fill needed info)"));
             } else if (numSeconds > 1800) {
                 reject(new Error("File is too big!"));
             } else {

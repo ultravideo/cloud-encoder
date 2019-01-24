@@ -53,7 +53,7 @@ function generate_random_string(string_length){
 
 // helper functions for updating request count shown in navbar
 function updateRequestCount() {
-    $("#linkRequests").text("My requests (" + numRequests + ")");
+    $("#linkRequests").text("My videos (" + numRequests + ")");
 }
 
 function incRequestCount() {
@@ -117,23 +117,19 @@ function downloadFile(response) {
         $("#table" + response.token + " #tdDownloadCount").html("Downloads left: " + (2 - response.count));
         var win = window.open("http://localhost:8080/download/" + response.token, '_blank');
         win.focus();
-    } else if (response.status === "rejected") {
-        alert(response.message);
-    } else if (response.status === "exceeded") {
-        decRequestCount();
-        $("#" + response.token).remove();
-        $("#table" + response.token).remove();
-        $(".resumable-file-" + response.token).remove();
+
+        if (response.count === 2) {
+            $("#table" + response.token + " #btnDownload").prop("disabled", true);
+        }
     }
 }
 
-// My requests view consists of tables. Each request has it's own table to make the ordering easy
-// These tables are drawn every time user clicks the My requests link
+// My videos view consists of tables. Each request has it's own table to make the ordering easy
+// These tables are drawn every time user clicks the My videos link
 function drawFileTable(file) {
 
     let newHTML =
-        "<span class='border'>" +
-        "<table id='table" + file.token + "'><tr><td><h4>" + file.name + "</h4></td></tr>";
+        "<table class='fileReqTable' id='table" + file.token + "'><tr><td><h4>" + file.name + "</h4></td></tr>";
 
     Object.keys(file.options).forEach(function(key) {
         newHTML += "<tr><td align='left'>" + key + ": " + file.options[key] + "</td></tr>";
@@ -166,7 +162,7 @@ function drawFileTable(file) {
         }
     }
 
-    newHTML += "</tr></table></span><br><br>";
+    newHTML += "</tr></table>";
 
     return newHTML;
 }
@@ -176,7 +172,7 @@ function handleTaskResponse(response) {
     $("#divRequests").empty();
 
     if (response.numTasks === 0) {
-        $("#divRequests").append("<p>You haven't made requests</p>");
+        $("#divRequests").append("<p>You haven't made requests.</p>");
     } else {
         numRequests = response.data.length;
         updateRequestCount();
@@ -189,10 +185,10 @@ function handleTaskResponse(response) {
 }
 
 // worker, socket or server sent us task update regarding one of our files
-// Update the task if My requests view is active
+// Update the task if My videos view is active
 function handleTaskUpdate(response) {
     if ($("#table" + response.token).length == 0) {
-        // ignore update, "My requests" tab is not active
+        // ignore update, "My videos" tab is not active
     } else {
         // request ready
         if (response.status === 4) {
@@ -225,6 +221,12 @@ function handleDeleteResponse(response) {
     if (response.status === "ok") {
         decRequestCount();
         $("#table" + response.token).remove();
+
+        if (numRequests === 0) {
+            console.log("erorr heree");
+            $("#divRequests").empty();
+            $("#divRequests").append("<p>You haven't made requests.</p>");
+        }
     } else {
         alert("Failed to delete request, reason: " + response.message);
     }
@@ -309,7 +311,7 @@ $("#kvazaarCmdButton").click(function() {
         $("#kvazaarExtraOptionsDiv").show();
         $("#kvazaarCmdButton").text("Hide options");
     } else {
-        $("#kvazaarCmdButton").text("Add more Kvazaar options");
+        $("#kvazaarCmdButton").text("Kvazaar options");
         $("#kvazaarExtraOptionsDiv").hide();
     }
 });
@@ -533,7 +535,7 @@ $("#presetSlider").change(function() {
         "Superfast", "Ultrafast (fastest, lowest quality)"
     ];
 
-    $("#idSelectedPreset").text("Selected preset: " + presets[$("#presetSlider").val() - 1]);
+    $("#idSelectedPreset").text("Selected encoding level: " + presets[$("#presetSlider").val() - 1]);
 });
 
 // ------------------------------- Resumablejs stuff -------------------------------
@@ -720,7 +722,7 @@ connection.onmessage = function(message) {
             } else {
                 // 
                 resetResumable();
-                $(".resumable-list").html("<br><br><br>You have already made this request, check \"My requests\" tab");
+                $(".resumable-list").html("<br><br><br>You have already made this request, check \"My videos\" tab");
                 $(".resumable-drop").show();
                 enableFileBrowse();
             }
