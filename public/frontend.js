@@ -789,10 +789,10 @@ connection.onmessage = function(message) {
             r.cancel();
             resetResumable();
 
-            let html = "<br>";
+            let html = "<br><font color='red'><b>";
             let parts = message_data.message.split("\n");
             parts.forEach(function(part) {
-                html += part + "<br>";
+                html += part + "</b></font><br>";
             });
 
             $(".resumable-list").html(html);
