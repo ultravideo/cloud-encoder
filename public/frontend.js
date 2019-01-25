@@ -335,42 +335,66 @@ $('#confirm-cancel').on('show.bs.modal', function(e) {
 // Use separate hashmap for storing all options to make searching faster
 $(document).on('click', '.kvzExtraOption', function(){
 
+    // input field doesn't have this value yet, add it to hashmap and then to the field
     if (selectedOptions[$(this).val()] === undefined) {
         var txt = $.trim($("#kvazaarExtraOptions").val());
-        $("#kvazaarExtraOptions").val(txt + " --" + $(this).val() + " ");
+        $("#kvazaarExtraOptions").val(" " + txt + " --" + $(this).val() + " ");
 
-        selectedOptions[$(this).val()] = 3;
+        selectedOptions[$(this).val()] = null;
 
         if ($(this).hasClass("paramRequired")) {
             $("#kvazaarExtraOptions").focus();
         }
     } else {
-        console.log("already has value");
+        // we don't know the exact location of this option in the text field (offset from start)
+        // let's just remove the value from hashmap and reset the text field's text
+        delete selectedOptions[$(this).val()];
+
+        let options = "";
+        Object.keys(selectedOptions).forEach((key) => {
+            options += " --" + key;
+
+            console.log(selectedOptions[key]);
+            if (selectedOptions[key] !== null)
+                options += " " + selectedOptions[key];
+        });
+
+        $("#kvazaarExtraOptions").val(options);
     }
 });
 
 $("#kvazaarExtraOptions").focusout(function() {
-    // extrat parameter names from textarea and remove -- from parameter name
-    let values = this.value.split(" ").filter(x => x.startsWith("--")).map(x => x.slice(2, x.length));
-    let keys   = Object.keys(selectedOptions);
+    // split text into key values pairs. If option doesn't take a parameter, it's paramter is null
+    let values = { };
+    let pairs  = this.value.split(" --")
+                    .slice(1)                // remove first element (white space)
+                    .map(x => x.split(" ")); // split "--key value" string into two-element arrays
+
+    // create hashmap (key value pairs) from arrays
+    pairs.forEach(([key, value]) => values[key] = value ? value : null);
+
+    let newKeys = Object.keys(values);
+    let oldKeys = Object.keys(selectedOptions);
 
     // number of parameters didn't change, check if user "changed" some parameter
-    if (values.length === keys.length) {
-        values = values.sort();
-        keys   = keys.sort();
+    if (newKeys.length === oldKeys.length) {
+        newKeys = newKeys.sort();
+        oldKeys = oldKeys.sort();
 
-        for (let i = 0; i < keys.length; ++i) {
-            if (values[i] !== keys[i]) {
-                delete selectedOptions[keys[i]];
-                selectedOptions[values[i]] = 1;
+        for (let i = 0; i < oldKeys.length; ++i) {
+            if (newKeys[i] !== oldKeys[i]) {
+                delete selectedOptions[oldKeys[i]];
+                selectedOptions[newKeys[i]] = values[newKeys[i]];
             }
+
+            selectedOptions[newKeys[i]] = values[newKeys[i]];
         }
     }
     // user deleted manually some parameters, find and remove them from selectedOptions
     // to make buttons work correctly
-    else if (values.length < keys.length) {
-        let set = new Set(values);
-        let deletedKeys = keys.filter(x => !set.has(x));
+    else if (newKeys.length < oldKeys.length) {
+        let set = new Set(newKeys);
+        let deletedKeys = oldKeys.filter(x => !set.has(x));
 
         deletedKeys.forEach((key) => {
             delete selectedOptions[key];
@@ -379,11 +403,12 @@ $("#kvazaarExtraOptions").focusout(function() {
     // user added manually some parameters, find and add them to selectedOptions
     // to make buttons work correctly
     else {
-        let set = new Set(keys)
-        let addedKeys = values.filter(x => !set.has(x));
+        let set = new Set(oldKeys)
+        let addedKeys = newKeys.filter(x => !set.has(x));
 
         addedKeys.forEach((key) => {
-            selectedOptions[key] = 1;
+            console.log(values[key], " for ", key);
+            selectedOptions[key] = values[key];
         });
     }
 
