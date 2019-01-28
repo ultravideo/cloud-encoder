@@ -94,6 +94,19 @@ module.exports = {
         });
     },
 
+    validateVideoFormat : function(str) {
+        return new Promise((resolve, reject) => {
+            const validFormats = [ "yuv420p", "rgba", "bgra", "yuyv422", "h264" ];
+
+            validFormats.forEach(function(format) {
+                if (str === format)
+                    resolve(format);
+            });
+
+            reject(new Error("Invalid format: " + str));
+        });
+    },
+
     // kvazaar options can be validated using 3 different ways:
     //  - true/false values
     //  - matching strings

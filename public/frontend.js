@@ -9,6 +9,9 @@ var numRequests = 0;
 var uploading = false;
 var uploadFileToken = null;
 let selectedOptions = { };
+let fpsOk = true;
+let resOk = true;
+let inputFileRaw = false;
 
 var r = new Resumable({
     target: '/upload',
@@ -246,41 +249,13 @@ function resetUploadFileInfo() {
 };
 
 function resetResumable() {
+    $("#selectedFile").html("");
+    $("#selectedFile").hide();
     $(".resumable-list").empty();
     $(".resumable-progress").hide();
     $("#submitButton").prop("disabled", true);
 
     resetUploadFileInfo();
-}
-
-function validateResolution(str) {
-    let res  = str.toString().match(/^[0-9]{1,4}\x[0-9]{1,4}$/g), resVal = "";
-
-    if (res && res.length != 0) {
-        resVal = res[0];
-        $("#resMissing").hide();
-    }
-    $("#resValue").val(resVal);
-}
-
-function validateInputFPS(str) {
-    let fps = str.toString().match(/^[1-9]{1}[0-9]{0,2}$/g), fpsVal = "";
-
-    if (fps && fps.length != 0) {
-        fpsVal = fps[0]; // extract only the number
-        $("#inputFPSMissing").hide();
-    }
-    $("#inputFPSValue").val(fpsVal);
-}
-
-function validateBithDepth(str) {
-    let bitDepth = str.toString().match(/^([89]|1[0-6])$/g), bitDepthVal = "";
-
-    if (bitDepth && bitDepth.length != 0) {
-        bitDepthVal = bitDepth[0]; // extract only the number
-        $("#bitDepthMissing").hide();
-    }
-    $("#bitDepthValue").val(bitDepthVal);
 }
 
 // enable file browse again when the file upload is completed
@@ -323,12 +298,77 @@ $("#kvazaarCmdButton").click(function() {
     }
 });
 
+$("#resValue").change(function() {
+    if (this.value === "custom") {
+        $("#resValueTxtId").show();
+    } else {
+        $("#resValueTxt").val("");
+        $("#resValueTxtId").hide();
+    }
+});
+
+$("#resValueTxt").focusout(function() {
+    let res  = this.value.match(/^[0-9]{1,4}\x[0-9]{1,4}$/g);
+
+    if (res && res.length != 0) {
+        $("#resValueTxt").val(res[0]);
+        $("#inputResError").hide();
+
+        if (fpsOk) 
+            $("#rawInfoDoneBtn").prop("disabled", false);
+
+        resOk = true;
+        return;
+    }
+
+    resOk = false;
+    $("#inputResError").html("<strong>Invalid resolution!</strong>");
+    $("#inputResError").show();
+    $("#rawInfoDoneBtn").prop("disabled", true);
+});
+
+$("#inputFPSValue").focusout(function() {
+    if (this.value === "") {
+        $("#inputFPSError").html("<font color='red'><b>FPS can't be empty!</b></font>");
+        $("#inputFPSError").show();
+        return;
+    }
+
+    let fps = this.value.match(/^[1-9]{1}[0-9]{0,2}$/g);
+    if (fps && fps.length != 0) {
+        $("#inputFPSValue").val(fps[0]);
+        $("#inputFPSError").hide();
+
+        if (resOk)
+            $("#rawInfoDoneBtn").prop("disabled", false);
+
+        fpsOk = true;
+        return;
+    }
+
+    fpsOk = false;
+    $("#rawInfoDoneBtn").prop("disabled", true);
+    $("#inputFPSError").html("<strong>Invalid FPS!</strong>");
+    $("#inputFPSError").show();
+});
+
 $('#confirm-delete').on('show.bs.modal', function(e) {
     $(this).find('.btn-ok').attr('onclick', "sendDeleteRequest('" +  $(e.relatedTarget).data('href') + "')");
 });
 
 $('#confirm-cancel').on('show.bs.modal', function(e) {
     $(this).find('.btn-ok').attr('onclick', "sendCancelRequest('" +  $(e.relatedTarget).data('href') + "')");
+});
+
+// clear state if user clicks cancel button when inputting raw video info
+$('#rawVideoInfo').on('show.bs.modal', function(e) {
+    $(this).find('.btn-cancel').attr('onclick', "resetResumable()");
+});
+
+// if the input video is not raw, ignore all raw info by setting
+// inputFileRaw to false
+$('#rawVideoInfo').on('show.bs.modal', function(e) {
+    inputFileRaw = false;
 });
 
 // add clicked option to kvazaar extra options if it hasnt' been added yet
@@ -454,6 +494,16 @@ $('#submitButton').click(function(){
     // raw video options
     $(".options").serializeArray().map(function(x){other_options[x.name] = x.value;});
 
+    if (inputFileRaw) {
+        other_options.raw_video = "on";
+    }
+
+    // use resolution from input field instead
+    if (other_options.resolution_txt !== "") {
+        other_options.resolution = other_options.resolution_txt;
+        delete other_options["resolution_txt"];
+    }
+
     var options = {
         'type' : 'uploadRequest',
         'token': userToken,
@@ -464,32 +514,6 @@ $('#submitButton').click(function(){
 
     options['other']['file_id'] = fileID;
     options['other']['name'] = r.files[r.files.length - 1].fileName.toString();
-
-    // make sure that user has entered all necessary values for raw video
-    if (other_options.raw_video === "on") {
-        $("#resMissing").hide();
-        $("#inputFPSMissing").hide();
-        $("#bitDepthMissing").hide();
-        let error = false;
-
-        if (other_options.resolution === "") {
-            $("#resMissing").show();
-            error = true;
-        }
-
-        if (other_options.inputFPS === "") {
-            $("#inputFPSMissing").show();
-            error = true;
-        }
-
-        if (other_options.bitDepth === "") {
-            $("#bitDepthMissing").show();
-            error = true;
-        }
-
-        if (error)
-            return;
-    }
 
     console.log("sent options...");
     connection.send(JSON.stringify(options));
@@ -543,23 +567,16 @@ function showRequests() {
 
 $("#linkRequests").click(showRequests);
 $("#linkRequestLink").click(showRequests);
+// $(".linkRequestLinkClass").click(showRequests);
+
+$(".linkRequestLinkClass").click(function() {
+    console.log("clicked!");
+});
 
 $("#linkAbout").click(function() {
     deActivate("Requests");
     deActivate("Upload");
     activateView("About")
-});
-
-$("#resValue").focusout(function() {
-    validateResolution($("#resValue").val())
-});
-
-$("#inputFPSValue").focusout(function() {
-    validateInputFPS($("#inputFPSValue").val());
-});
-
-$("#bitDepthValue").focusout(function() {
-    validateBithDepth($("#bitDepthValue").val());
 });
 
 $("#presetSlider").change(function() {
@@ -607,6 +624,9 @@ r.on('fileAdded', function(file){
     // hide download info
     $("#dlDoneInfo").hide();
 
+    // show link for raw video info input
+    $("#rawInputLink").show();
+
     // Add the file to the list but don't show the list yet
     $('.resumable-list').append('<li class="resumable-file-'+file.uniqueIdentifier+'">'
         + '<span class="resumable-file-name"></span> <span class="resumable-file-progress">ready for upload</span>');
@@ -619,44 +639,60 @@ r.on('fileAdded', function(file){
 
     fileID = file.uniqueIdentifier;
 
+    // initially set the inputFileRaw to false so non-raw videos work too
+    inputFileRaw = false;
+
     let fname = r.files[r.files.length - 1].fileName.toString();
+    let ext   = fname.match(/\.(mp4|mkv|webm|avi)$/g);
 
-    // set raw video to true if file extension is yuv
-    // if ($("#rawVideoCheck").is(":checked") === false) {
-    let res  = fname.match(/\.yuv$/g);
-    let checked = $("#rawVideoCheck").is(":checked");
+    // try to match as match information from the file name as possible
+    if (!ext) {
+        $("#rawVideoInfo").modal();
+        inputFileRaw = true;
 
-    if (res && res.length != 0) {
-        if (checked === false) {
-            $("#rawVideoCheck").click();
-        }
+        let resVal = "1920x1080",
+            fpsVal = "25",
+            fmtVal = "yuv420p",
+            bdVal  = "8";
 
-        // try to match file resolution, fps and bit depth from file name
-        let res  = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g), resVal = "";
+        let res = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
         if (res && res.length != 0) {
             resVal = res[0];
         }
-        $("#resValue").val(resVal);
 
-        let fps = fname.match(/[1-9]{1}[0-9]{0,2}[-_\s]?(FPS)/ig), fpsVal = "";
+        let fps = fname.match(/[1-9]{1}[0-9]{0,2}[-_\s]?(FPS)/ig);
         if (fps && fps.length != 0) {
             fpsVal = fps[0].match(/[1-9]{1}[0-9]{0,2}/)[0]; // extract only the number
         }
-        $("#inputFPSValue").val(fpsVal);
 
-        let bitDepth = fname.match(/([89]|1[0-6])[_-\s]?(bit)/ig), bitDepthVal = "";
+        let bitDepth = fname.match(/([89]|1[0-6])[_-\s]?(bit)/ig);
         if (bitDepth && bitDepth.length != 0) {
-            bitDepthVal = bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
-        }
-        $("#bitDepthValue").val(bitDepthVal);
-    }  else {
-        if (checked === true) {
-            $("#rawVideoCheck").click();
+            bdVal = bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
         }
 
-        $("#resValue").val("");
-        $("#bitDepthValue").val("");
-        $("#inputFPSValue").val("");
+        ext = fname.match(/\.(yuv|yuyv|rgb(32|a)?|h264)$/g);
+        if (ext) {
+            switch (ext[0]) {
+                case ".rgba":  fmtVal = "rgba";    break;
+                case ".yuyv":  fmtVal = "yuyv422"; break;
+                case ".h264": fmtVal = "h264";    break;
+
+                case ".rgb":  // fallthrough
+                case ".rgb32":
+                    fmtVal = "bgra";
+                    break;
+
+                case ".yuv": // fallthrough
+                default:
+                    fmtVal = "yuv420p";
+                    break;
+            }
+        }
+
+        $("#bitDepthValue").val(bdVal);
+        $("#inputFPSValue").val(fpsVal);
+        $("#resValue").val(resVal);
+        $("#videoFormatValue").val(fmtVal);
     }
 
     $("#submitButton").prop("disabled", false);
@@ -675,7 +711,7 @@ r.on('complete', function(){
 });
 
 r.on('fileSuccess', function(file,message){
-    $('.resumable-file-' + file.uniqueIdentifier + ' .resumable-file-progress').html('(completed)');
+    $('.resumable-file-' + file.uniqueIdentifier + ' .resumable-file-progress').html('(Upload completed)');
 
     $(".resumable-drop").show();
     resetUploadFileInfo();
@@ -772,14 +808,16 @@ connection.onmessage = function(message) {
                 // file request was ok (unique set of options + file) but file already on the server
                 resetResumable();
                 incRequestCount();
-                $(".resumable-list").html("<br><br><br>File already in the server, request has been added to work queue");
-                $("#dlDoneInfo").show();
+                $(".resumable-list").html("<br><div  class='alert alert-info' role='alert'>" +
+                    "File already in the server, request has been added to work queue<br>" + 
+                    "You can follow the progress <a href='#' class='linkRequestLinkClass'>here</a></div>");
                 $(".resumable-drop").show();
                 enableFileBrowse();
             } else {
                 // 
                 resetResumable();
-                $(".resumable-list").html("<br><br><br>You have already made this request, check \"My videos\" tab");
+                $(".resumable-list").html("<br><div class='alert alert-warning' role='alert'>" +
+                    "<strong>You have already made this request, check \"My videos\" tab</strong></div>");
                 $(".resumable-drop").show();
                 enableFileBrowse();
             }
@@ -789,10 +827,10 @@ connection.onmessage = function(message) {
             r.cancel();
             resetResumable();
 
-            let html = "<br><font color='red'><b>";
+            let html = "<br><div class='alert alert-danger' role='alert'>";
             let parts = message_data.message.split("\n");
             parts.forEach(function(part) {
-                html += part + "</b></font><br>";
+                html += part + "</div>";
             });
 
             $(".resumable-list").html(html);
@@ -805,7 +843,11 @@ connection.onmessage = function(message) {
         } else if (message_data.reply === "continue") {
             // file has approved (it was a video file of valid length), continue upload
             incRequestCount();
-            $("#dlDoneInfo").show();
+            // $(".resumable-list").html("<br><div  class='alert alert-info' role='alert'>" +
+            //     "You can follow the progress <a href='#' id='linkRequestLink'>here</a></div>");
+            // $(".resumable-list").html("<br><div class='alert alert-warning' role='alert'>" +
+            //     "<strong>You have already made this request, check \"My videos\" tab</strong></div>");
+            // $("#dlDoneInfo").show();
             r.upload();
 
         } else if (message_data.reply === "downloadResponse") {
@@ -829,9 +871,7 @@ connection.onmessage = function(message) {
                 $("#invalidOptions").hide();
             } else {
                 $("#invalidOptions").show();
-                $("#invalidOptions").html(
-                    "<font color='red'><b>" + message_data.message + "</b></font>"
-                );
+                $("#invalidOptions").html("<strong>" + message_data.message + "</strong>");
 			}
         }
     }

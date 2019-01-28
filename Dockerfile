@@ -33,7 +33,8 @@ RUN apt-get update \
                                             hash VARCHAR(128), extra VARCHAR(1024));" \
     && sudo -u postgres psql -d cloud_db -c "CREATE TABLE files(name VARCHAR(1024), hash VARCHAR(128), \
                                              file_path VARCHAR(512), resolution VARCHAR(16), \
-                                             uniq_id VARCHAR(128), raw_video INTEGER, fps INTEGER, bit_depth INTEGER)" \
+                                             uniq_id VARCHAR(128), raw_video INTEGER, fps INTEGER, bit_depth INTEGER, \
+                                             video_format VARCHAR(16))" \
     && sudo -u postgres psql -d cloud_db -c "CREATE TABLE work_queue(taskid SERIAL PRIMARY KEY, \
                                              file_id VARCHAR(1024), ops_id VARCHAR(128), file_path VARCHAR(1024), status INTEGER, \
                                              download_count INTEGER, token VARCHAR(128), owner_id VARCHAR(128), \

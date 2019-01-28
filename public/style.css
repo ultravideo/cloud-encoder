@@ -27,6 +27,10 @@ body {text-align:left; margin:40px;}
 	margin-bottom: 10px;
 }
 
+.resumable-browse label {
+	color: blue;
+}
+
 .resumable-drop {
 	padding: 15px;
 	padding-top: 25px;

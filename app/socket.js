@@ -162,6 +162,7 @@ function validateFileOptions(fileOptions) {
             resolution: 0,
             raw_video: 0,
             bit_depth: 0,
+            video_format: "",
             fps: 0,
             uniq_id: fileOptions.file_id,
             name: fileOptions.name
@@ -171,13 +172,15 @@ function validateFileOptions(fileOptions) {
             Promise.all([
                 parser.validateInputFPS(fileOptions.inputFPS),
                 parser.validateBithDepth(fileOptions.bitDepth),
-                parser.validateResolution(fileOptions.resolution)
+                parser.validateResolution(fileOptions.resolution),
+                parser.validateVideoFormat(fileOptions.videoFormat)
             ]).then((validated) => {
 
-                validatedOptions.fps        = validated[0];
-                validatedOptions.bit_depth  = validated[1];
-                validatedOptions.resolution = validated[2];
-                validatedOptions.raw_video  = 1;
+                validatedOptions.fps          = validated[0];
+                validatedOptions.bit_depth    = validated[1];
+                validatedOptions.resolution   = validated[2];
+                validatedOptions.video_format = validated[3];
+                validatedOptions.raw_video    = 1;
 
                 resolve(validatedOptions);
             })
@@ -531,7 +534,8 @@ function handleUploadRequest(client, message) {
                         raw_video: data.options.file.raw_video,
                         fps: data.options.file.fps,
                         bit_depth: data.options.file.bit_depth,
-                        uniq_id: data.options.file.uniq_id
+                        uniq_id: data.options.file.uniq_id,
+                        video_format: data.options.file.video_format
                     })
                 );
             }

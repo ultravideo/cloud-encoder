@@ -336,9 +336,32 @@ function updateWorkerStatus(taskInfo, fileId, currentJob) {
 }
 
 // raw video doesn't require any preprocessing (at least for now)
-function preprocessRawVideo(path) {
+function preprocessRawVideo(fileOptions) {
     return new Promise((resolve, reject) => {
-        resolve(["", path]);
+        if (fileOptions.video_format === "yuv420p") {
+            resolve(["", fileOptions.file_path]);
+        }
+
+        // kvazaar only understands yuv420p, do some converting
+        let inputOptions = [ ];
+
+        console.log(fileOptions);
+
+        if (fileOptions.video_format === "h264") {
+            inputOptions.push("-f", "h264")
+        } else {
+            inputOptions.push("-pix_fmt", fileOptions.video_format, "-s", fileOptions.resolution);
+            inputOptions.push("-r", fileOptions.fps, "-vcodec", "rawvideo", "-f", "rawvideo");
+        }
+
+        callFFMPEG([fileOptions.file_path], inputOptions,
+                    fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
+        .then(() => {
+            resolve(["", fileOptions.tmp_path + ".yuv"]);
+        })
+        .catch(function(err) {
+            reject(err);
+        });
     });
 }
 
@@ -358,7 +381,7 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     let preprocessFile = null;
 
     if (fileOptions.raw_video === 1) {
-        preprocessFile = preprocessRawVideo(fileOptions.file_path);
+        preprocessFile = preprocessRawVideo(fileOptions);
     } else {
         preprocessFile = Promise.all([
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING),
