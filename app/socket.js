@@ -352,7 +352,7 @@ function handleTaskRequest(client, message) {
                 db.getFile(taskRow.file_id),
                 db.getOptions(taskRow.ops_id)
             ]).then((values) => {
-                let msg = "Done";
+                let msg = "Done!";
                 switch (taskRow.status) {
                     case workerStatus.CANCELLED:      msg = "Request cancelled";  break;
                     case workerStatus.FAILURE:        msg = "Request failed!";    break;
