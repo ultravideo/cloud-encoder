@@ -125,7 +125,7 @@ function sendOptionsValidationRequest(options) {
 // if the download request has been approved, download the file
 function downloadFile(response) {
     if (response.status === "accepted") {
-        $("#table" + response.token + " #tdDownloadCount").html("Downloads left: " + (2 - response.count));
+        $("#table" + response.token + " #tdDownloadCount").html(2 - response.count);
         var win = window.open("http://localhost:8080/download/" + response.token, '_blank');
         win.focus();
 
@@ -146,7 +146,7 @@ function drawFileTable(file) {
         newHTML += "<tr><td>" + key + ":</td><td >" + file.options[key] + "</td></tr>";
     });
 
-    newHTML += "<tr><td id='tdDownloadCount'>Downloads left:</td><td>" + (2 - file.download_count) + "</td></tr></table>";
+    newHTML += "<tr><td>Downloads left:</td><td id='tdDownloadCount'>" + (2 - file.download_count) + "</td></tr></table>";
 
     // request done
     if (file.status === 4) {
