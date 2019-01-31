@@ -477,6 +477,10 @@ $(document).on('click', '.kvzExtraOption', function(){
     }
 });
 
+$("#kvazaarExtraOptions").focusin(function() {
+    $("#submitButton").prop("disabled", true);
+});
+
 $("#kvazaarExtraOptions").focusout(function() {
     // split text into key values pairs. If option doesn't take a parameter, it's paramter is null
     let values = { };
@@ -875,7 +879,6 @@ connection.onmessage = function(message) {
                 html += part + "</div>";
             });
 
-            incRequestCount();
             $(".resumable-list").html(html);
 
         } else if (message_data.reply === "pause") {
