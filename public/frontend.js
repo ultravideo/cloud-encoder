@@ -401,7 +401,7 @@ function getRawFileInfo() {
         bdVal = bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
     }
 
-    let ext = fname.match(/\.(mp4|webm|avi|mkv|flv)$/g);
+    let ext = fname.match(/\.(raw|yuv|yuyv|rgb(32|a)?|bgra|h264)$/g);
     if (ext) {
         switch (ext[0]) {
             case ".rgba":  fmtVal = "rgba";    break;
@@ -875,6 +875,7 @@ connection.onmessage = function(message) {
                 html += part + "</div>";
             });
 
+            incRequestCount();
             $(".resumable-list").html(html);
 
         } else if (message_data.reply === "pause") {
@@ -911,9 +912,11 @@ connection.onmessage = function(message) {
         } else if (message_data.reply === "optionsValidationReply") {
             if (message_data.valid === true) {
                 $("#invalidOptions").hide();
+                $("#submitButton").prop("disabled", false);
             } else {
                 $("#invalidOptions").show();
                 $("#invalidOptions").html("<strong>" + message_data.message + "</strong>");
+                $("#submitButton").prop("disabled", true);
 			}
         }
     }
