@@ -329,6 +329,15 @@ $("#resValue").change(function() {
     }
 });
 
+$("#videoFormatValue").change(function() {
+    if (this.value === "other") {
+        $("#pixFmtTxtId").show();
+    } else {
+        $("#pixFmtTxt").val("");
+        $("#pixFmtTxtId").hide();
+    }
+});
+
 $("#resValueTxt").focusout(function() {
     let res  = this.value.match(/^[0-9]{1,4}\x[0-9]{1,4}$/g);
 
@@ -376,7 +385,6 @@ $("#inputFPSValue").focusout(function() {
 
 function getRawFileInfo() {
     let fname = fileName;
-    $("#rawVideoInfo").modal();
     inputFileRaw = true;
 
     let resVal = "1920x1080",
@@ -392,7 +400,6 @@ function getRawFileInfo() {
     let fps = fname.match(/[1-9]{1}[0-9]{0,2}[-_\s]?(FPS)/ig);
     if (fps && fps.length != 0) {
         fpsVal = fps[0].match(/[1-9]{1}[0-9]{0,2}/)[0]; // extract only the number
-        $("#rawInfoDoneBtn").prop("disabled", false);
         fpsOk = true;
     }
 
@@ -421,6 +428,15 @@ function getRawFileInfo() {
         }
     }
 
+    // check the raw video box automatically if file extension matched
+    if (!$("#rawVideoCheck").is(":checked")) {
+        $("#rawVideoCheck").click();
+    }
+
+    if (fpsVal === "") {
+        $("#submitButton").prop("disabled", true);
+    }
+
     $("#bitDepthValue").val(bdVal);
     $("#inputFPSValue").val(fpsVal);
     $("#resValue").val(resVal);
@@ -438,10 +454,6 @@ $('#confirm-cancel').on('show.bs.modal', function(e) {
 // clear state if user clicks cancel button when inputting raw video info
 $('#rawVideoInfo').on('show.bs.modal', function(e) {
     $(this).find('.btn-cancel').attr('onclick', "resetResumable()");
-});
-
-$('#rawVideoCheck').on('show.bs.modal', function(e) {
-    $(this).find('.btn-success').attr('onclick', "getRawFileInfo()");
 });
 
 // add clicked option to kvazaar extra options if it hasnt' been added yet
@@ -479,6 +491,10 @@ $(document).on('click', '.kvzExtraOption', function(){
 
 $("#kvazaarExtraOptions").focusin(function() {
     $("#submitButton").prop("disabled", true);
+});
+
+$("#rawVideoCheck").click(function() {
+    $("#rawVideoInfo").toggle();
 });
 
 $("#kvazaarExtraOptions").focusout(function() {
@@ -726,17 +742,16 @@ r.on('fileAdded', function(file){
     let fname = r.files[r.files.length - 1].fileName.toString();
     let ext   = fname.match(/\.(raw|yuv|yuyv|rgb(32|a)?|bgra|h264)$/g);
 
+    $("#submitButton").prop("disabled", false);
+
     // try to match as match information from the file name as possible
     if (ext) {
         getRawFileInfo();
     } else {
-        ext = fname.match(/\.(mp4|webm|avi|mkv|flv)$/g);
-        if (!ext) {
-            $("#rawVideoCheck").modal();
+        if ($("#rawVideoCheck").is(":checked")) {
+            $("#rawVideoCheck").click();
         }
     }
-
-    $("#submitButton").prop("disabled", false);
 });
 
 

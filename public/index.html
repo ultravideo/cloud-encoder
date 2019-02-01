@@ -112,6 +112,64 @@
 					</select>
 				</div>
 				<hr class="separator"></hr>
+				<div class="form-check">
+					<input type="checkbox" id="rawVideoCheck" name="raw_video" class="options form-check-input"/>
+					<label class="form-check-label" for="rawVideoCheck" style="margin-top: 5px">
+						Additional specifications for raw video
+					</label>
+				</div>
+				<div id="rawVideoInfo" style="display: none">
+					<form>
+					  <div class="form-group"><br>
+						<label>Input format</label>
+						<select class="form-control options" name="videoFormat" id="videoFormatValue">
+							<option value="yuv420p">YUV420P</option>
+							<option value="bgra">RGB32</option>
+							<option value="rgba">RGBA</option>
+							<option value="yuyv422">YUYV422</option>
+							<option value="h264">H.264</option>
+							<option value="other">Other</option>
+						</select>
+						<div id="pixFmtTxtId" style="display:none">
+							<br><input type="text" name="pixfmt_txt" class="options form-control"
+							   id="pixFmtTxt" placeholder="YUV420P"/>
+						</div>
+						<div id="pixFmtError" style="display:none; margin-top: 5px"
+							 class="rawVideoWarning alert alert-danger" role="alert">
+						</div><br>
+						<label>Resolution</label>
+							<select name="resolution" id="resValue" class="options form-control">
+								<option value="1280x720">1280x720</option>
+								<option value="1920x1080">1920x1080</option>
+								<option value="2048x1080">2048x1080</option>
+								<option value="2560x1080">2560x1080</option>
+								<option value="3840x2160">3840x2160</option>
+								<option value="4096x2160">4096x2160</option>
+								<option value="custom">Custom</option>
+							</select>
+							<div id="resValueTxtId" style="display:none">
+								<br>
+								<input type="text" name="resolution_txt" class="options form-control"
+								   id="resValueTxt" placeholder="1920x1080"/>
+							</div>
+							<div id="inputResError" style="display:none; margin-top: 5px"
+								 class="rawVideoWarning alert alert-danger" role="alert">
+							</div><br>
+							<label>Bit depth</label>
+							<select class="form-control options" name="bitDepth" id="bitDepthValue">
+								<option value="8" selected>8</option>
+								<option value="10">10</option>
+							</select><br>
+
+							<label>Input FPS</label>
+							<input type="text" name="inputFPS" id="inputFPSValue" class="options form-control"/>
+							<div id="inputFPSError" style="display:none; margin-top: 5px"
+								 class="rawVideoWarning alert alert-danger" role="alert">
+							</div>
+					  </div>
+					</form>
+				</div>
+				<hr class="separator"></hr>
 				<button id="kvazaarCmdButton" class="btn btn-primary">Kvazaar options</button><br>
 				<div id="kvazaarExtraOptionsDiv" class=""><br>
 					<a class="" target="_blank"
@@ -536,85 +594,6 @@
 		</div>
 	</div>
 	<!-- modal end for cancel confirmation -->
-
-	<!-- modal start for cancel confirmation -->
-	<div class="modal fade" id="rawVideoCheck" tabindex="-1" role="dialog" aria-hidden="true">
-		<div class="modal-dialog">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h4 class="modal-title">Raw video?</h4>
-				</div>
-				<div class="modal-body">
-					<p>Is the input file raw video?</p>
-					<p class="debug-url"></p>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-danger" data-dismiss="modal">No</button>
-					<button type="button" class="btn btn-success" data-dismiss="modal">Yes</button>
-				</div>
-			</div>
-		</div>
-	</div>
-	<!-- modal end for cancel confirmation -->
-
-	<!-- modal start for raw video info -->
-	<div class="modal fade" id="rawVideoInfo" tabindex="-1" role="dialog" aria-hidden="true">
-	  <div class="modal-dialog" role="document">
-		<div class="modal-content">
-		  <div class="modal-header">
-			<h3 class="modal-title" id="exampleModalLabel">Additional information about raw video</h3>
-		  </div>
-		  <div class="modal-body">
-			<form>
-			  <div class="form-group">
-				<label>Input format</label>
-				<select class="form-control options" name="videoFormat" id="videoFormatValue">
-					<option value="yuv420p">YUV420P</option>
-					<option value="bgra">RGB32</option>
-					<option value="rgba">RGBA</option>
-					<option value="yuyv422">YUYV422</option>
-					<option value="h264">H.264</option>
-				</select><br>
-				<label>Resolution</label>
-					<select name="resolution" id="resValue" class="options form-control">
-						<option value="1280x720">1280x720</option>
-						<option value="1920x1080">1920x1080</option>
-						<option value="2048x1080">2048x1080</option>
-						<option value="2560x1080">2560x1080</option>
-						<option value="3840x2160">3840x2160</option>
-						<option value="4096x2160">4096x2160</option>
-						<option value="custom">Custom</option>
-					</select>
-					<div id="resValueTxtId" style="display:none">
-						<br>
-						<input type="text" name="resolution_txt" class="options form-control"
-						   id="resValueTxt" placeholder="1920x1080"/>
-					</div>
-					<div id="inputResError" style="display:none; margin-top: 5px"
-						 class="rawVideoWarning alert alert-danger" role="alert">
-					</div><br>
-					<label>Bit depth</label>
-					<select class="form-control options" name="bitDepth" id="bitDepthValue">
-						<option value="8" selected>8</option>
-						<option value="10">10</option>
-					</select><br>
-
-					<label>Input FPS</label>
-					<input type="text" name="inputFPS" id="inputFPSValue" class="options form-control"/>
-					<div id="inputFPSError" style="display:none; margin-top: 5px"
-						 class="rawVideoWarning alert alert-danger" role="alert">
-					</div>
-			  </div>
-			</form>
-		  </div>
-		  <div class="modal-footer">
-			<button type="button" class="btn btn-danger btn-cancel" data-dismiss="modal">Cancel</button>
-			<button type="button" id="rawInfoDoneBtn" class="btn btn-success" data-dismiss="modal" disabled>Done</button>
-		  </div>
-		</div>
-	  </div>
-	</div>
-	<!-- modal end for raw video info -->
 
 	<div class="footer">
 		<p>&copy; Ultra Video Group 2018</p>
