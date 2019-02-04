@@ -935,11 +935,12 @@ connection.onmessage = function(message) {
         } else if (message_data.reply === "pause") {
             // file upload is paused for the duration of file validity check
             // (uploaded file IS video and that the duration is <30min)
+            incRequestCount();
             r.pause();
 
         } else if (message_data.reply === "continue") {
             // file has approved (it was a video file of valid length), continue upload
-            incRequestCount();
+            // incRequestCount();
             // $(".resumable-list").html("<br><div  class='alert alert-info' role='alert'>" +
             //     "You can follow the progress <a href='#' id='linkRequestLink'>here</a></div>");
             // $(".resumable-list").html("<br><div class='alert alert-warning' role='alert'>" +

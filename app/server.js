@@ -155,7 +155,12 @@ function checkFileValidity(identifier, chunkFile) {
                     .catch(function(err) {
                         db.getTasks("file_id", identifier).then((tasks) => {
                             reject(err);
-                            return Promise.all([ db.removeTask(tasks[0].taskid), db.removeFile(identifier) ]);
+
+                            let promises = [ db.removeFile(identifier) ];
+
+                            if (tasks[0])
+                                promises.push(db.removeTask(tasks[0].taskid));
+                            return Promise.all(promises);
                         })
                         .catch(function(err) {
                             reject(err);

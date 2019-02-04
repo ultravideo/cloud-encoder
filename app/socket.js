@@ -423,6 +423,9 @@ function handleUploadCancellation(client, message) {
         ];
 
         db.getTasks("file_id", taskRow.file_id).then((rows) => {
+            if (!rows)
+                return;
+
             rows.forEach(function(row) {
                 if (row.token != message.token) {
                     promisesToResolve.push(
@@ -459,7 +462,7 @@ function handleCancelRequest(client, token) {
         }
 
         kue.Job.get(reply, function(err, job) {
-            if (job) {
+            if (!job) {
                 return;
             }
 

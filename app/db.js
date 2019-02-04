@@ -161,7 +161,7 @@ module.exports = {
                     console.log(sql);
                     reject(err);
                 }
-                resolve(res.rowCount > 0 ? res.rows[0] : null);
+                resolve(!res ? null : res.rowCount > 0 ? res.rows[0] : null);
             });
         });
     },
@@ -176,7 +176,7 @@ module.exports = {
                     console.log(sql);
                     console.log(params);
                 }
-                resolve(res.rowCount > 0 ? res.rows[0] : null);
+                resolve(!res ? null : res.rowCount > 0 ? res.rows[0] : null);
             });
         });
     },
@@ -190,7 +190,7 @@ module.exports = {
                     console.log(sql);
                     reject(err);
                 }
-                resolve(res.rowCount > 0 ? res.rows : null);
+                resolve(!res ? null : res.rowCount > 0 ? res.rows : null);
             });
         });
     },
@@ -204,7 +204,7 @@ module.exports = {
                     console.log(sql);
                     reject(err);
                 }
-                resolve(res.rowCount > 0 ? res.rows[0] : null);
+                resolve(!res ? null : res.rowCount > 0 ? res.rows[0] : null);
             });
         });
     },
@@ -218,7 +218,7 @@ module.exports = {
                     console.log(sql);
                     reject(err);
                 }
-                resolve(res.rowCount > 0 ? res.rows[0] : null);
+                resolve(!res ? null : res.rowCount > 0 ? res.rows[0] : null);
             });
         });
     },
@@ -232,7 +232,7 @@ module.exports = {
                     console.log(sql);
                     reject(err);
                 }
-                resolve(res.rowCount > 0 ? res.rows[0] : null);
+                resolve(!res ? null : res.rowCount > 0 ? res.rows[0] : null);
             });
         });
     },
