@@ -91,27 +91,32 @@ socket.on('connection', function(client) {
         if (message.type === "init") {
             if (message.token) {
                 parser.validateUserToken(message.token).then((validatedToken) => {
-
-                    if (clients.clientList.hasOwnProperty(validatedToken)) {
+                    if (clients.clientList.hasOwnProperty(validatedToken))
                         clients.clientList[validatedToken] = client;
-                    } else {
+                    else
                         clients.saveClient(validatedToken, client);
-                    }
 
                     console.log(validatedToken, "connected!");
                 })
                 .catch(function(err) {
-                    console.log(err);
+                    client.send(JSON.stringify({
+                        type: "action",
+                        reply: "initResponse",
+                        status: "rejected",
+                    }));
                 });
             }
 
         } else if (message.type === "reinit") {
             parser.validateUserToken(message.token).then((validatedToken) => {
-                console.log("reiniting connection for ", message.token);
                 clients.clientList[validatedToken] = client;
             })
             .catch(function(err) {
-                console.log(err);
+                client.send(JSON.stringify({
+                    type: "action",
+                    reply: "initResponse",
+                    status: "rejected",
+                }));
             });
 
         } else if (message.type === "downloadRequest") {
@@ -256,7 +261,7 @@ function handleDownloadRequest(client, token) {
                 type: "action",
                 reply: "downloadResponse",
                 status: "deleted",
-        }));
+            }));
         } else {
             if (taskInfo.status != workerStatus.READY) {
                 client.send(JSON.stringify({

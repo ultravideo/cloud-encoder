@@ -276,6 +276,19 @@ function handleDeleteResponse(response) {
     }
 }
 
+function handleInitResponse() {
+    userToken = generate_random_string(64);
+
+    Cookies.set("cloudUserToken", userToken,
+        { expires: 365, path: "" }
+    );
+
+    connection.send(JSON.stringify({
+        type: "init",
+        token: userToken,
+    }));
+}
+
 function resetUploadFileInfo() {
     fileID = null;
     uploadFileToken = null;
@@ -950,6 +963,9 @@ connection.onmessage = function(message) {
 
         } else if (message_data.reply === "cancelResponse") {
             handleCancelResponse(message_data);
+
+        } else if (message_data.reply === "initResponse") {
+            handleInitResponse();
 
         } else if (message_data.reply === "optionsValidationReply") {
             if (message_data.valid === true) {
