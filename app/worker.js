@@ -212,10 +212,21 @@ function addLogo(video_path, resolution, callback) {
     });
 }
 
+function checkIfAudioTrackExists(info) {
+    return new Promise((resolve, reject) => {
+        info.streams.forEach(function(stream) {
+            if (stream.codec_type === "audio")
+                resolve(1);
+        });
+        resolve(0);
+    });
+}
+
 function validateVideoOptions(video_info) {
     return Promise.all([
         parser.validateResolution(video_info.streams[0].width + "x" + video_info.streams[0].height),
-        parser.validateFrameRate(video_info.streams[0].avg_frame_rate)
+        parser.validateFrameRate(video_info.streams[0].avg_frame_rate),
+        checkIfAudioTrackExists(video_info)
     ]);
 }
 
@@ -226,8 +237,8 @@ function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
             return validateVideoOptions(info);
         })
         .then((validated_options) => {
-            fileOptions.resolution      = validated_options[0];
-            kvazaarOptions["input-fps"] = validated_options[1];
+            fileOptions.resolution        = validated_options[0];
+            kvazaarOptions["input-fps"]   = validated_options[1];
 
             let promises = [
                 callFFMPEG([fileOptions.file_path], ["-r", kvazaarOptions['input-fps']],
@@ -236,7 +247,8 @@ function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
 
             // extract audio if it's viable (users wants the output to contain the audio track
             // and there's an audio track to extract [video is not raw])
-            if (fileOptions.container !== "none" && fileOptions.raw_video === 0) {
+            if (fileOptions.container !== "none" && fileOptions.raw_video === 0 && validated_options[2] === 1) {
+                console.log("AUDIO TRACK PRESENT!");
                 promises.push(callFFMPEG([fileOptions.file_path], [],
                               fileOptions.tmp_path + ".wav", ["-vn", "-codec:a", "pcm_s16le", "-ac", "1"]));
             }
