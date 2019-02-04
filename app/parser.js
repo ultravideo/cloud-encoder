@@ -19,7 +19,7 @@ function matchValueWithExpected(key, inputValue, validValues) {
     return new Promise((resolve, reject) => {
         for (let i = 0; i < validValues.length; ++i) {
             if (typeof(validValues[i]) === "string") {
-                if (validValues[i] === inputValue)
+                if (validValues[i] === "" + inputValue)
                     resolve(getLongParameterName(key) + " " + validValues[i]);
             } else if (validValues[i] instanceof RegExp) {
                 let match = inputValue.toString().match(validValues[i]);
@@ -272,7 +272,8 @@ module.exports = {
                 "source-scan-type":     { ignored: false, expected_value: ["progressive", "tff", "bff"] },
                 "hash":                 { ignored: false, expected_value: ["none", "checksum", "md5"] },
                 "key":                  { ignored: false, expected_value: ["16","213","27","56","255","127","242","112",
-                                                                           "97","126","197","204","25","59","38","30"]}
+                                                                           "97","126","197","204","25","59","38","30"]},
+                "gop":                  { ignored: false, expected_value: [ "0", "8", /lp-g[0-9]+d[0-9]+t[0-9]+$/ ]}
             };
 
 
