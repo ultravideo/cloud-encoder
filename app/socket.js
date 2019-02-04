@@ -1,10 +1,13 @@
 let WebSocket = require("ws");
+let WSServer = require("ws").Server;
+let server = require("http").createServer();
 let fs = require("fs");
 let db = require("./db");
 let parser = require("./parser");
 let crypto = require('crypto');
 let kue = require('kue');
 var NRP = require('node-redis-pubsub');
+var app = require("./server");
 var redis_client = require('redis').createClient();
 const workerStatus = require("./constants");
 
@@ -32,7 +35,14 @@ class Clients {
 }
 
 const clients = new Clients();
-const socket  = new WebSocket.Server({ port: 8083 });
+
+// use the same server for WebSocket and http server
+let wss = new WSServer({
+    server: server
+});
+
+server.on("request", app);
+server.listen(8080);
 
 // --------------- message queue stuff start ---------------
 var nrp = new NRP({
@@ -77,7 +87,7 @@ function removeChunks(file_id) {
     });
 }
 
-socket.on('connection', function(client) {
+wss.on('connection', function(client) {
     client.on('message', function(msg) {
         try {
             var message = JSON.parse(msg);

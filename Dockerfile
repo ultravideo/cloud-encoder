@@ -50,8 +50,7 @@ COPY util/logo.png /tmp/cloud_uploads/misc/
 COPY public/ /src/public/
 
 EXPOSE 8080
-EXPOSE 8083
 
 CMD sudo service postgresql start \
     && redis-server --port 7776 --daemonize yes \
-    && node app/server.js
+    && node app/socket.js

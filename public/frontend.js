@@ -3,8 +3,7 @@ window.WebSocket = window.WebSocket || window.MozWebSocket;
 
 var fileID = null;
 var fileName = null;
-// var response = null;
-var connection = new WebSocket('ws://127.0.0.1:8083');
+var connection = new WebSocket('ws://127.0.0.1:8080');
 var userToken = getUserToken();
 var numRequests = 0;
 var uploading = false;

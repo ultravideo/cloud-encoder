@@ -38,7 +38,6 @@ var nrp = new NRP({
     port: 7776,
     scope: "msg_queue"
 });
-fork("./app/socket");
 
 // ------------------------------ INTERNAL FUNCTIONS ------------------------------
 
@@ -387,4 +386,4 @@ queue.on('job enqueue', function() {
     });
 });
 
-app.listen(8080);
+module.exports = app;
