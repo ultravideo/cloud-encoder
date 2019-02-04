@@ -12,6 +12,7 @@ var uploadFileToken = null;
 let selectedOptions = { };
 let fpsOk = false;
 let resOk = true;
+let pixFmtOk = true;
 let inputFileRaw = false;
 
 var r = new Resumable({
@@ -48,7 +49,7 @@ function generate_random_string(string_length){
     let ascii_low = 65;
     let ascii_high = 90
 
-    for(let i = 0; i < string_length; i++) {
+    for(let i = 0; i < string_length; ++i) {
         random_ascii = Math.floor((Math.random() * (ascii_high - ascii_low)) + ascii_low);
         random_string += String.fromCharCode(random_ascii)
     }
@@ -116,6 +117,14 @@ function sendOptionsValidationRequest(options) {
         options: options
     }));
 }
+
+function sendPixelFormatValidation(pixelFormat) {
+    console.log("sending pixelFormatValidationRequest");
+    connection.send(JSON.stringify({
+        type: "pixelFormatValidationRequest",
+        pixelFormat: pixelFormat
+    }));
+};
 
 // server gave us response regarding file download
 // the download request may have been rejected (file doesn't exist or
@@ -236,6 +245,13 @@ function handleTaskUpdate(response) {
     }
 }
 
+function enableSubmitIfOptionsValid() {
+    if (fpsOk && pixFmtOk && resOk && fileID !== null)
+        $("#submitButton").prop("disabled", false);
+    else
+        $("#submitButton").prop("disabled", true);
+}
+
 function handleCancelResponse(response) {
     if (status === "ok") {
         decRequestCount();
@@ -326,16 +342,23 @@ $("#resValue").change(function() {
     } else {
         $("#resValueTxt").val("");
         $("#resValueTxtId").hide();
+        $("#inputResError").hide();
     }
 });
 
-$("#videoFormatValue").change(function() {
+$("#inputFormatValue").change(function() {
     if (this.value === "other") {
         $("#pixFmtTxtId").show();
     } else {
         $("#pixFmtTxt").val("");
         $("#pixFmtTxtId").hide();
+        $("#pixFmtError").hide();
     }
+});
+
+$("#pixFmtTxt").focusout(function() {
+    console.log(this.value);
+    sendPixelFormatValidation(this.value);
 });
 
 $("#resValueTxt").focusout(function() {
@@ -344,23 +367,21 @@ $("#resValueTxt").focusout(function() {
     if (res && res.length != 0) {
         $("#resValueTxt").val(res[0]);
         $("#inputResError").hide();
-
-        if (fpsOk) 
-            $("#rawInfoDoneBtn").prop("disabled", false);
-
         resOk = true;
+        enableSubmitIfOptionsValid();
         return;
     }
 
     resOk = false;
-    $("#inputResError").html("<strong>Invalid resolution!</strong>");
+    enableSubmitIfOptionsValid();
+    $("#inputResError").html("Invalid resolution!");
     $("#inputResError").show();
     $("#rawInfoDoneBtn").prop("disabled", true);
 });
 
 $("#inputFPSValue").focusout(function() {
     if (this.value === "") {
-        $("#inputFPSError").html("<font color='red'><b>FPS can't be empty!</b></font>");
+        $("#inputFPSError").html("FPS can't be empty!");
         $("#inputFPSError").show();
         return;
     }
@@ -370,16 +391,15 @@ $("#inputFPSValue").focusout(function() {
         $("#inputFPSValue").val(fps[0]);
         $("#inputFPSError").hide();
 
-        if (resOk)
-            $("#rawInfoDoneBtn").prop("disabled", false);
-
         fpsOk = true;
+        enableSubmitIfOptionsValid();
         return;
     }
 
     fpsOk = false;
+    enableSubmitIfOptionsValid();
     $("#rawInfoDoneBtn").prop("disabled", true);
-    $("#inputFPSError").html("<strong>Invalid FPS!</strong>");
+    $("#inputFPSError").html("Invalid FPS!");
     $("#inputFPSError").show();
 });
 
@@ -389,7 +409,7 @@ function getRawFileInfo() {
 
     let resVal = "1920x1080",
         fpsVal = "",
-        fmtVal = "yuv420p",
+        fmtVal = "other",
         bdVal  = "8";
 
     let res = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
@@ -408,7 +428,7 @@ function getRawFileInfo() {
         bdVal = bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
     }
 
-    let ext = fname.match(/\.(raw|yuv|yuyv|rgb(32|a)?|bgra|h264)$/g);
+    let ext = fname.match(/\.(raw|yuv.*|yuyv|rgb(32|a)?|bgra|h264)$/g);
     if (ext) {
         switch (ext[0]) {
             case ".rgba":  fmtVal = "rgba";    break;
@@ -421,8 +441,7 @@ function getRawFileInfo() {
                 fmtVal = "bgra";
                 break;
 
-            case ".yuv": // fallthrough
-            default:
+            case ".yuv":
                 fmtVal = "yuv420p";
                 break;
         }
@@ -437,10 +456,15 @@ function getRawFileInfo() {
         $("#submitButton").prop("disabled", true);
     }
 
+    if (fmtVal === "other") {
+        $("#pixFmtTxtId").show();
+        $("#submitButton").prop("disabled", true);
+    }
+
     $("#bitDepthValue").val(bdVal);
     $("#inputFPSValue").val(fpsVal);
     $("#resValue").val(resVal);
-    $("#videoFormatValue").val(fmtVal);
+    $("#inputFormatValue").val(fmtVal);
 }
 
 $('#confirm-delete').on('show.bs.modal', function(e) {
@@ -449,11 +473,6 @@ $('#confirm-delete').on('show.bs.modal', function(e) {
 
 $('#confirm-cancel').on('show.bs.modal', function(e) {
     $(this).find('.btn-ok').attr('onclick', "sendCancelRequest('" +  $(e.relatedTarget).data('href') + "')");
-});
-
-// clear state if user clicks cancel button when inputting raw video info
-$('#rawVideoInfo').on('show.bs.modal', function(e) {
-    $(this).find('.btn-cancel').attr('onclick', "resetResumable()");
 });
 
 // add clicked option to kvazaar extra options if it hasnt' been added yet
@@ -603,6 +622,11 @@ $('#submitButton').click(function(){
         delete other_options["resolution_txt"];
     }
 
+    // use pixel format from input field instead
+    if (other_options.pixfmt_txt !== "") {
+        other_options.inputFormat = other_options.pixfmt_txt;
+    }
+
     var options = {
         'type' : 'uploadRequest',
         'token': userToken,
@@ -740,7 +764,7 @@ r.on('fileAdded', function(file){
     fpsOk = false;
 
     let fname = r.files[r.files.length - 1].fileName.toString();
-    let ext   = fname.match(/\.(raw|yuv|yuyv|rgb(32|a)?|bgra|h264)$/g);
+    let ext   = fname.match(/\.(raw|yuv.*|yuyv|rgb(32|a)?|bgra|h264)$/g);
 
     $("#submitButton").prop("disabled", false);
 
@@ -936,6 +960,20 @@ connection.onmessage = function(message) {
                 $("#invalidOptions").html("<strong>" + message_data.message + "</strong>");
                 $("#submitButton").prop("disabled", true);
 			}
+
+        } else if (message_data.reply === "pixelFormatValidationReply") {
+            if (message_data.valid === true) {
+                $("#pixFmtError").hide();
+                $("#submitButton").prop("disabled", false);
+
+                pixFmtOk = true;
+                enableSubmitIfOptionsValid();
+            } else {
+                pixFmtOk = false;
+                $("#pixFmtError").show();
+                $("#pixFmtError").html(message_data.message);
+                $("#submitButton").prop("disabled", true);
+            }
         }
     }
 };

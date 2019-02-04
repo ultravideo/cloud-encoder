@@ -345,8 +345,6 @@ function preprocessRawVideo(fileOptions) {
         // kvazaar only understands yuv420p, do some converting
         let inputOptions = [ ];
 
-        console.log(fileOptions);
-
         if (fileOptions.video_format === "h264") {
             inputOptions.push("-f", "h264")
         } else {

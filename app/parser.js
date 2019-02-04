@@ -94,16 +94,65 @@ module.exports = {
         });
     },
 
-    validateVideoFormat : function(str) {
+    validatePixelFormat : function(str) {
         return new Promise((resolve, reject) => {
-            const validFormats = [ "yuv420p", "rgba", "bgra", "yuyv422", "h264" ];
 
-            validFormats.forEach(function(format) {
-                if (str === format)
-                    resolve(format);
-            });
+            // use hashmap for faster searching
+            const validFormats = {
+                "h264"             : 1,   "yuv420p"        : 1,   "yuyv422"        : 1,   "rgb24"          : 1,
+                "yuv422p"          : 1,   "yuv444p"        : 1,   "yuv410p"        : 1,   "uyyvyy411"      : 1,
+                "yuv411p"          : 1,   "gray"           : 1,   "monow"          : 1,   "monob"          : 1,
+                "yuvj420p"         : 1,   "yuvj422p"       : 1,   "vdpau_h264"     : 1,   "vdpau_mpeg1"    : 1,
+                "yuvj444p"         : 1,   "xvmcmc"         : 1,   "xvmcidct"       : 1,   "uyvy422"        : 1,
+                "bgr4"             : 1,   "bgr4_byte"      : 1,   "rgb8"           : 1,   "rgb4"           : 1,
+                "nv21"             : 1,   "argb"           : 1,   "rgba"           : 1,   "abgr"           : 1,
+                "gray16le"         : 1,   "yuv440p"        : 1,   "yuvj440p"       : 1,   "yuva420p"       : 1,
+                "vdpau_mpeg2"      : 1,   "vdpau_wmv3"     : 1,   "vdpau_vc1"      : 1,   "rgb48be"        : 1,
+                "rgb565le"         : 1,   "rgb555be"       : 1,   "rgb555le"       : 1,   "bgr565be"       : 1,
+                "bgr555le"         : 1,   "vaapi_moco"     : 1,   "vaapi_idct"     : 1,   "vaapi_vld"      : 1,
+                "yuv420p16le"      : 1,   "yuv420p16be"    : 1,   "rgb48le"        : 1,   "rgb565be"       : 1,
+                "yuv422p16le"      : 1,   "yuv422p16be"    : 1,   "yuv444p16le"    : 1,   "yuv444p16be"    : 1,
+                "vdpau_mpeg4"      : 1,   "dxva2_vld"      : 1,   "bgr565le"       : 1,   "bgr555be"       : 1,
+                "rgb444le"         : 1,   "rgb444be"       : 1,   "bgr444le"       : 1,   "bgr444be"       : 1,
+                "bgr48le"          : 1,   "yuv420p9be"     : 1,   "yuv420p9le"     : 1,   "yuv420p10be"    : 1,
+                "yuv420p10le"      : 1,   "yuv422p10be"    : 1,   "bgr48be"        : 1,   "ya8"            : 1,
+                "yuv422p10le"      : 1,   "yuv444p9be"     : 1,   "yuv444p9le"     : 1,   "yuv444p10be"    : 1,
+                "yuv444p10le"      : 1,   "yuv422p9be"     : 1,   "yuva444p"       : 1,   "nv20be"         : 1,
+                "yuv422p9le"       : 1,   "vda_vld"        : 1,   "gbrp"           : 1,   "gbrp9be"        : 1,
+                "gbrp10le"         : 1,   "gbrp16be"       : 1,   "gbrp16le"       : 1,   "yuva422p"       : 1,
+                "yuva420p9le"      : 1,   "yuva422p9be"    : 1,   "yuva422p9le"    : 1,   "yuva444p9be"    : 1,
+                "yuva444p9le"      : 1,   "yuva420p10be"   : 1,   "gbrp10be"       : 1,   "yuva420p9be"    : 1,
+                "yuva420p10le"     : 1,   "yuva422p10be"   : 1,   "yuva422p10le"   : 1,   "yuva444p10be"   : 1,
+                "yuva444p10le"     : 1,   "yuva420p16be"   : 1,   "gbrp9le"        : 1,   "rgba64be"       : 1,
+                "yuva420p16le"     : 1,   "yuva422p16be"   : 1,   "yuva422p16le"   : 1,   "yuva444p16be"   : 1,
+                "xyz12le"          : 1,   "xyz12be"        : 1,   "nv16"           : 1,   "nv20le"         : 1,
+                "rgba64le"         : 1,   "bgra64be"       : 1,   "bgra64le"       : 1,   "yvyu422"        : 1,
+                "ya16le"           : 1,   "gbrap"          : 1,   "gbrap16be"      : 1,   "gbrap16le"      : 1,
+                "d3d11va_vld"      : 1,   "cuda"           : 1,   "0rgb"           : 1,   "rgb0"           : 1,
+                "yuv420p12be"      : 1,   "yuv420p12le"    : 1,   "yuv420p14be"    : 1,   "yuv420p14le"    : 1,
+                "yuv422p12be"      : 1,   "yuv422p12le"    : 1,   "yuva444p16le"   : 1,   "vdpau"          : 1,
+                "yuv422p14be"      : 1,   "yuv422p14le"    : 1,   "yuv444p12be"    : 1,   "yuv444p12le"    : 1,
+                "yuv444p14be"      : 1,   "yuv444p14le"    : 1,   "bgr8"           : 1,   "bayer_bggr8"    : 1,
+                "gbrp12be"         : 1,   "gbrp12le"       : 1,   "gbrp14be"       : 1,   "gbrp14le"       : 1,
+                "bayer_rggb8"      : 1,   "bayer_gbrg8"    : 1,   "bayer_grbg8"    : 1,   "bayer_bggr16le" : 1,
+                "bayer_rggb16le"   : 1,   "bayer_rggb16be" : 1,   "bayer_gbrg16le" : 1,   "bayer_gbrg16be" : 1,
+                "bayer_grbg16be"   : 1,   "yuv440p10le"    : 1,   "bayer_grbg16le" : 1,   "bayer_bggr16be" : 1,
+                "yuv440p10be"      : 1,   "yuv440p12le"    : 1,   "yuv440p12be"    : 1,   "ayuv64le"       : 1,
+                "videotoolbox_vld" : 1,   "yuvj411p"       : 1,   "gbrap10le"      : 1,   "ayuv64be"       : 1,
+                "p010le"           : 1,   "p010be"         : 1,   "gbrap12be"      : 1,   "gbrap12le"      : 1,
+                "mediacodec"       : 1,   "gray12be"       : 1,   "gray12le"       : 1,   "gray10be"       : 1,
+                "p016be"           : 1,   "d3d11"          : 1,   "gray9be"        : 1,   "gray9le"        : 1,
+                "gbrapf32be"       : 1,   "gbrapf32le"     : 1,   "drm_prime"      : 1,   "gbrpf32le"      : 1,
+                "gbrpf32be"        : 1,   "p016le"         : 1,   "gbrap10be"      : 1,   "gray10le"       : 1,
+                "vda"              : 1,   "ya16be"         : 1,   "qsv"            : 1,   "mmal"           : 1,
+                "0bgr"             : 1,   "bgr0"           : 1,   "rgb4_byte"      : 1,   "nv12"           : 1,
+                "bgra"             : 1,   "gray16be"       : 1,   "pal8"           : 1,   "bgr24"          : 1,
+            };
 
-            reject(new Error("Invalid format: " + str));
+            if (validFormats.hasOwnProperty(str))
+                resolve(str);
+
+            reject(new Error("Invalid format: " + htmlspecialchars(str)));
         });
     },
 

@@ -134,6 +134,9 @@ socket.on('connection', function(client) {
 
         } else if (message.type === "optionsValidationRequest") {
             handleoptionsValidationRequest(client, message.options);
+
+        } else if (message.type === "pixelFormatValidationRequest") {
+            handlePixelFormatValidationRequest(client, message.pixelFormat);
         }
     });
 
@@ -173,7 +176,7 @@ function validateFileOptions(fileOptions) {
                 parser.validateInputFPS(fileOptions.inputFPS),
                 parser.validateBithDepth(fileOptions.bitDepth),
                 parser.validateResolution(fileOptions.resolution),
-                parser.validateVideoFormat(fileOptions.videoFormat)
+                parser.validatePixelFormat(fileOptions.inputFormat)
             ]).then((validated) => {
 
                 validatedOptions.fps          = validated[0];
@@ -441,6 +444,10 @@ function handleCancelRequest(client, token) {
         }
 
         kue.Job.get(reply, function(err, job) {
+            if (job) {
+                return;
+            }
+
             if (job.started_at === undefined) {
                 job.remove(function() {
                     db.updateTask(token, { status: workerStatus.CANCELLED })
@@ -679,6 +686,24 @@ function handleoptionsValidationRequest(client, options) {
             reply: "optionsValidationReply",
             valid: false,
             message: err
+        }));
+    });
+}
+
+function handlePixelFormatValidationRequest(client, pixelFormat) {
+    parser.validatePixelFormat(pixelFormat).then((validatedPixelFormat) => {
+        client.send(JSON.stringify({
+            type: "action",
+            reply: "pixelFormatValidationReply",
+            valid: true,
+        }));
+    })
+    .catch(function(err) {
+        client.send(JSON.stringify({
+            type: "action",
+            reply: "pixelFormatValidationReply",
+            valid: false,
+            message: err.toString(),
         }));
     });
 }
