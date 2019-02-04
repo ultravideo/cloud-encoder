@@ -11,7 +11,7 @@ var db = require('./db');
 var ffprobe = require('ffprobe');
 var ffprobeStatic = require('ffprobe-static');
 var NRP = require('node-redis-pubsub');
-var redis_client = require('redis').createClient();
+var redis_client = require('redis').createClient(7776);
 const { fork, spawn } = require('child_process');
 const workerStatus = require("./constants");
 

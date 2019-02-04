@@ -8,7 +8,7 @@ let crypto = require('crypto');
 let kue = require('kue');
 var NRP = require('node-redis-pubsub');
 var app = require("./server");
-var redis_client = require('redis').createClient();
+var redis_client = require('redis').createClient(7776);
 const workerStatus = require("./constants");
 
 // store kue's job id to redis so we can cancel tasks in constant time

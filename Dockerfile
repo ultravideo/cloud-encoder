@@ -23,7 +23,6 @@ RUN apt-get update \
     && make clean \
     && cd .. \
     && mkdir src src/public src/util src/app \
-    && mkdir -p /tmp /tmp/cloud_uploads /tmp/cloud_uploads/misc /tmp/cloud_uploads/output \
     && export CLOUD_HOST=$CLOUD_HOST \
     && sudo service postgresql start \
     && sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';" \
@@ -45,12 +44,13 @@ COPY package.json /src/package.json
 RUN npm install --silent
 
 COPY app/server.js app/worker.js app/parser.js app/socket.js app/db.js app/constants.js /src/app/
-COPY util/resumable.js public/frontend.js util/resumable-node.js /src/util/
-COPY util/logo.png /tmp/cloud_uploads/misc/
+COPY util/resumable.js public/frontend.js util/resumable-node.js util/logo.png /src/util/
 COPY public/ /src/public/
 
 EXPOSE 8080
 
-CMD sudo service postgresql start \
+CMD mkdir -p /tmp/cloud_uploads /tmp/cloud_uploads/misc /tmp/cloud_uploads/output \
+	&& cp util/logo.png /tmp/cloud_uploads/misc \
+	&& sudo service postgresql start \
     && redis-server --port 7776 --daemonize yes \
     && node app/socket.js
