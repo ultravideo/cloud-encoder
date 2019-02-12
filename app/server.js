@@ -51,23 +51,27 @@ var nrp = new NRP({
 // client side code understand and knows how to act upon
 function sendMessage(user, token, type, reply, message) {
     nrp.emit('message', {
-        user: user,
-        token: token,
         type: type,
         reply: reply,
-        message: message
+        data: {
+            user: user,
+            token: token,
+            message: message
+        }
     });
 }
 
 function sendStatusMessage(user, file_id, token, type, reply, status, message) {
     nrp.emit('message', {
-        user: user,
-        file_id: file_id,
-        token: token,
         type: type,
         reply: reply,
-        status: status,
-        message: message
+        data: {
+            user: user,
+            file_id: file_id,
+            token: token,
+            status: status,
+            message: message
+        }
     });
 }
 
@@ -185,7 +189,7 @@ function updateFileStatusToPreprocessing(identifier) {
                     }
 
                     sendStatusMessage(rows[i].owner_id, rows[i].file_id,
-                                      rows[i].token, "action", "taskUpdate",
+                                      rows[i].token, "update", "task",
                                       workerStatus.PREPROCESSING, "Preprocessing file");
 
                     i++;
@@ -221,8 +225,8 @@ function processUploadedFile(req, identifier, original_filename) {
                     if (task.status === workerStatus.PREPROCESSING) {
                         db.updateTask(task.taskid, { status: workerStatus.WAITING }).then(() => {
 
-                            sendStatusMessage(task.owner_id, task.file_id, task.token, "action",
-                                              "taskUpdate", workerStatus.WAITING, "Queued");
+                            sendStatusMessage(task.owner_id, task.file_id, task.token, "update",
+                                              "task", workerStatus.WAITING, "Queued");
 
                             let job = queue.create('process_file', {
                                 task_token: task.token
@@ -295,7 +299,8 @@ app.post('/upload', function(req, res) {
                     return processUploadedFile(req, identifier, original_filename);
                 })
                 .catch(function(err) {
-                    sendMessage(req.query.token, identifier, "status", null, err.toString());
+                    console.log("sending error message her!");
+                    sendMessage(req.query.token, identifier, "action", "cancel", err.toString());
                     console.log(err);
                 });
             })

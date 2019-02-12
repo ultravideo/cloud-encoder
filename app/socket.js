@@ -51,9 +51,9 @@ var nrp = new NRP({
 });
 
 nrp.on("message", function(msg) {
-    if (clients.clientList[msg.user]) {
-        if (clients.clientList[msg.user] && clients.clientList[msg.user].readyState === 1) {
-            clients.clientList[msg.user].send(JSON.stringify(msg));
+    if (clients.clientList[msg.data.user]) {
+        if (clients.clientList[msg.data.user] && clients.clientList[msg.data.user].readyState === 1) {
+            clients.clientList[msg.data.user].send(JSON.stringify(msg));
         }
     }
 });
@@ -110,9 +110,11 @@ wss.on('connection', function(client) {
                 })
                 .catch(function(err) {
                     client.send(JSON.stringify({
-                        type: "action",
-                        reply: "initResponse",
-                        status: "rejected",
+                        type: "reply",
+                        reply: "init",
+                        data: {
+                            status: "rejected",
+                        }
                     }));
                 });
             }
@@ -123,9 +125,11 @@ wss.on('connection', function(client) {
             })
             .catch(function(err) {
                 client.send(JSON.stringify({
-                    type: "action",
-                    reply: "initResponse",
-                    status: "rejected",
+                    type: "reply",
+                    reply: "init",
+                    data: {
+                        status: "rejected",
+                    }
                 }));
             });
 
@@ -268,26 +272,32 @@ function handleDownloadRequest(client, token) {
     db.getTask(token).then(function(taskInfo) {
         if (!taskInfo) {
             client.send(JSON.stringify({
-                type: "action",
-                reply: "downloadResponse",
-                status: "deleted",
+                type: "reply",
+                reply: "download",
+                data: {
+                    status: "deleted",
+                }
             }));
         } else {
             if (taskInfo.status != workerStatus.READY) {
                 client.send(JSON.stringify({
-                    type: "action",
-                    reply: "downloadResponse",
-                    status: "rejected",
-                    message: "File is not ready!"
+                    type: "reply",
+                    reply: "download",
+                    data: {
+                        status: "rejected",
+                        message: "File is not ready!"
+                    }
                 }));
             }  else if (taskInfo.download_count >= 2) {
                 console.log("download count exceeded");
                 client.send(JSON.stringify({
-                    type: "action",
-                    reply: "downloadResponse",
-                    status: "exceeded",
-                    message:  "File download limit has been exceeded!",
-                    token: taskInfo.token,
+                    type: "reply",
+                    reply: "download",
+                    data: {
+                        status: "exceeded",
+                        message:  "File download limit has been exceeded!",
+                        token: taskInfo.token,
+                    }
                 }));
 
                 // remove task and associated file
@@ -300,11 +310,13 @@ function handleDownloadRequest(client, token) {
                 });
             } else {
                 client.send(JSON.stringify({
-                    type: "action",
-                    reply: "downloadResponse",
-                    status: "accepted",
-                    token: token,
-                    count: taskInfo.download_count + 1,
+                    type: "reply",
+                    reply: "download",
+                    data: {
+                        status: "accepted",
+                        token: token,
+                        count: taskInfo.download_count + 1,
+                    }
                 }));
             }
         }
@@ -320,22 +332,25 @@ function handleDeleteRequest(client, token) {
             // "authentication" failure
             if (!row || row.owner_id !== key) {
                 client.send(JSON.stringify({
-                    type: "action",
-                    reply: "deleteResponse",
-                    status: "nok",
+                    type: "reply",
+                    reply: "delete",
+                    data: {
+                        status: "nok",
+                    }
                 }));
-
                 return;
             }
 
             db.removeTask(token).then(() => {
                 console.log("task delete succeeded!");
                 client.send(JSON.stringify({
-                    type: "action",
-                    reply: "deleteResponse",
-                    status: "ok",
-                    file_id: row.file_id,
-                    token: row.token
+                    type: "reply",
+                    reply: "delete",
+                    data: {
+                        status: "ok",
+                        file_id: row.file_id,
+                        token: row.token
+                    }
                 }));
             })
         })
@@ -350,18 +365,22 @@ function handleTaskRequest(client, message) {
     db.getTasks("owner_id", message.user).then((rows) => {
         if (!rows || rows.length === 0) {
             client.send(JSON.stringify({
-                type: "action",
-                reply: "taskResponse",
-                numTasks: 0,
+                type: "reply",
+                reply: "task",
+                data: {
+                    numTasks: 0,
+                }
             }));
             return;
         }
 
         let message = {
-            type: "action",
-            reply: "taskResponse",
-            numTasks: rows.length,
-            data: [],
+            type: "reply",
+            reply: "task",
+            data: {
+                numTasks: rows.length,
+                tasks: []
+            },
         };
 
         rows.forEach(function(taskRow) {
@@ -387,7 +406,7 @@ function handleTaskRequest(client, message) {
                     "Options":   values[1]["extra"]
                 };
 
-                message.data.push({
+                message.data.tasks.push({
                     name: values[0] ? values[0].name : "Error",
                     uniq_id: taskRow.file_id,
                     status: taskRow.status,
@@ -411,6 +430,8 @@ function handleUploadCancellation(client, message) {
             console.log(message.token, " doesn't exist!");
             return;
         }
+
+        // TODO send message to client
 
         // remove all uploaded chunk files, task and file records
         removeChunks(taskRow.file_id);
@@ -454,6 +475,8 @@ function handleUploadCancellation(client, message) {
 //
 // After the task has been stopped, remove the key-value pair from redis
 function handleCancelRequest(client, token) {
+
+    // TODO send message to client
 
     redis_client.get(token, function(err, reply) {
         if (err || !reply) {
@@ -628,11 +651,13 @@ function handleUploadRequest(client, message) {
 
                 client.send(
                     JSON.stringify({
-                        type: "action",
-                        reply: "uploadResponse",
-                        status: uploadApproved ? "upload" : requestApproved ? "request_ok" : "request_nok",
-                        token: token,
-                        message: uploadInfo.message
+                        type: "reply",
+                        reply: "upload",
+                        data: {
+                            status: uploadApproved ? "upload" : requestApproved ? "request_ok" : "request_nok",
+                            token: token,
+                            message: uploadInfo.message
+                        }
                     })
                 );
             })
@@ -640,12 +665,13 @@ function handleUploadRequest(client, message) {
                 client.send(
                     JSON.stringify({
                         type: "action",
-                        token: data.options.file.uniq_id,
                         reply: "cancel",
-                        message: "Error, try again later"
+                        data: {
+                            token: data.options.file.uniq_id,
+                            message: "Error, try again later"
+                        }
                     })
                 );
-                console.log("Something failed with database", err);
                 return;
             });
         })
@@ -654,7 +680,9 @@ function handleUploadRequest(client, message) {
             JSON.stringify({
                 type: "action",
                 reply: "cancel",
-                message: err.toString()
+                data: {
+                    message: err.toString()
+                }
             })
         );
         return;
@@ -692,18 +720,22 @@ function terminateOngoingUpload(key) {
 function handleoptionsValidationRequest(client, options) {
     parser.validateKvazaarOptions(options).then((validatedExtraOptions) => {
         client.send(JSON.stringify({
-            type: "action",
-            reply: "optionsValidationReply",
-            valid: true,
+            type: "reply",
+            reply: "optionsValidation",
+            data: {
+                valid: true
+            }
         }));
 
     })
     .catch(function(err) {
         client.send(JSON.stringify({
-            type: "action",
-            reply: "optionsValidationReply",
-            valid: false,
-            message: err
+            type: "reply",
+            reply: "optionsValidation",
+            data: {
+                valid: false,
+                message: err
+            }
         }));
     });
 }
@@ -711,17 +743,21 @@ function handleoptionsValidationRequest(client, options) {
 function handlePixelFormatValidationRequest(client, pixelFormat) {
     parser.validatePixelFormat(pixelFormat).then((validatedPixelFormat) => {
         client.send(JSON.stringify({
-            type: "action",
-            reply: "pixelFormatValidationReply",
-            valid: true,
+            type: "reply",
+            reply: "pixelFormatValidation",
+            data: {
+                valid: true
+            }
         }));
     })
     .catch(function(err) {
         client.send(JSON.stringify({
-            type: "action",
-            reply: "pixelFormatValidationReply",
-            valid: false,
-            message: err.toString(),
+            type: "reply",
+            reply: "pixelFormatValidation",
+            data: {
+                valid: false,
+                message: err.toString(),
+            }
         }));
     });
 }

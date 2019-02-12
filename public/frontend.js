@@ -131,15 +131,43 @@ function sendPixelFormatValidation(pixelFormat) {
 // from #files and inform user about it
 //
 // if the download request has been approved, download the file
-function downloadFile(response) {
-    if (response.status === "accepted") {
-        $("#table" + response.token + " #tdDownloadCount").html(2 - response.count);
-        var win = window.open("http://localhost:8080/download/" + response.token, '_blank');
+function handleDownloadResponse(response) {
+    if (response.data.status === "accepted") {
+        $("#table" + response.token + " #tdDownloadCount").html(2 - response.data.count);
+        var win = window.open("http://localhost:8080/download/" + response.data.token, '_blank');
         win.focus();
 
-        if (response.count === 2) {
-            $("#table" + response.token + " #btnDownload").prop("disabled", true);
+        if (response.data.count === 2) {
+            $("#table" + response.data.token + " #btnDownload").prop("disabled", true);
         }
+    }
+}
+
+function handleUploadResponse(response) {
+    if (response.data.status === "upload") {
+        // file upload has been approved, the file doesn't exist on the server
+        $(".resumable-progress .progress-resume-link").hide();
+        $(".resumable-progress .progress-pause-link").show();
+        $("#submitButton").prop("disabled", true);
+
+        uploadFileToken = response.data.token;
+        r.upload();
+    } else if (response.data.status === "request_ok") {
+        // file request was ok (unique set of options + file) but file already on the server
+        resetResumable();
+        incRequestCount();
+        $(".resumable-list").html("<br><div  class='alert alert-info' role='alert'>" +
+            "File already in the server, request has been added to work queue<br>" + 
+            "You can follow the progress <a href='#' class='linkRequestLinkClass'>here</a></div>");
+        $(".resumable-drop").show();
+        enableFileBrowse();
+    } else {
+        resetResumable();
+        $(".resumable-list").html("<br><div class='alert alert-warning' role='alert'>" +
+            "You have already made this request, check <a href='#' class='linkRequestLinkClass'>" +
+            "My videos</a> tab</div>");
+        $(".resumable-drop").show();
+        enableFileBrowse();
     }
 }
 
@@ -195,14 +223,14 @@ function drawFileTable(file) {
 function handleTaskResponse(response) {
     $("#divRequests").empty();
 
-    if (response.numTasks === 0) {
+    if (response.data.numTasks === 0) {
         $("#divRequests").append("<p>You haven't made requests.</p>");
     } else {
-        numRequests = response.data.length;
+        numRequests = response.data.tasks.length;
         updateRequestCount();
 
         // creating HTML dynamically like this is awful but whatevs
-        response.data.forEach(function(file) {
+        response.data.tasks.forEach(function(file) {
             $("#divRequests").append(drawFileTable(file));
         });
     }
@@ -211,39 +239,41 @@ function handleTaskResponse(response) {
 // worker, socket or server sent us task update regarding one of our files
 // Update the task if My videos view is active
 function handleTaskUpdate(response) {
-    if ($("#table" + response.token).length == 0) {
+    if ($("#table" + response.data.token).length == 0) {
         // ignore update, "My videos" tab is not active
     } else {
         // request ready
-        if (response.status === 4) {
-            $("#div" + response.token + " #btnDownload").prop("disabled", false);
-            $("#div" + response.token + " #btnDownload").removeAttr("onclick");
-            $("#div" + response.token + " #btnDownload").attr("onClick", "sendDownloadRequest('" + response.token + "');");
-            $("#div" + response.token + " #btnDelete").text("Delete");
+        if (response.data.status === 4) {
+            $("#div" + response.data.token + " #btnDownload").prop("disabled", false);
+            $("#div" + response.data.token + " #btnDownload").removeAttr("onclick");
+            $("#div" + response.data.token + " #btnDownload").attr("onClick", "sendDownloadRequest('" + response.data.token + "');");
+            $("#div" + response.data.token + " #btnDelete").text("Delete");
 
-            $("#div" + response.token + " #btnDelete").attr("data-target", "#confirm-delete");
-            $("#div" + response.token + " #tdStatus").html(response.message)
-            $("#div" + response.token + " #reqStatus").removeAttr("class");
-            $("#div" + response.token + " #reqStatus").addClass("dot dot_ready");
+            $("#div" + response.data.token + " #btnDelete").attr("data-target", "#confirm-delete");
+            $("#div" + response.data.token + " #tdStatus").html(response.data.message)
+            $("#div" + response.data.token + " #reqStatus").removeAttr("class");
+            $("#div" + response.data.token + " #reqStatus").addClass("dot dot_ready");
         }
 
         // request succeeded, failed or got cancelled -> show delete button
-        else if (response.status === 4 || response.status < -2) {
+        else if (response.data.status === 4 || response.data.status < -2) {
             // remove Cancel button and add Delete button
-            $("#div" + response.token + " #btnDelete").text("Delete");
-            $("#div" + response.token + " #btnDelete").attr("data-target", "#confirm-delete");
-            $("#div" + response.token + " #tdStatus").html(response.message)
-            $("#div" + response.token + " #reqStatus").removeAttr("class");
-            $("#div" + response.token + " #reqStatus").addClass("dot dot_failure");
+            $("#div" + response.data.token + " #btnDelete").text("Delete");
+            $("#div" + response.data.token + " #btnDelete").attr("data-target", "#confirm-delete");
+            $("#div" + response.data.token + " #tdStatus").html(response.data.message)
+            $("#div" + response.data.token + " #reqStatus").removeAttr("class");
+            $("#div" + response.data.token + " #reqStatus").addClass("dot dot_failure");
         }
         else {
-            $("#div" + response.token + " #tdStatus").html(response.message)
-            $("#div" + response.token + " #reqStatus").removeAttr("class");
-            $("#div" + response.token + " #reqStatus").addClass("dot dot_inprogress");
+            $("#div" + response.data.token + " #tdStatus").html(response.data.message)
+            $("#div" + response.data.token + " #reqStatus").removeAttr("class");
+            $("#div" + response.data.token + " #reqStatus").addClass("dot dot_inprogress");
         }
     }
 }
 
+// TODO anna tälle funktiolle parametrina muuttuneet arvot
+//      ja tallenna vaikka staattisina muuttujina funktion sisään nämä state-variablet
 function enableSubmitIfOptionsValid() {
     if (fpsOk && pixFmtOk && resOk && fileID !== null)
         $("#submitButton").prop("disabled", false);
@@ -251,27 +281,17 @@ function enableSubmitIfOptionsValid() {
         $("#submitButton").prop("disabled", true);
 }
 
-function handleCancelResponse(response) {
-    if (status === "ok") {
-        decRequestCount();
-        $("#div" + response.token).remove();
-    } else {
-        alert("Failed to cancel request");
-    }
-}
-
 function handleDeleteResponse(response) {
-    if (response.status === "ok") {
+    if (response.data.status === "ok") {
         decRequestCount();
-        $("#div" + response.token).remove();
+        $("#div" + response.data.token).remove();
 
         if (numRequests === 0) {
-            console.log("erorr heree");
             $("#divRequests").empty();
             $("#divRequests").append("<p>You haven't made requests.</p>");
         }
     } else {
-        alert("Failed to delete request, reason: " + response.message);
+        alert("Failed to delete request, reason: " + response.data.message);
     }
 }
 
@@ -286,6 +306,54 @@ function handleInitResponse() {
         type: "init",
         token: userToken,
     }));
+}
+
+function handleOptionsValidationResponse(response) {
+    if (response.data.valid === true) {
+        $("#invalidOptions").hide();
+        $("#submitButton").prop("disabled", false);
+    } else {
+        $("#invalidOptions").show();
+        $("#invalidOptions").html("<strong>" + response.data.message + "</strong>");
+        $("#submitButton").prop("disabled", true);
+    }
+}
+
+function handlePixelFormatValidationResponse(response) {
+    if (response.data.valid === true) {
+        $("#pixFmtError").hide();
+        $("#submitButton").prop("disabled", false);
+
+        pixFmtOk = true;
+        enableSubmitIfOptionsValid();
+    } else {
+        pixFmtOk = false;
+        $("#pixFmtError").show();
+        $("#pixFmtError").html(response.data.message);
+        $("#submitButton").prop("disabled", true);
+    }
+}
+
+function handleCancelAction(response) {
+    r.cancel();
+    resetResumable();
+
+    let html = "<br><div class='alert alert-danger' role='alert'>";
+    let parts = response.data.message.split("\n");
+    parts.forEach(function(part) {
+        html += part + "</div>";
+    });
+
+    $(".resumable-list").html(html);
+}
+
+function handlePauseAction() {
+    incRequestCount();
+    r.pause();
+}
+
+function handleContinueAction() {
+    r.upload();
 }
 
 function resetUploadFileInfo() {
@@ -875,6 +943,7 @@ connection.onopen = function() {
         user: userToken,
         type: "taskQuery"
     }));
+
     console.log("init", userToken);
 };
 
@@ -889,108 +958,32 @@ connection.onmessage = function(message) {
         return;
     }
 
-    // server send us message regarding resumable upload process
-    if (message_data.type === "action") {
-        if (message_data.reply === "uploadResponse") {
-            if (message_data.status === "upload") {
-                // file upload has been approved, the file doesn't exist on the server
-                $(".resumable-progress .progress-resume-link").hide();
-                $(".resumable-progress .progress-pause-link").show();
-                $("#submitButton").prop("disabled", true);
+    let responseHandlers = {
+        "init": handleInitResponse,
+        "task": handleTaskResponse,
+        "upload": handleUploadResponse,
+        "delete": handleDeleteResponse,
+        "download": handleDownloadResponse,
+        "optionsValidation": handleOptionsValidationResponse,
+        "pixelFormatValidation" : handlePixelFormatValidationResponse,
+    };
 
-                uploadFileToken = message_data.token;
-                r.upload();
-            } else if (message_data.status === "request_ok") {
-                // file request was ok (unique set of options + file) but file already on the server
-                resetResumable();
-                incRequestCount();
-                $(".resumable-list").html("<br><div  class='alert alert-info' role='alert'>" +
-                    "File already in the server, request has been added to work queue<br>" + 
-                    "You can follow the progress <a href='#' class='linkRequestLinkClass'>here</a></div>");
-                $(".resumable-drop").show();
-                enableFileBrowse();
-            } else {
-                // 
-                resetResumable();
-                $(".resumable-list").html("<br><div class='alert alert-warning' role='alert'>" +
-                    "You have already made this request, check <a href='#' class='linkRequestLinkClass'>" +
-                    "My videos</a> tab</div>");
-                $(".resumable-drop").show();
-                enableFileBrowse();
-            }
-        } else if (message_data.reply == "cancel") {
-            // file upload was cancelled (the file may be invalid, of invalid length or something similar)
-            // inform user about this
-            r.cancel();
-            resetResumable();
+    let actionHandlers = {
+        "pause": handlePauseAction,
+        "cancel": handleCancelAction,
+        "continue": handleContinueAction,
+    }
 
-            let html = "<br><div class='alert alert-danger' role='alert'>";
-            let parts = message_data.message.split("\n");
-            parts.forEach(function(part) {
-                html += part + "</div>";
-            });
-
-            $(".resumable-list").html(html);
-
-        } else if (message_data.reply === "pause") {
-            // file upload is paused for the duration of file validity check
-            // (uploaded file IS video and that the duration is <30min)
-            incRequestCount();
-            r.pause();
-
-        } else if (message_data.reply === "continue") {
-            // file has approved (it was a video file of valid length), continue upload
-            // incRequestCount();
-            // $(".resumable-list").html("<br><div  class='alert alert-info' role='alert'>" +
-            //     "You can follow the progress <a href='#' id='linkRequestLink'>here</a></div>");
-            // $(".resumable-list").html("<br><div class='alert alert-warning' role='alert'>" +
-            //     "<strong>You have already made this request, check \"My videos\" tab</strong></div>");
-            // $("#dlDoneInfo").show();
-            r.upload();
-
-        } else if (message_data.reply === "downloadResponse") {
-            downloadFile(message_data);
-
-        } else if (message_data.reply === "taskResponse") {
-            handleTaskResponse(message_data);
-
-        }  else if (message_data.reply === "taskUpdate") {
-            console.log("got message!");
-            handleTaskUpdate(message_data);
-
-        } else if (message_data.reply === "deleteResponse") {
-            handleDeleteResponse(message_data);
-
-        } else if (message_data.reply === "cancelResponse") {
-            handleCancelResponse(message_data);
-
-        } else if (message_data.reply === "initResponse") {
-            handleInitResponse();
-
-        } else if (message_data.reply === "optionsValidationReply") {
-            if (message_data.valid === true) {
-                $("#invalidOptions").hide();
-                $("#submitButton").prop("disabled", false);
-            } else {
-                $("#invalidOptions").show();
-                $("#invalidOptions").html("<strong>" + message_data.message + "</strong>");
-                $("#submitButton").prop("disabled", true);
-			}
-
-        } else if (message_data.reply === "pixelFormatValidationReply") {
-            if (message_data.valid === true) {
-                $("#pixFmtError").hide();
-                $("#submitButton").prop("disabled", false);
-
-                pixFmtOk = true;
-                enableSubmitIfOptionsValid();
-            } else {
-                pixFmtOk = false;
-                $("#pixFmtError").show();
-                $("#pixFmtError").html(message_data.message);
-                $("#submitButton").prop("disabled", true);
-            }
+    if (message_data.type === "reply") {
+        if (responseHandlers.hasOwnProperty(message_data.reply)) {
+            responseHandlers[message_data.reply](message_data);
         }
+    } else if (message_data.type === "action") {
+        if (actionHandlers.hasOwnProperty(message_data.reply)) {
+            actionHandlers[message_data.reply](message_data);
+        }
+    } else if (message_data.type === "update") {
+        handleTaskUpdate(message_data);
     }
 };
 
@@ -1001,3 +994,5 @@ connection.onclose = function(error) {
 connection.onerror = function(error) {
     console.log(error);
 };
+
+// ------------------------------- /WebSocket stuff -------------------------------

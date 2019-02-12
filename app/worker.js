@@ -25,17 +25,6 @@ var nrp = new NRP({
     scope: "msg_queue"
 });
 
-function sendMessage(user, fileId, message, status, misc) {
-    nrp.emit('message', {
-        user: user,
-        token: fileId,
-        status: status,
-        reply: "status",
-        message: message,
-        misc: misc,
-    });
-}
-
 // this variable holds the PID of currently running external program
 // It's updaded every time task moves forward (e.g. from decoding to encoding)
 let currentJobPid = null;
@@ -334,13 +323,15 @@ function updateWorkerStatus(taskInfo, fileId, currentJob) {
 
         db.updateTask(taskInfo.taskid, { status : currentJob }).then(() => {
             nrp.emit('message', {
-                user: taskInfo.owner_id,
-                file_id: fileId,
-                token: taskInfo.token,
-                type: "action",
-                reply: "taskUpdate",
-                status: currentJob,
-                message: message,
+                type: "update",
+                reply: "task",
+                data: {
+                    user: taskInfo.owner_id,
+                    file_id: fileId,
+                    token: taskInfo.token,
+                    status: currentJob,
+                    message: message,
+                }
             });
             resolve();
         });

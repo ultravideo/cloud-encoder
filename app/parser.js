@@ -18,14 +18,17 @@ function getLongParameterName(name) {
 function matchValueWithExpected(key, inputValue, validValues) {
     return new Promise((resolve, reject) => {
         for (let i = 0; i < validValues.length; ++i) {
+
             if (typeof(validValues[i]) === "string") {
                 if (validValues[i] === "" + inputValue)
                     resolve(getLongParameterName(key) + " " + validValues[i]);
+
             } else if (validValues[i] instanceof RegExp) {
                 let match = inputValue.toString().match(validValues[i]);
                 if (match && match.length > 0) {
                     resolve(getLongParameterName(key) + " " + match[0]);
                 }
+
             } else if (typeof(validValues[i]) === "boolean") {
                 if (inputValue === validValues[i]) {
                     let start = validValues[i] ? "" : "no-";
@@ -149,8 +152,8 @@ module.exports = {
                 "bgra"             : 1,   "gray16be"       : 1,   "pal8"           : 1,   "bgr24"          : 1,
             };
 
-            if (validFormats.hasOwnProperty(str))
-                resolve(str);
+            if (validFormats.hasOwnProperty(str.toLowerCase()))
+                resolve(str.toLowerCase());
 
             reject(new Error("Invalid format: " + htmlspecialchars(str)));
         });
