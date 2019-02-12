@@ -111,416 +111,444 @@
 						<option value="mkv">MKV</option>
 					</select>
 				</div>
-				<hr class="separator"></hr>
-				<div class="form-check">
-					<input type="checkbox" id="rawVideoCheck" name="raw_video" class="options form-check-input"/>
-					<label class="form-check-label" for="rawVideoCheck" style="margin-top: 5px">
-						Additional specifications for raw video
-					</label>
-				</div>
-				<div id="rawVideoInfo" style="display: none">
-					<form>
-					  <div class="form-group"><br>
-						<label>Input format</label>
-						<select class="form-control options" name="inputFormat" id="inputFormatValue">
-							<option value="yuv420p">YUV420P</option>
-							<option value="bgra">RGB32</option>
-							<option value="rgba">RGBA</option>
-							<option value="yuyv422">YUYV422</option>
-							<option value="h264">H.264</option>
-							<option value="other">Other</option>
-						</select>
-						<div id="pixFmtTxtId" style="display:none">
-							<br><input type="text" name="pixfmt_txt" class="options form-control"
-							   id="pixFmtTxt" placeholder="YUV420P"/>
+				<br>
+					<div class="form-check">
+						<input type="checkbox" id="advacedCheck" class="options form-check-input"/>
+						<label class="form-check-label" for="advacedCheck" style="margin-top: 5px">
+							Advanced options
+						</label>
+					</div>
+
+				<div id="advacedOptions" style="display:none">
+					<hr class="separator"></hr>
+					<label id="idSelectedBitrate" style="font-size: 1.25em">
+						Selected bitrate: 0 kpbs
+					</label><br>
+					<div class="form-row">
+						<div class="col-md-2">
+							<label style="margin-top:10px; padding 0px;">Small size</label>
 						</div>
-						<div id="pixFmtError" style="display:none; margin-top: 5px"
-							 class="rawVideoWarning alert alert-danger" role="alert">
-						</div><br>
-						<label>Resolution</label>
-							<select name="resolution" id="resValue" class="options form-control">
-								<option value="1280x720">1280x720</option>
-								<option value="1920x1080">1920x1080</option>
-								<option value="2048x1080">2048x1080</option>
-								<option value="2560x1080">2560x1080</option>
-								<option value="3840x2160">3840x2160</option>
-								<option value="4096x2160">4096x2160</option>
-								<option value="custom">Custom</option>
-							</select>
-							<div id="resValueTxtId" style="display:none">
-								<br>
-								<input type="text" name="resolution_txt" class="options form-control"
-								   id="resValueTxt" placeholder="1920x1080"/>
+						<div class="col-md-8">
+							<input type="range" value="0" min="32" max="19660800" step="64" id="bitrateSlider"
+								   class="form-control kvz_options" name="bitrate"/>
+						</div>
+						<div class="col-md-2">
+							<label style="margin-top:10px;">Good quality</label>
 							</div>
-							<div id="inputResError" style="display:none; margin-top: 5px"
+						</div>
+					<hr class="separator"></hr>
+
+					<div class="form-check">
+						<input type="checkbox" id="rawVideoCheck" name="raw_video" class="options form-check-input"/>
+						<label class="form-check-label" for="rawVideoCheck" style="margin-top: 5px">
+							Additional specifications for raw video
+						</label>
+					</div>
+					<div id="rawVideoInfo" style="display: none">
+						<form>
+						  <div class="form-group"><br>
+							<label>Input format</label>
+							<select class="form-control options" name="inputFormat" id="inputFormatValue">
+								<option value="yuv420p">YUV420P</option>
+								<option value="bgra">RGB32</option>
+								<option value="rgba">RGBA</option>
+								<option value="yuyv422">YUYV422</option>
+								<option value="h264">H.264</option>
+								<option value="other">Other</option>
+							</select>
+							<div id="pixFmtTxtId" style="display:none">
+								<br><input type="text" name="pixfmt_txt" class="options form-control"
+								   id="pixFmtTxt" placeholder="YUV420P"/>
+							</div>
+							<div id="pixFmtError" style="display:none; margin-top: 5px"
 								 class="rawVideoWarning alert alert-danger" role="alert">
 							</div><br>
-							<label>Bit depth</label>
-							<select class="form-control options" name="bitDepth" id="bitDepthValue">
-								<option value="8" selected>8</option>
-								<option value="10">10</option>
-							</select><br>
+							<label>Resolution</label>
+								<select name="resolution" id="resValue" class="options form-control">
+									<option value="1280x720">1280x720</option>
+									<option value="1920x1080">1920x1080</option>
+									<option value="2048x1080">2048x1080</option>
+									<option value="2560x1080">2560x1080</option>
+									<option value="3840x2160">3840x2160</option>
+									<option value="4096x2160">4096x2160</option>
+									<option value="custom">Custom</option>
+								</select>
+								<div id="resValueTxtId" style="display:none">
+									<br>
+									<input type="text" name="resolution_txt" class="options form-control"
+									   id="resValueTxt" placeholder="1920x1080"/>
+								</div>
+								<div id="inputResError" style="display:none; margin-top: 5px"
+									 class="rawVideoWarning alert alert-danger" role="alert">
+								</div><br>
+								<label>Bit depth</label>
+								<select class="form-control options" name="bitDepth" id="bitDepthValue">
+									<option value="8" selected>8</option>
+									<option value="10">10</option>
+								</select><br>
 
-							<label>Input FPS</label>
-							<input type="text" name="inputFPS" id="inputFPSValue" class="options form-control"/>
-							<div id="inputFPSError" style="display:none; margin-top: 5px"
-								 class="rawVideoWarning alert alert-danger" role="alert">
+								<label>Input FPS</label>
+								<input type="text" name="inputFPS" id="inputFPSValue" class="options form-control"/>
+								<div id="inputFPSError" style="display:none; margin-top: 5px"
+									 class="rawVideoWarning alert alert-danger" role="alert">
+								</div>
+						  </div>
+						</form>
+					</div>
+					<hr class="separator"></hr>
+					<button id="kvazaarCmdButton" class="btn btn-primary">Kvazaar options</button><br>
+					<div id="kvazaarExtraOptionsDiv" class=""><br>
+						<a class="" target="_blank"
+						   href="https://github.com/ultravideo/kvazaar#parameters">Description of Kvazaar input parameters</a><br><br>
+
+					   <div class="accordion" id="accordionExample">
+						<div class="card">
+							<div class="card-header" id="headingOne">
+								<h5 class="mb-0">
+								<button class="btn btn-link" type="button" data-toggle="collapse"
+										data-target="#collapseInput" aria-expanded="true" aria-controls="collapseOne">
+									Input options
+								</button>
+								</h5>
 							</div>
-					  </div>
-					</form>
+							<div id="collapseInput" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
+								<div class="card-body">
+									<div class="btn-group" role="group" aria-label="">
+										<button value="frames" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="Number of frames to code [all]">
+											--frames &lt;integer&gt;
+										</button>
+										<button value="seek" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="First frame to code [0]">
+											--seek &lt;integer&gt;
+										</button>
+										<button value="source-scan-type" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Source scan type [progressive]<br> - progressive: Progressive scan<br> - tff: Top field first<br> - bff: Bottom field first<br>">
+											--source-scan-type &lt;string&gt;
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="card">
+							<div class="card-header" id="headingOne">
+								<h5 class="mb-0">
+								<button class="btn btn-link" type="button" data-toggle="collapse"
+										data-target="#collapseGeneral" aria-expanded="true" aria-controls="collapseOne">
+									General options
+								</button>
+								</h5>
+							</div>
+							<div id="collapseGeneral" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
+								<div class="card-body">
+									<div class="btn-group" role="group" aria-label="">
+										<button value="aud" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Use access unit delimiters [disabled]">
+											--aud
+										</button>
+										<button value="cpuid" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Enable runtime CPU optimizations [enabled]">
+											--cpuid
+										</button>
+										<button value="hash" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Decoded picture hash [checksum]<br> - none: 0 bytes<br> - checksum: 18 bytes<br> - md5: 56 bytes">
+											--hash &lt;string&gt;
+										</button>
+										<button value="psnr" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Calculate PSNR for frames [enabled]">
+											--psnr
+										</button>
+										<button value="info" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Add encoder info SEI [enabled]">
+											--info
+										</button>
+										<button value="key" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="Encryption key [16,213,27,56,255,127,242,112,97,126,197,204,25,59,38,30]">
+											--key &lt;string&gt;
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="card">
+							<div class="card-header" id="headingOne">
+								<h5 class="mb-0">
+								<button class="btn btn-link" type="button" data-toggle="collapse"
+										data-target="#collapseStruct" aria-expanded="true" aria-controls="collapseOne">
+									Video structure
+								</button>
+								</h5>
+							</div>
+							<div id="collapseStruct" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
+								<div class="card-body">
+									<div class="btn-group" role="group" aria-label="">
+										<button value="qp" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="Quantization parameter [22]">
+											--qp &lt;integer&gt;
+										</button>
+										<button value="period" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Period of intra pictures [64]<br> - 0: Only first picture is intra<br> - 1: All pictures are intra<br> - N: Every Nth picture is intra">
+											--period &lt;integer&gt;
+										</button>
+										<button value="vps-period" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="How often the video parameter set is re-sent [0]<br> - 0: Only send VPS with the first frame<br> - N: Send VPS with every Nth intra frame">
+											--vps-period &lt;integer&gt;
+										</button>
+										<button value="ref" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="Number of reference frames, in range 1..15 [4]">
+											--ref &lt;integer&gt;
+										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
+										<button value="gop" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+									  data-toggle="tooltip" title="GOP structure [8]<br> - 0: Disabled<br> - 8: B-frame pyramid of length 8<br> - lp-<string>: Low-delay P-frame GOP (e.g. lp-g8d4t2, see README)">
+											--gop
+										</button>
+										<button value="open-gop" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Use open GOP configuration. [enabled]">
+											--open-gop
+										</button>
+										<button value="bitrate" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Target bitrate [0] <br> - 0: Disable rate control <br> - N: Target N bits per second">
+											--bitrate &lt;integer&gt;
+										</button>
+										<button value="lossless" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Use lossless coding. [disabled]">
+											--lossless
+										</button>
+										<button value="mv-constraint" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Constrain movement vectors. [none] <br> - none: No constraint <br> - frametile: Constrain within the tile <br> - frametilemargin: Constrain even more">
+											--mv-constraint &lt;string&gt;
+										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
+										<button value="set-qp-in-cu" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Set QP at CU level keeping pic_init_qp_minus26 in PPS zero.">
+											--set-qp-in-cu
+										</button>
+										<button value="erp-aqp" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Use adaptive QP for 360 degree video with equirectangular projection [disabled]">
+											--erp-aqp
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="card">
+							<div class="card-header" id="headingOne">
+								<h5 class="mb-0">
+								<button class="btn btn-link" type="button" data-toggle="collapse"
+										data-target="#collapseComp" aria-expanded="true" aria-controls="collapseOne">
+									Compression tools
+								</button>
+								</h5>
+							</div>
+							<div id="collapseComp" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
+								<div class="card-body">
+									<div class="btn-group" role="group" aria-label="">
+										<button value="deblock" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Deblocking filter. [0:0]<br> - beta: Between -6 and 6<br> - tc: Between -6 and 6
+	">
+											--deblock &lt;beta:tc&gt;
+										</button>
+										<button value="sao" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Sample Adaptive Offset [full]<br> - off: SAO disabled<br> - band: Band offset only<br> - edge: Edge offset only<br> - full: Full SAO">
+											--sao &lt;string&gt;
+										</button>
+										<button value="rdoq" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Rate-distortion optimized quantization [enabled]">
+											--rdoq
+										</button>
+										<button value="rdoq-skip" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Skip RDOQ for 4x4 blocks. [disabled]">
+											--rdoq-skip
+										</button>
+										<button value="signhide" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Sign hiding [disabled]">
+											--signhide
+										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
+										<button value="smp" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Symmetric motion partition [disabled]">
+											--smp
+										</button>
+										<button value="amp" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Asymmetric motion partition [disabled]">
+											--amp
+										</button>
+										<button value="rd" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Intra mode search complexity [0]<br>  - 0: Skip intra if inter is good enough<br>  - 1: Rough intra mode search with SATD<br>  - 2: Refine intra mode search with SSE<br>  - 3: Try all intra modes and enable intra chroma mode search">
+											--rd &lt;integer&gt;
+										</button>
+										<button value="mv-rdo" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Rate-distortion optimized motion vector costs [disabled]">
+											--mv-rdo
+										</button>
+										<button value="full-intra-search" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Try all intra modes during rough search [disabled]">
+											--full-intra-search
+										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
+										<button value="transform-skip" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Try all intra modes during rough search [disabled]">
+											--transform-skip
+										</button>
+										<button value="me" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Integer motion estimation algorithm [hexbs]<br> - hexbs: Hexagon Based Search<br> - tz:    Test Zone Search<br> - full:  Full Search<br> - full8, full16, full32, full64<br> - dia:   Diamond Search<br>">
+											--me  &lt;string&gt;
+										</button>
+										<button value="me-steps" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="Motion estimation search step limit. Only affects 'hexbs' and 'dia' [-1]">
+											--me-step &lt;string&gt;
+										</button>
+										<button value="subme" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Fractional pixel motion estimation level [4]<br> - 0: Integer motion estimation only<br> - 1: + 1/2-pixel horizontal and vertical<br> - 2: + 1/2-pixel diagonal<br> - 3: + 1/4-pixel horizontal and vertical<br> - 4: + 1/4-pixel diagonal<br>">
+											--subme &lt;integer&gt;
+										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
+										<button value="pu-depth-inter" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Inter prediction units sizes [0-3]<br> - 0, 1, 2, 3: from 64x64 to 8x8">
+											--pu-depth-inter &lt;int&gt;-&lt;int&gt;
+										</button>
+										<button value="pu-depth-intra" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Intra prediction units sizes [1-4]<br> - 0, 1, 2, 3, 4: from 64x64 to 4x4">
+											--pu-depth-intra &lt;int&gt;-&lt;int&gt;
+										</button>
+										<button value="tr-depth-intra" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="Transform split depth for intra blocks [0]">
+											--tr-depth-intra &lt;integer&gt;
+										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
+										<button value="bipred" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Bi-prediction [disabled]">
+											--bipred
+										</button>
+										<button value="cu-split-termination" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="CU split search termination [zero]<br> - off: Don't terminate early<br> - zero: Terminate when residual is zero<br>">
+											--cu-split-termination &lt;string&gt;
+										</button>
+										<button value="me-early-termination" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Motion estimation termination [on]<br> - off: Don't terminate early<br> - on: Terminate early<br> - sensitive: Terminate even earlier<br>">
+											--me-early-termination &lt;string&gt;
+										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
+										<button value="fast-residual-cost" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="Skip CABAC cost for residual coefficients when QP is below the limit. [0]">
+											--fast-residual-cost &lt;integer&gt;
+										</button>
+										<button value="intra-rdo-et" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Check intra modes in rdo stage only until a zero coefficient CU is found [disabled]">
+											--intra-rdo-et
+										</button>
+										<button value="implicit-rdpcm" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Implicit residual DPCM. Currently only supported with lossless coding [disabled]">
+											--implicit-rdpcm
+										</button>
+										<button value="tmvp" class="btn btn-secondary kvzExtraOption"
+												data-toggle="tooltip" title="Temporal motion vector prediction [enabled]">
+											--tmvp
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="card">
+							<div class="card-header" id="headingOne">
+								<h5 class="mb-0">
+								<button class="btn btn-link" type="button" data-toggle="collapse"
+										data-target="#collapseParallel" aria-expanded="true" aria-controls="collapseOne">
+									Parallel processing
+								</button>
+								</h5>
+							</div>
+							<div id="collapseParallel" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
+								<div class="card-body">
+									<div class="btn-group" role="group" aria-label="">
+										<button value="owf" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												title="Frame-level parallelism [auto]<br> - N: Process N+1 frames at a time<br> - auto: Select automatically<br>">
+											--owf &lt;integer&gt;
+										</button>
+										<button value="wpp" class="btn btn-secondary kvzExtraOption multilinett"
+												data-toggle="tooltip" title="Wavefront parallel processing. [enabled]<br> Enabling tiles automatically disables WPP.<br> To enable WPP with tiles, re-enable it after<br> enabling tiles. Enabling wpp with tiles is,<br> however, an experimental feature since it is<br> not supported in any HEVC profile.<br>">
+											--wpp
+										</button>
+										<button value="tiles" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="Split picture into width x height uniform tiles.">
+											--tiles &lt;int&gt;x&lt;int&gt;
+										</button>
+										<button value="slices" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Control how slices are used<br> - tiles: Put tiles in independent slices<br> - wpp: Put rows in dependent slices<br> - tiles+wpp: Do both<br>">
+											--slices &lt;string&gt;
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="card">
+							<div class="card-header" id="headingOne">
+								<h5 class="mb-0">
+								<button class="btn btn-link" type="button" data-toggle="collapse"
+										data-target="#collapseVidUsability" aria-expanded="true" aria-controls="collapseOne">
+									Video Usability Information
+								</button>
+								</h5>
+							</div>
+							<div id="collapseVidUsability" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
+								<div class="card-body">
+									<div class="btn-group" role="group" aria-label="">
+										<button value="sar" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="Specify sample aspect ratio">
+											--sar &lt;width:height&gt;
+										</button>
+										<button value="overscan" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Specify crop overscan setting [undef]<br> - undef, show, crop">
+											--overscan &lt;string&gt;
+										</button>
+										<button value="range" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Specify color range [tv]<br> - tv, pc">
+											--range &lt;string&gt;
+										</button>
+										<button value="colorprim" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Specify color primaries [undef]<br> - undef, bt709, bt470m, bt470bg,<br> smpte170m, smpte240m, film, bt2020<br>">
+											--colorprim &lt;string&gt;
+										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
+										<button value="transfer" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Specify transfer characteristics [undef]<br> - undef, bt709, bt470m, bt470bg,<br> smpte170m, smpte240m, linear, log100,<br> log316, iec61966-2-4, bt1361e,<br> iec61966-2-1, bt2020-10, bt2020-12<br>">
+											--transfer &lt;string&gt;
+										</button>
+										<button value="colormatrix" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
+												data-toggle="tooltip" title="Specify color matrix setting [undef]<br> - undef, bt709, fcc, bt470bg, smpte170m,<br> smpte240m, GBR, YCgCo, bt2020nc, bt2020c<br>">
+											--colormatrix &lt;string&gt;
+										</button>
+										<button value="chromaloc" class="btn btn-secondary kvzExtraOption paramRequired"
+												data-toggle="tooltip" title="Specify chroma sample location (0 to 5) [0]">
+											--chromaloc &lt;integer&gt;
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<textarea id="kvazaarExtraOptions" class="form-control" style="margin-bottom: 10px; margin-top: 5px"
+						placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50">
+					</textarea>
+					<div class="alert alert-danger" id="invalidOptions" style="display: none">
+					</div>
+					</div>
 				</div>
 				<hr class="separator"></hr>
-				<button id="kvazaarCmdButton" class="btn btn-primary">Kvazaar options</button><br>
-				<div id="kvazaarExtraOptionsDiv" class=""><br>
-					<a class="" target="_blank"
-					   href="https://github.com/ultravideo/kvazaar#parameters">Description of Kvazaar input parameters</a><br><br>
-
-				   <div class="accordion" id="accordionExample">
-					<div class="card">
-						<div class="card-header" id="headingOne">
-							<h5 class="mb-0">
-							<button class="btn btn-link" type="button" data-toggle="collapse"
-									data-target="#collapseInput" aria-expanded="true" aria-controls="collapseOne">
-								Input options
-							</button>
-							</h5>
-						</div>
-						<div id="collapseInput" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
-							<div class="card-body">
-								<div class="btn-group" role="group" aria-label="">
-									<button value="frames" class="btn btn-secondary kvzExtraOption paramRequired"
-									        data-toggle="tooltip" title="Number of frames to code [all]">
-										--frames &lt;integer&gt;
-									</button>
-									<button value="seek" class="btn btn-secondary kvzExtraOption paramRequired"
-											data-toggle="tooltip" title="First frame to code [0]">
-										--seek &lt;integer&gt;
-									</button>
-									<button value="source-scan-type" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Source scan type [progressive]<br> - progressive: Progressive scan<br> - tff: Top field first<br> - bff: Bottom field first<br>">
-										--source-scan-type &lt;string&gt;
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div class="card">
-						<div class="card-header" id="headingOne">
-							<h5 class="mb-0">
-							<button class="btn btn-link" type="button" data-toggle="collapse"
-									data-target="#collapseGeneral" aria-expanded="true" aria-controls="collapseOne">
-								General options
-							</button>
-							</h5>
-						</div>
-						<div id="collapseGeneral" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
-							<div class="card-body">
-								<div class="btn-group" role="group" aria-label="">
-									<button value="aud" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Use access unit delimiters [disabled]">
-										--aud
-									</button>
-									<button value="cpuid" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Enable runtime CPU optimizations [enabled]">
-										--cpuid
-									</button>
-									<button value="hash" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Decoded picture hash [checksum]<br> - none: 0 bytes<br> - checksum: 18 bytes<br> - md5: 56 bytes">
-										--hash &lt;string&gt;
-									</button>
-									<button value="psnr" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Calculate PSNR for frames [enabled]">
-										--psnr
-									</button>
-									<button value="info" class="btn btn-secondary kvzExtraOption"
-										    data-toggle="tooltip" title="Add encoder info SEI [enabled]">
-										--info
-									</button>
-									<button value="key" class="btn btn-secondary kvzExtraOption paramRequired"
-											data-toggle="tooltip" title="Encryption key [16,213,27,56,255,127,242,112,97,126,197,204,25,59,38,30]">
-										--key &lt;string&gt;
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div class="card">
-						<div class="card-header" id="headingOne">
-							<h5 class="mb-0">
-							<button class="btn btn-link" type="button" data-toggle="collapse"
-									data-target="#collapseStruct" aria-expanded="true" aria-controls="collapseOne">
-								Video structure
-							</button>
-							</h5>
-						</div>
-						<div id="collapseStruct" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
-							<div class="card-body">
-								<div class="btn-group" role="group" aria-label="">
-									<button value="qp" class="btn btn-secondary kvzExtraOption paramRequired"
-											data-toggle="tooltip" title="Quantization parameter [22]">
-										--qp &lt;integer&gt;
-									</button>
-									<button value="period" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Period of intra pictures [64]<br> - 0: Only first picture is intra<br> - 1: All pictures are intra<br> - N: Every Nth picture is intra">
-										--period &lt;integer&gt;
-									</button>
-									<button value="vps-period" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="How often the video parameter set is re-sent [0]<br> - 0: Only send VPS with the first frame<br> - N: Send VPS with every Nth intra frame">
-										--vps-period &lt;integer&gt;
-									</button>
-									<button value="ref" class="btn btn-secondary kvzExtraOption paramRequired"
-											data-toggle="tooltip" title="Number of reference frames, in range 1..15 [4]">
-										--ref &lt;integer&gt;
-									</button>
-								</div>
-								<div class="btn-group" role="group" aria-label="">
-									<button value="gop" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-								  data-toggle="tooltip" title="GOP structure [8]<br> - 0: Disabled<br> - 8: B-frame pyramid of length 8<br> - lp-<string>: Low-delay P-frame GOP (e.g. lp-g8d4t2, see README)">
-										--gop
-									</button>
-									<button value="open-gop" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Use open GOP configuration. [enabled]">
-										--open-gop
-									</button>
-									<button value="bitrate" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Target bitrate [0] <br> - 0: Disable rate control <br> - N: Target N bits per second">
-										--bitrate &lt;integer&gt;
-									</button>
-									<button value="lossless" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Use lossless coding. [disabled]">
-										--lossless
-									</button>
-									<button value="mv-constraint" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Constrain movement vectors. [none] <br> - none: No constraint <br> - frametile: Constrain within the tile <br> - frametilemargin: Constrain even more">
-										--mv-constraint &lt;string&gt;
-									</button>
-								</div>
-								<div class="btn-group" role="group" aria-label="">
-									<button value="set-qp-in-cu" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Set QP at CU level keeping pic_init_qp_minus26 in PPS zero.">
-										--set-qp-in-cu
-									</button>
-									<button value="erp-aqp" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Use adaptive QP for 360 degree video with equirectangular projection [disabled]">
-										--erp-aqp
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div class="card">
-						<div class="card-header" id="headingOne">
-							<h5 class="mb-0">
-							<button class="btn btn-link" type="button" data-toggle="collapse"
-									data-target="#collapseComp" aria-expanded="true" aria-controls="collapseOne">
-								Compression tools
-							</button>
-							</h5>
-						</div>
-						<div id="collapseComp" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
-							<div class="card-body">
-								<div class="btn-group" role="group" aria-label="">
-									<button value="deblock" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Deblocking filter. [0:0]<br> - beta: Between -6 and 6<br> - tc: Between -6 and 6
-">
-										--deblock &lt;beta:tc&gt;
-									</button>
-									<button value="sao" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Sample Adaptive Offset [full]<br> - off: SAO disabled<br> - band: Band offset only<br> - edge: Edge offset only<br> - full: Full SAO">
-										--sao &lt;string&gt;
-									</button>
-									<button value="rdoq" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Rate-distortion optimized quantization [enabled]">
-										--rdoq
-									</button>
-									<button value="rdoq-skip" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Skip RDOQ for 4x4 blocks. [disabled]">
-										--rdoq-skip
-									</button>
-									<button value="signhide" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Sign hiding [disabled]">
-										--signhide
-									</button>
-								</div>
-								<div class="btn-group" role="group" aria-label="">
-									<button value="smp" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Symmetric motion partition [disabled]">
-										--smp
-									</button>
-									<button value="amp" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Asymmetric motion partition [disabled]">
-										--amp
-									</button>
-									<button value="rd" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Intra mode search complexity [0]<br>  - 0: Skip intra if inter is good enough<br>  - 1: Rough intra mode search with SATD<br>  - 2: Refine intra mode search with SSE<br>  - 3: Try all intra modes and enable intra chroma mode search">
-										--rd &lt;integer&gt;
-									</button>
-									<button value="mv-rdo" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Rate-distortion optimized motion vector costs [disabled]">
-										--mv-rdo
-									</button>
-									<button value="full-intra-search" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Try all intra modes during rough search [disabled]">
-										--full-intra-search
-									</button>
-								</div>
-								<div class="btn-group" role="group" aria-label="">
-									<button value="transform-skip" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Try all intra modes during rough search [disabled]">
-										--transform-skip
-									</button>
-									<button value="me" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Integer motion estimation algorithm [hexbs]<br> - hexbs: Hexagon Based Search<br> - tz:    Test Zone Search<br> - full:  Full Search<br> - full8, full16, full32, full64<br> - dia:   Diamond Search<br>">
-										--me  &lt;string&gt;
-									</button>
-									<button value="me-steps" class="btn btn-secondary kvzExtraOption paramRequired"
-											data-toggle="tooltip" title="Motion estimation search step limit. Only affects 'hexbs' and 'dia' [-1]">
-										--me-step &lt;string&gt;
-									</button>
-									<button value="subme" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Fractional pixel motion estimation level [4]<br> - 0: Integer motion estimation only<br> - 1: + 1/2-pixel horizontal and vertical<br> - 2: + 1/2-pixel diagonal<br> - 3: + 1/4-pixel horizontal and vertical<br> - 4: + 1/4-pixel diagonal<br>">
-										--subme &lt;integer&gt;
-									</button>
-								</div>
-								<div class="btn-group" role="group" aria-label="">
-									<button value="pu-depth-inter" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Inter prediction units sizes [0-3]<br> - 0, 1, 2, 3: from 64x64 to 8x8">
-										--pu-depth-inter &lt;int&gt;-&lt;int&gt;
-									</button>
-									<button value="pu-depth-intra" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Intra prediction units sizes [1-4]<br> - 0, 1, 2, 3, 4: from 64x64 to 4x4">
-										--pu-depth-intra &lt;int&gt;-&lt;int&gt;
-									</button>
-									<button value="tr-depth-intra" class="btn btn-secondary kvzExtraOption paramRequired"
-											data-toggle="tooltip" title="Transform split depth for intra blocks [0]">
-										--tr-depth-intra &lt;integer&gt;
-									</button>
-								</div>
-								<div class="btn-group" role="group" aria-label="">
-									<button value="bipred" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Bi-prediction [disabled]">
-										--bipred
-									</button>
-									<button value="cu-split-termination" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="CU split search termination [zero]<br> - off: Don't terminate early<br> - zero: Terminate when residual is zero<br>">
-										--cu-split-termination &lt;string&gt;
-									</button>
-									<button value="me-early-termination" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Motion estimation termination [on]<br> - off: Don't terminate early<br> - on: Terminate early<br> - sensitive: Terminate even earlier<br>">
-										--me-early-termination &lt;string&gt;
-									</button>
-								</div>
-								<div class="btn-group" role="group" aria-label="">
-									<button value="fast-residual-cost" class="btn btn-secondary kvzExtraOption paramRequired"
-											data-toggle="tooltip" title="Skip CABAC cost for residual coefficients when QP is below the limit. [0]">
-										--fast-residual-cost &lt;integer&gt;
-									</button>
-									<button value="intra-rdo-et" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Check intra modes in rdo stage only until a zero coefficient CU is found [disabled]">
-										--intra-rdo-et
-									</button>
-									<button value="implicit-rdpcm" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Implicit residual DPCM. Currently only supported with lossless coding [disabled]">
-										--implicit-rdpcm
-									</button>
-									<button value="tmvp" class="btn btn-secondary kvzExtraOption"
-											data-toggle="tooltip" title="Temporal motion vector prediction [enabled]">
-										--tmvp
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div class="card">
-						<div class="card-header" id="headingOne">
-							<h5 class="mb-0">
-							<button class="btn btn-link" type="button" data-toggle="collapse"
-									data-target="#collapseParallel" aria-expanded="true" aria-controls="collapseOne">
-								Parallel processing
-							</button>
-							</h5>
-						</div>
-						<div id="collapseParallel" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
-							<div class="card-body">
-								<div class="btn-group" role="group" aria-label="">
-									<button value="owf" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											title="Frame-level parallelism [auto]<br> - N: Process N+1 frames at a time<br> - auto: Select automatically<br>">
-										--owf &lt;integer&gt;
-									</button>
-									<button value="wpp" class="btn btn-secondary kvzExtraOption multilinett"
-											data-toggle="tooltip" title="Wavefront parallel processing. [enabled]<br> Enabling tiles automatically disables WPP.<br> To enable WPP with tiles, re-enable it after<br> enabling tiles. Enabling wpp with tiles is,<br> however, an experimental feature since it is<br> not supported in any HEVC profile.<br>">
-										--wpp
-									</button>
-									<button value="tiles" class="btn btn-secondary kvzExtraOption paramRequired"
-											data-toggle="tooltip" title="Split picture into width x height uniform tiles.">
-										--tiles &lt;int&gt;x&lt;int&gt;
-									</button>
-									<button value="slices" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Control how slices are used<br> - tiles: Put tiles in independent slices<br> - wpp: Put rows in dependent slices<br> - tiles+wpp: Do both<br>">
-										--slices &lt;string&gt;
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div class="card">
-						<div class="card-header" id="headingOne">
-							<h5 class="mb-0">
-							<button class="btn btn-link" type="button" data-toggle="collapse"
-									data-target="#collapseVidUsability" aria-expanded="true" aria-controls="collapseOne">
-								Video Usability Information
-							</button>
-							</h5>
-						</div>
-						<div id="collapseVidUsability" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
-							<div class="card-body">
-								<div class="btn-group" role="group" aria-label="">
-									<button value="sar" class="btn btn-secondary kvzExtraOption paramRequired"
-											data-toggle="tooltip" title="Specify sample aspect ratio">
-										--sar &lt;width:height&gt;
-									</button>
-									<button value="overscan" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Specify crop overscan setting [undef]<br> - undef, show, crop">
-										--overscan &lt;string&gt;
-									</button>
-									<button value="range" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Specify color range [tv]<br> - tv, pc">
-										--range &lt;string&gt;
-									</button>
-									<button value="colorprim" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Specify color primaries [undef]<br> - undef, bt709, bt470m, bt470bg,<br> smpte170m, smpte240m, film, bt2020<br>">
-										--colorprim &lt;string&gt;
-									</button>
-								</div>
-								<div class="btn-group" role="group" aria-label="">
-									<button value="transfer" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Specify transfer characteristics [undef]<br> - undef, bt709, bt470m, bt470bg,<br> smpte170m, smpte240m, linear, log100,<br> log316, iec61966-2-4, bt1361e,<br> iec61966-2-1, bt2020-10, bt2020-12<br>">
-										--transfer &lt;string&gt;
-									</button>
-									<button value="colormatrix" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-											data-toggle="tooltip" title="Specify color matrix setting [undef]<br> - undef, bt709, fcc, bt470bg, smpte170m,<br> smpte240m, GBR, YCgCo, bt2020nc, bt2020c<br>">
-										--colormatrix &lt;string&gt;
-									</button>
-									<button value="chromaloc" class="btn btn-secondary kvzExtraOption paramRequired"
-											data-toggle="tooltip" title="Specify chroma sample location (0 to 5) [0]">
-										--chromaloc &lt;integer&gt;
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<textarea id="kvazaarExtraOptions" class="form-control" style="margin-bottom: 10px; margin-top: 5px"
-					placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50">
-				</textarea>
-				<div class="alert alert-danger" id="invalidOptions" style="display: none">
-				</div>
-				</div>
 				<button id="submitButton" class="btn btn-success" style="margin-top: 5px" disabled>Encode</button>
 
 				<div class="resumable-progress">

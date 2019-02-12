@@ -224,8 +224,8 @@ function validateFileOptions(fileOptions) {
 function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 
     const PRESETS = [
-        "veryslow", "slower", "slow", "medium",
-        "fast", "faster", "veryfast","superfast", "ultrafast",
+        "veryslow", "slower", "slow",     "medium",
+        "fast",     "faster", "veryfast", "superfast", "ultrafast",
     ];
 
     return new Promise((resolve, reject) => {
@@ -240,6 +240,12 @@ function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 
         const SELECTED_PRESET = "preset " + PRESETS[kvazaarOptions.preset - 1];
         delete kvazaarOptions["preset"];
+
+
+        // check if we got bitrate and if we did, validate it using parser
+        if (kvazaarOptions.bitrate !== undefined) {
+            kvazaarExtraOptions += " --bitrate " + kvazaarOptions.bitrate;
+        }
 
         if (kvazaarExtraOptions && kvazaarExtraOptions.length > 0) {
             parser.validateKvazaarOptions(kvazaarExtraOptions).then((validatedExtraOptions) => {
@@ -431,8 +437,6 @@ function handleUploadCancellation(client, message) {
             return;
         }
 
-        // TODO send message to client
-
         // remove all uploaded chunk files, task and file records
         removeChunks(taskRow.file_id);
 
@@ -526,6 +530,9 @@ function handleCancelRequest(client, token) {
 function handleUploadRequest(client, message) {
     let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar, message.kvazaar_extra);
     let validatedFilePromise = validateFileOptions(message.other);
+
+    console.log(message.kvazaar, message.kvazaar_extra);
+    console.log(message.other);
 
     // first validated both kvazaar options and file info
     Promise.all([validatedKvazaarPromise, validatedFilePromise]).then(function(values) {

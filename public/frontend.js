@@ -13,6 +13,7 @@ let fpsOk = false;
 let resOk = true;
 let pixFmtOk = true;
 let inputFileRaw = false;
+let bitrateSelected = false;
 
 // TODO start using the list from server
 const taskStatus = Object.freeze({
@@ -105,8 +106,6 @@ function activateView(name) {
     $("#li" + name).addClass("active");
 }
 
-// TODO anna tälle funktiolle parametrina muuttuneet arvot
-//      ja tallenna vaikka staattisina muuttujina funktion sisään nämä state-variablet
 function enableSubmitIfOptionsValid() {
     if (fpsOk && pixFmtOk && resOk && fileID !== null)
         $("#submitButton").prop("disabled", false);
@@ -667,6 +666,10 @@ $("#rawVideoCheck").click(function() {
     $("#rawVideoInfo").toggle();
 });
 
+$("#advacedCheck").click(function() {
+    $("#advacedOptions").toggle();
+});
+
 $("#kvazaarExtraOptions").focusin(function() {
     $("#submitButton").prop("disabled", true);
 });
@@ -818,6 +821,11 @@ $('#submitButton').click(function(){
         delete other_options["pixfmt_txt"];
     }
 
+    // ignore the bitrate value if user didn't change it's value
+    if (bitrateSelected === false) {
+        delete kvz_options['bitrate'];
+    }
+
     var options = {
         'type' : 'uploadRequest',
         'token': userToken,
@@ -828,6 +836,8 @@ $('#submitButton').click(function(){
 
     options['other']['file_id'] = fileID;
     options['other']['name'] = r.files[r.files.length - 1].fileName.toString();
+
+    console.log(options);
 
     console.log("sent options...");
     connection.send(JSON.stringify(options));
@@ -875,6 +885,12 @@ $("#presetSlider").change(function() {
     $("#idSelectedPreset").text("Selected encoding level: " + presets[$("#presetSlider").val() - 1]);
 });
 
+$("#bitrateSlider").change(function() {
+    bitrateSelected = true;
+    $("#idSelectedBitrate").text("Selected bitrate: " + $("#bitrateSlider").val() + " kbps");
+});
+
+
 // reset all views and made changes when user presses f5
 // (this doesn't for whateve reason happen automatically)
 $(document.body).on("keydown", this, function (event) {
@@ -889,7 +905,19 @@ $(document.body).on("keydown", this, function (event) {
         $("#presetSlider").val(9);
         $("#containerSelect").val("none");
 
+        $("#bitrateSlider").val(0);
+
+        if ($("#advacedCheck").is(":checked"))
+            $("#advacedCheck").click();
+
+        if ($("#rawVideoCheck").is(":checked"))
+            $("#rawVideoCheck").click();
+
+        $("#advacedOptions").hide();
+        $("#rawVideoInfo").hide();
+
         selectedOptions = { };
+        bitrateSelected = false;
     }
 });
 
@@ -901,7 +929,7 @@ $(document.body).on("keydown", this, function (event) {
 // ------------------------------- Resumablejs stuff -------------------------------
 
 // Resumable.js isn't supported, fall back on a different method
-if(r.support) {
+if (!r.support) {
     $('.resumable-error').show();
 } else {
     r.assignDrop($('.resumable-drop')[0]);
