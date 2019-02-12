@@ -14,6 +14,19 @@ let resOk = true;
 let pixFmtOk = true;
 let inputFileRaw = false;
 
+// TODO start using the list from server
+const taskStatus = Object.freeze({
+    "CANCELLED": -4,
+    "FAILURE": -3,
+    "PREPROCESSING": -2,
+    "UPLOADING": -1,
+    "WAITING": 0,
+    "DECODING" : 1,
+    "ENCODING" : 2,
+    "POSTPROCESSING" : 3,
+    "READY" : 4,
+});
+
 var r = new Resumable({
     target: '/upload',
     chunkSize: 5 * 1024 * 1024,
@@ -25,6 +38,18 @@ var r = new Resumable({
     }
 });
 
+
+// enable html for multiline tooltips
+$('.multilinett').tooltip({html: true})
+
+// enable bootstrap tooltips
+$(document).ready(function() {
+    $("body").tooltip({ selector: '[data-toggle=tooltip]' });
+});
+
+
+
+// ------------------------------- Helper functions -------------------------------
 
 // user token is stored in a cookie, if the cloudUserToken is not set,
 // create user token and cookie for the user
@@ -69,6 +94,219 @@ function decRequestCount() {
     --numRequests
     updateRequestCount();
 }
+
+function deActivate(name) {
+    $("#div" + name).hide();
+    $("#li" + name).removeClass("active");
+}
+
+function activateView(name) {
+    $("#div" + name).show();
+    $("#li" + name).addClass("active");
+}
+
+// TODO anna tälle funktiolle parametrina muuttuneet arvot
+//      ja tallenna vaikka staattisina muuttujina funktion sisään nämä state-variablet
+function enableSubmitIfOptionsValid() {
+    if (fpsOk && pixFmtOk && resOk && fileID !== null)
+        $("#submitButton").prop("disabled", false);
+    else
+        $("#submitButton").prop("disabled", true);
+}
+
+// My videos view consists of tables. Each request has it's own table to make the ordering easy
+// These tables are drawn every time user clicks the My videos link
+function drawFileTable(file) {
+
+    let newHTML  = "";
+    let dotClass = "";
+
+    Object.keys(file.options).forEach(function(key) {
+        newHTML += "<tr><td>" + key + ":</td><td >" + file.options[key] + "</td></tr>";
+    });
+
+    newHTML += "<tr><td>Downloads left:</td><td id='tdDownloadCount'>" + (2 - file.download_count) + "</td></tr></table>";
+
+    // request done
+    if (file.status === taskStatus.READY) {
+        newHTML +=
+            "<button id='btnDownload' class='btn btn-success' " +
+            "onclick=\"sendDownloadRequest('" + file.token + "')\">Download</button>" +
+            "<button style='margin-left: 2px' class='btn btn-danger' data-toggle='modal'" +
+            "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button>";
+        dotClass = "dot_ready";
+    } else {
+        if (file.status === taskStatus.CANCELLED || file.status === taskStatus.FAILURE) {
+            newHTML +=
+                "<button id='btnDownload' class='btn btn-success' disabled>Download</button>" +
+                "<button class='btn btn-danger' style='margin-left: 2px' id='btnDelete' data-toggle='modal'" +
+                "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button>";
+            dotClass = "dot_failure";
+        } else {
+            newHTML +=
+                "<button id='btnDownload' class='btn btn-success' disabled>Download</button>" + 
+                "<button class='btn btn-danger' style='margin-left: 2px' id='btnDelete' data-toggle='modal'" +
+                "data-href='" + file.token + "' data-target='#confirm-cancel'>Cancel</button>";
+            dotClass = "dot_inprogress";
+        }
+    }
+
+    newHTML = 
+        "</div>" +
+        "<div id='div" + file.token + "'><hr id='separator" + file.token + "' class='separator'></hr>" +
+        "<span id='reqStatus' class='dot " + dotClass + "'></span> <b>" + file.name + "</b>" +
+        "<table class='fileReqTable' id='table" + file.token + "'><tr><td colspan='2'></td></tr><tr></tr>" +
+        "<tr><td>Status:</td><td id='tdStatus'>" + file.message + "</td></tr>" +
+        newHTML;
+
+    return newHTML;
+}
+
+function resetUploadFileInfo() {
+    fileID = null;
+    uploadFileToken = null;
+    r.files = [];
+};
+
+function resetResumable() {
+    $("#selectedFile").html("");
+    $("#selectedFile").hide();
+    $(".resumable-list").empty();
+    $(".resumable-progress").hide();
+    $("#submitButton").prop("disabled", true);
+
+    resetUploadFileInfo();
+}
+
+// enable file browse again when the file upload is completed
+function enableFileBrowse() {
+    $("#resumableBrowse").removeClass("resumable-browse-disabled");
+    $("#resumableBrowse").addClass("resumable-browse");
+
+    r.assignDrop($('.resumable-drop')[0]);
+    r.assignBrowse($('.resumable-browse')[0]);
+}
+
+// file browse is disabled for the duration of file upload
+function disableFileBrowse() {
+    r.unAssignDrop($('.resumable-drop')[0]);
+    r.unAssignBrowse($('.resumable-browse')[0]);
+
+    $("#resumableBrowse").addClass("resumable-browse-disabled");
+    $("#resumableBrowse").removeClass("resumable-browse");
+}
+
+function getResolution(fname) {
+    let res = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
+
+    if (res)
+        return res[0];
+    return "";
+}
+
+function getFPS(fname) {
+    let fps = fname.match(/[1-9]{1}[0-9]{0,2}[-_\s]?(FPS)/ig);
+
+    if (fps)
+        return fps[0].match(/[1-9]{1}[0-9]{0,2}/)[0]; // extract only the number
+    return "";
+}
+
+function getBitDepth(fname) {
+    let bitDepth = fname.match(/([89]|1[0-6])[_-\s]?(bit)/ig);
+
+    if (bitDepth)
+        return bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
+    return "";
+}
+
+function getPixelFormat(fname) {
+    let ext = fname.match(/\.(raw|yuv.*|yuyv|rgb(32|a)?|bgra|h264)$/g);
+
+    if (ext) {
+        switch (ext[0]) {
+            case ".rgba":
+                return "rgba";
+
+            case ".yuyv":
+                return "yuyv422";
+
+            case ".h264":
+                return "h264";
+
+            case ".rgb":  // fallthrough
+            case ".rgb32":
+            case ".bgra":
+                return "bgra";
+
+            case ".yuv":
+                return "yuv420p";
+
+            default:
+                return "other";
+        }
+    }
+}
+
+function getRawFileInfo() {
+    let fname = fileName;
+    inputFileRaw = true;
+    fpsOk = true;
+
+    let resVal = getResolution(fileName),
+        fpsVal = getFPS(fileName),
+        bdVal  = getBitDepth(fileName),
+        fmtVal = getPixelFormat(fileName);
+
+    if (resVal === "") {
+        resVal = "1920x1080";
+    }
+
+    if (bdVal === "") {
+        bdVal = "8";
+    }
+
+    // check the raw video box automatically if file extension matched
+    if (!$("#rawVideoCheck").is(":checked")) {
+        $("#rawVideoCheck").click();
+    }
+
+    if (fpsVal === "") {
+        $("#submitButton").prop("disabled", true);
+        fpsOk = false;
+    }
+
+    if (fmtVal === "other") {
+        $("#pixFmtTxtId").show();
+        $("#submitButton").prop("disabled", true);
+    }
+
+    $("#bitDepthValue").val(bdVal);
+    $("#inputFPSValue").val(fpsVal);
+    $("#resValue").val(resVal);
+    $("#inputFormatValue").val(fmtVal);
+}
+
+function showRequests() {
+    // send query only if linkRequests tab isn't active
+    if ($("#divRequests").is(":hidden")) {
+        connection.send(JSON.stringify({
+            user: userToken,
+            type: "taskQuery"
+        }));
+    }
+
+    deActivate("About");
+    deActivate("Upload");
+    activateView("Requests");
+}
+
+// ------------------------------- /Helper functions -------------------------------
+
+
+
+
+// ------------------------------- WebSocket requests -------------------------------
 
 // check from server side if the file is available
 // Server response is handled in connection.onmessage below
@@ -125,6 +363,13 @@ function sendPixelFormatValidation(pixelFormat) {
     }));
 };
 
+// ------------------------------- /WebSocket requests -------------------------------
+
+
+
+
+// ------------------------------- WebSocket responses -------------------------------
+
 // server gave us response regarding file download
 // the download request may have been rejected (file doesn't exist or
 // download limit has been exceeded) in which case we remove this div
@@ -143,17 +388,21 @@ function handleDownloadResponse(response) {
     }
 }
 
+// we sent uploadRequest to server, parse the server's response
+// The task is accepted if it's unique, upload is accepted only if the file doesn't exist on the server
 function handleUploadResponse(response) {
+
+    // file upload has been approved, the file doesn't exist on the server
     if (response.data.status === "upload") {
-        // file upload has been approved, the file doesn't exist on the server
         $(".resumable-progress .progress-resume-link").hide();
         $(".resumable-progress .progress-pause-link").show();
         $("#submitButton").prop("disabled", true);
 
         uploadFileToken = response.data.token;
         r.upload();
+
+    // file request was ok (unique set of options + file) but file already on the server
     } else if (response.data.status === "request_ok") {
-        // file request was ok (unique set of options + file) but file already on the server
         resetResumable();
         incRequestCount();
         $(".resumable-list").html("<br><div  class='alert alert-info' role='alert'>" +
@@ -161,6 +410,8 @@ function handleUploadResponse(response) {
             "You can follow the progress <a href='#' class='linkRequestLinkClass'>here</a></div>");
         $(".resumable-drop").show();
         enableFileBrowse();
+
+    // user has already submitted this request and it's still active (1 >= downloads left)
     } else {
         resetResumable();
         $(".resumable-list").html("<br><div class='alert alert-warning' role='alert'>" +
@@ -171,55 +422,7 @@ function handleUploadResponse(response) {
     }
 }
 
-// My videos view consists of tables. Each request has it's own table to make the ordering easy
-// These tables are drawn every time user clicks the My videos link
-function drawFileTable(file) {
-
-    let newHTML  = "";
-    let dotClass = "";
-
-    Object.keys(file.options).forEach(function(key) {
-        newHTML += "<tr><td>" + key + ":</td><td >" + file.options[key] + "</td></tr>";
-    });
-
-    newHTML += "<tr><td>Downloads left:</td><td id='tdDownloadCount'>" + (2 - file.download_count) + "</td></tr></table>";
-
-    // request done
-    if (file.status === 4) {
-        newHTML +=
-            "<button id='btnDownload' class='btn btn-success' " +
-            "onclick=\"sendDownloadRequest('" + file.token + "')\">Download</button>" +
-            "<button style='margin-left: 2px' class='btn btn-danger' data-toggle='modal'" +
-            "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button>";
-        dotClass = "dot_ready";
-    } else {
-        if (file.status < -2) {
-            newHTML +=
-                "<button id='btnDownload' class='btn btn-success' disabled>Download</button>" +
-                "<button class='btn btn-danger' style='margin-left: 2px' id='btnDelete' data-toggle='modal'" +
-                "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button>";
-            dotClass = "dot_failure";
-        } else {
-            newHTML +=
-                "<button id='btnDownload' class='btn btn-success' disabled>Download</button>" + 
-                "<button class='btn btn-danger' style='margin-left: 2px' id='btnDelete' data-toggle='modal'" +
-                "data-href='" + file.token + "' data-target='#confirm-cancel'>Cancel</button>";
-            dotClass = "dot_inprogress";
-        }
-    }
-
-    newHTML = 
-        "</div>" +
-        "<div id='div" + file.token + "'><hr id='separator" + file.token + "' class='separator'></hr>" +
-        "<span id='reqStatus' class='dot " + dotClass + "'></span> <b>" + file.name + "</b>" +
-        "<table class='fileReqTable' id='table" + file.token + "'><tr><td colspan='2'></td></tr><tr></tr>" +
-        "<tr><td>Status:</td><td id='tdStatus'>" + file.message + "</td></tr>" +
-        newHTML;
-
-    return newHTML;
-}
-
-// we got a response for our task query. Draw task file tables
+// we got a response for our task query. Draw task file tables if "My videos" view is active
 function handleTaskResponse(response) {
     $("#divRequests").empty();
 
@@ -236,51 +439,6 @@ function handleTaskResponse(response) {
     }
 }
 
-// worker, socket or server sent us task update regarding one of our files
-// Update the task if My videos view is active
-function handleTaskUpdate(response) {
-    if ($("#table" + response.data.token).length == 0) {
-        // ignore update, "My videos" tab is not active
-    } else {
-        // request ready
-        if (response.data.status === 4) {
-            $("#div" + response.data.token + " #btnDownload").prop("disabled", false);
-            $("#div" + response.data.token + " #btnDownload").removeAttr("onclick");
-            $("#div" + response.data.token + " #btnDownload").attr("onClick", "sendDownloadRequest('" + response.data.token + "');");
-            $("#div" + response.data.token + " #btnDelete").text("Delete");
-
-            $("#div" + response.data.token + " #btnDelete").attr("data-target", "#confirm-delete");
-            $("#div" + response.data.token + " #tdStatus").html(response.data.message)
-            $("#div" + response.data.token + " #reqStatus").removeAttr("class");
-            $("#div" + response.data.token + " #reqStatus").addClass("dot dot_ready");
-        }
-
-        // request succeeded, failed or got cancelled -> show delete button
-        else if (response.data.status === 4 || response.data.status < -2) {
-            // remove Cancel button and add Delete button
-            $("#div" + response.data.token + " #btnDelete").text("Delete");
-            $("#div" + response.data.token + " #btnDelete").attr("data-target", "#confirm-delete");
-            $("#div" + response.data.token + " #tdStatus").html(response.data.message)
-            $("#div" + response.data.token + " #reqStatus").removeAttr("class");
-            $("#div" + response.data.token + " #reqStatus").addClass("dot dot_failure");
-        }
-        else {
-            $("#div" + response.data.token + " #tdStatus").html(response.data.message)
-            $("#div" + response.data.token + " #reqStatus").removeAttr("class");
-            $("#div" + response.data.token + " #reqStatus").addClass("dot dot_inprogress");
-        }
-    }
-}
-
-// TODO anna tälle funktiolle parametrina muuttuneet arvot
-//      ja tallenna vaikka staattisina muuttujina funktion sisään nämä state-variablet
-function enableSubmitIfOptionsValid() {
-    if (fpsOk && pixFmtOk && resOk && fileID !== null)
-        $("#submitButton").prop("disabled", false);
-    else
-        $("#submitButton").prop("disabled", true);
-}
-
 function handleDeleteResponse(response) {
     if (response.data.status === "ok") {
         decRequestCount();
@@ -295,6 +453,8 @@ function handleDeleteResponse(response) {
     }
 }
 
+// this is called only if the user token is invalid (user has modefied it manually)
+// create new token and reset the connection
 function handleInitResponse() {
     userToken = generate_random_string(64);
 
@@ -334,6 +494,63 @@ function handlePixelFormatValidationResponse(response) {
     }
 }
 
+// ------------------------------- /WebSocket responses -------------------------------
+
+
+
+
+
+
+
+// ------------------------------- WebSocket updates and actions -------------------------------
+
+// worker, socket or server sent us task update regarding one of our files
+// Update the task if My videos view is active
+function handleTaskUpdate(response) {
+    // ignore update, "My videos" tab is not active
+    if ($("#table" + response.data.token).length == 0) {
+        return;
+    }
+
+    let newDotClass = "";
+
+    // request ready
+    if (response.data.status === taskStatus.READY) {
+        // enable Download button
+        $("#div" + response.data.token + " #btnDownload").prop("disabled", false);
+        $("#div" + response.data.token + " #btnDownload").removeAttr("onclick");
+        $("#div" + response.data.token + " #btnDownload").attr("onClick", "sendDownloadRequest('" + response.data.token + "');");
+
+        newDotClass = "dot dot_ready";
+    }
+    // request succeeded, failed or got cancelled -> show delete button
+    else if (response.data.status < taskStatus.CANCELLED ||
+             response.data.status < taskStatus.READY)
+    {
+        newDotClass = "dot dot_failure";
+    }
+    // task is still in progress
+    else {
+        newDotClass = "dot dot_inprogress";
+    }
+
+    // if the task succeeded or failed (but is not in progress),
+    // cancel button must be changed to delete button
+    if (response.data.status === taskStatus.READY ||
+        response.data.status === taskStatus.CANCELLED ||
+        response.data.status === taskStatus.READY)
+    {
+        $("#div" + response.data.token + " #btnDelete").text("Delete");
+        $("#div" + response.data.token + " #btnDelete").attr("data-target", "#confirm-delete");
+    }
+
+    // display the latest status message and change the color of dot if necessary
+    $("#div" + response.data.token + " #tdStatus").html(response.data.message)
+    $("#div" + response.data.token + " #reqStatus").removeAttr("class");
+    $("#div" + response.data.token + " #reqStatus").addClass(newDotClass);
+}
+
+
 function handleCancelAction(response) {
     r.cancel();
     resetResumable();
@@ -356,55 +573,12 @@ function handleContinueAction() {
     r.upload();
 }
 
-function resetUploadFileInfo() {
-    fileID = null;
-    uploadFileToken = null;
-    r.files = [];
-};
+// ------------------------------- /WebSocket updates and actions -------------------------------
 
-function resetResumable() {
-    $("#selectedFile").html("");
-    $("#selectedFile").hide();
-    $(".resumable-list").empty();
-    $(".resumable-progress").hide();
-    $("#submitButton").prop("disabled", true);
 
-    resetUploadFileInfo();
-}
 
-// enable file browse again when the file upload is completed
-function enableFileBrowse() {
-    $("#resumableBrowse").removeClass("resumable-browse-disabled");
-    $("#resumableBrowse").addClass("resumable-browse");
 
-    r.assignDrop($('.resumable-drop')[0]);
-    r.assignBrowse($('.resumable-browse')[0]);
-}
-
-// file browse is disabled for the duration of file upload
-function disableFileBrowse() {
-    r.unAssignDrop($('.resumable-drop')[0]);
-    r.unAssignBrowse($('.resumable-browse')[0]);
-
-    $("#resumableBrowse").addClass("resumable-browse-disabled");
-    $("#resumableBrowse").removeClass("resumable-browse");
-}
-
-// enable html for multiline tooltips
-$('.multilinett').tooltip({html: true})
-
-// enable bootstrap tooltips
-$(document).ready(function() {
-    $("body").tooltip({ selector: '[data-toggle=tooltip]' });
-});
-
-// Resumable.js isn't supported, fall back on a different method
-if(!r.support) {
-    $('.resumable-error').show();
-} else {
-    r.assignDrop($('.resumable-drop')[0]);
-    r.assignBrowse($('.resumable-browse')[0]);
-}
+// ------------------------------- jQuery user interactions -------------------------------
 
 $("#kvazaarCmdButton").click(function() {
     if ($("#kvazaarExtraOptionsDiv").is(":hidden")) {
@@ -437,15 +611,14 @@ $("#inputFormatValue").change(function() {
 });
 
 $("#pixFmtTxt").focusout(function() {
-    console.log(this.value);
     sendPixelFormatValidation(this.value);
 });
 
 $("#resValueTxt").focusout(function() {
-    let res  = this.value.match(/^[0-9]{1,4}\x[0-9]{1,4}$/g);
+    let res = getResolution(this.value);
 
-    if (res && res.length != 0) {
-        $("#resValueTxt").val(res[0]);
+    if (res !== "") {
+        $("#resValueTxt").val(res);
         $("#inputResError").hide();
         resOk = true;
         enableSubmitIfOptionsValid();
@@ -456,7 +629,6 @@ $("#resValueTxt").focusout(function() {
     enableSubmitIfOptionsValid();
     $("#inputResError").html("Invalid resolution!");
     $("#inputResError").show();
-    $("#rawInfoDoneBtn").prop("disabled", true);
 });
 
 $("#inputFPSValue").focusout(function() {
@@ -466,9 +638,9 @@ $("#inputFPSValue").focusout(function() {
         return;
     }
 
-    let fps = this.value.match(/^[1-9]{1}[0-9]{0,2}$/g);
-    if (fps && fps.length != 0) {
-        $("#inputFPSValue").val(fps[0]);
+    let fps = getFPS(this.value);
+    if (fps !== "") {
+        $("#inputFPSValue").val(fps);
         $("#inputFPSError").hide();
 
         fpsOk = true;
@@ -478,74 +650,10 @@ $("#inputFPSValue").focusout(function() {
 
     fpsOk = false;
     enableSubmitIfOptionsValid();
-    $("#rawInfoDoneBtn").prop("disabled", true);
     $("#inputFPSError").html("Invalid FPS!");
     $("#inputFPSError").show();
 });
 
-function getRawFileInfo() {
-    let fname = fileName;
-    inputFileRaw = true;
-
-    let resVal = "1920x1080",
-        fpsVal = "",
-        fmtVal = "other",
-        bdVal  = "8";
-
-    let res = fname.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
-    if (res && res.length != 0) {
-        resVal = res[0];
-    }
-
-    let fps = fname.match(/[1-9]{1}[0-9]{0,2}[-_\s]?(FPS)/ig);
-    if (fps && fps.length != 0) {
-        fpsVal = fps[0].match(/[1-9]{1}[0-9]{0,2}/)[0]; // extract only the number
-        fpsOk = true;
-    }
-
-    let bitDepth = fname.match(/([89]|1[0-6])[_-\s]?(bit)/ig);
-    if (bitDepth && bitDepth.length != 0) {
-        bdVal = bitDepth[0].match(/([89]|1[0-6])/)[0]; // extract only the number
-    }
-
-    let ext = fname.match(/\.(raw|yuv.*|yuyv|rgb(32|a)?|bgra|h264)$/g);
-    if (ext) {
-        switch (ext[0]) {
-            case ".rgba":  fmtVal = "rgba";    break;
-            case ".yuyv":  fmtVal = "yuyv422"; break;
-            case ".h264":  fmtVal = "h264";    break;
-
-            case ".rgb":  // fallthrough
-            case ".rgb32":
-            case ".bgra":
-                fmtVal = "bgra";
-                break;
-
-            case ".yuv":
-                fmtVal = "yuv420p";
-                break;
-        }
-    }
-
-    // check the raw video box automatically if file extension matched
-    if (!$("#rawVideoCheck").is(":checked")) {
-        $("#rawVideoCheck").click();
-    }
-
-    if (fpsVal === "") {
-        $("#submitButton").prop("disabled", true);
-    }
-
-    if (fmtVal === "other") {
-        $("#pixFmtTxtId").show();
-        $("#submitButton").prop("disabled", true);
-    }
-
-    $("#bitDepthValue").val(bdVal);
-    $("#inputFPSValue").val(fpsVal);
-    $("#resValue").val(resVal);
-    $("#inputFormatValue").val(fmtVal);
-}
 
 $('#confirm-delete').on('show.bs.modal', function(e) {
     $(this).find('.btn-ok').attr('onclick', "sendDeleteRequest('" +  $(e.relatedTarget).data('href') + "')");
@@ -553,6 +661,14 @@ $('#confirm-delete').on('show.bs.modal', function(e) {
 
 $('#confirm-cancel').on('show.bs.modal', function(e) {
     $(this).find('.btn-ok').attr('onclick', "sendCancelRequest('" +  $(e.relatedTarget).data('href') + "')");
+});
+
+$("#rawVideoCheck").click(function() {
+    $("#rawVideoInfo").toggle();
+});
+
+$("#kvazaarExtraOptions").focusin(function() {
+    $("#submitButton").prop("disabled", true);
 });
 
 // add clicked option to kvazaar extra options if it hasnt' been added yet
@@ -588,18 +704,12 @@ $(document).on('click', '.kvzExtraOption', function(){
     }
 });
 
-$("#kvazaarExtraOptions").focusin(function() {
-    $("#submitButton").prop("disabled", true);
-});
-
-$("#rawVideoCheck").click(function() {
-    $("#rawVideoInfo").toggle();
-});
 
 $("#kvazaarExtraOptions").focusout(function() {
     // split text into key values pairs. If option doesn't take a parameter, it's paramter is null
     let values = { };
-    let pairs  = this.value.split(" --")
+    let pairs  = this.value
+                    .split(" --")            // discard "--" and extract only the parameter name
                     .slice(1)                // remove first element (white space)
                     .map(x => x.split(" ")); // split "--key value" string into two-element arrays
 
@@ -705,6 +815,7 @@ $('#submitButton').click(function(){
     // use pixel format from input field instead
     if (other_options.pixfmt_txt !== "") {
         other_options.inputFormat = other_options.pixfmt_txt;
+        delete other_options["pixfmt_txt"];
     }
 
     var options = {
@@ -722,15 +833,6 @@ $('#submitButton').click(function(){
     connection.send(JSON.stringify(options));
 });
 
-function deActivate(name) {
-    $("#div" + name).hide();
-    $("#li" + name).removeClass("active");
-}
-
-function activateView(name) {
-    $("#div" + name).show();
-    $("#li" + name).addClass("active");
-}
 
 $("#linkUpload").click(function() {
     if ($("#divUpload").is(":hidden") && !r.isUploading()) {
@@ -738,7 +840,6 @@ $("#linkUpload").click(function() {
     }
 
     if (!r.isUploading()) {
-        $("#dlDoneInfo").hide();
         $(".resumable-drop").show();
     }
 
@@ -749,32 +850,20 @@ $("#linkUpload").click(function() {
     activateView("Upload")
 });
 
-function showRequests() {
-    // send query only if linkRequests tab isn't active
-    if ($("#divRequests").is(":hidden")) {
-        connection.send(JSON.stringify({
-            user: userToken,
-            type: "taskQuery"
-        }));
-    }
-
-    deActivate("About");
-    deActivate("Upload");
-    activateView("Requests");
-}
-
-$("#linkRequests").click(showRequests);
-$("#linkRequestLink").click(showRequests);
-
-$(document).on('click', ".linkRequestLinkClass", function() {
-    showRequests();
-});
-
 $("#linkAbout").click(function() {
     deActivate("Requests");
     deActivate("Upload");
     activateView("About")
 });
+
+$("#linkRequests").click(function() {
+    showRequests();
+});
+
+$(document).on('click', ".linkRequestLinkClass", function() {
+    showRequests();
+});
+
 
 $("#presetSlider").change(function() {
     const presets = [
@@ -787,9 +876,8 @@ $("#presetSlider").change(function() {
 });
 
 // reset all views and made changes when user presses f5
-// (this doesn't for whatevereason happen automatically)
+// (this doesn't for whateve reason happen automatically)
 $(document.body).on("keydown", this, function (event) {
-
     if (event.keyCode == 116) {
         resetUploadFileInfo();
         resetResumable();
@@ -805,24 +893,36 @@ $(document.body).on("keydown", this, function (event) {
     }
 });
 
+// ------------------------------- /jQuery user interactions -------------------------------
+
+
+
+
 // ------------------------------- Resumablejs stuff -------------------------------
+
+// Resumable.js isn't supported, fall back on a different method
+if(r.support) {
+    $('.resumable-error').show();
+} else {
+    r.assignDrop($('.resumable-drop')[0]);
+    r.assignBrowse($('.resumable-browse')[0]);
+}
+
 r.on('fileAdded', function(file){
     // remove previously selected files
     $('.resumable-list').empty();
     r.files = r.files.slice(-1);
 
+    // reset the width of progress-bar
+    $('.progress-bar').css({width: '0%'});
+
     // hide raw video related warnings
     $(".rawVideoWarning").hide();
-
-    // hide download info
-    $("#dlDoneInfo").hide();
 
     // show link for raw video info input
     $("#rawInputLink").show();
 
     // Add the file to the list but don't show the list yet
-    // $('.resumable-list').append('<li class="resumable-file-'+file.uniqueIdentifier+'">'
-    //     + '<span class="resumable-file-name"></span> <span class="resumable-file-progress">ready for upload</span>');
     $('.resumable-list').append('<li class="resumable-file-'+file.uniqueIdentifier+'">'
         + '<span class="resumable-file-name"></span>');
     $('.resumable-file-'+file.uniqueIdentifier+' .resumable-file-name').html(file.fileName);
@@ -840,7 +940,6 @@ r.on('fileAdded', function(file){
 
     // selected file may be raw but doesn't have the fps value in its name
     // so disable the Submit button
-    $("#rawInfoDoneBtn").prop("disabled", true);
     fpsOk = false;
 
     let fname = r.files[r.files.length - 1].fileName.toString();
@@ -857,7 +956,6 @@ r.on('fileAdded', function(file){
         }
     }
 });
-
 
 r.on('pause', function(){
     // Show resume, hide pause
@@ -883,7 +981,7 @@ r.on('fileSuccess', function(file, message){
 
 r.on('fileError', function(file, message){
     $('.resumable-file-'+file.uniqueIdentifier+' .resumable-file-progress').html('(file could not be uploaded: '+message+')');
-    $('.progress-container').css( "background", "red" );
+    $('.progress-container').css("background", "red");
 
     resetUploadFileInfo();
     enableFileBrowse();
@@ -891,16 +989,16 @@ r.on('fileError', function(file, message){
 });
 
 r.on('fileProgress', function(file){
-    $('.resumable-file-'+file.uniqueIdentifier+' .resumable-file-progress').html(Math.floor(file.progress()*100) + '%');
-    $('.progress-bar').css({width:Math.floor(r.progress()*100) + '%'});
+    $('.progress-bar').css({width: Math.floor(r.progress() * 100) + '%'});
+    $('.resumable-file-' + file.uniqueIdentifier + ' .resumable-file-progress').html(Math.floor(file.progress() * 100) + '%');
 });
 
+// either user or server cancelled the request. Do some cleanup work
 r.on('cancel', function(){
-    $('.progress-container').css( "background-color", "red" );
+    $('.progress-container').css("background-color", "red");
     $("#submitButton").prop("disabled", true);
     $(".resumable-drop").show();
     $(".progress-cancel-link").hide();
-    $("#dlDoneInfo").hide();
 
     $('.resumable-file-' + fileID + ' .resumable-file-name')
         .html("<div class='alert alert-danger'>Failed to upload " +  fileName + "!");
@@ -928,6 +1026,11 @@ r.on('uploadStart', function(){
     $('.resumable-progress .progress-cancel-link').show();
     uploading = true;
 });
+
+// ------------------------------- /Resumablejs stuff -------------------------------
+
+
+
 
 
 // ------------------------------- WebSocket stuff -------------------------------
