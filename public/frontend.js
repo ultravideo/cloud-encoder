@@ -265,6 +265,9 @@ function getRawFileInfo() {
         bdVal = "8";
     }
 
+    if (!$("#advacedCheck").is(":checked"))
+        $("#advacedCheck").click();
+
     // check the raw video box automatically if file extension matched
     if (!$("#rawVideoCheck").is(":checked")) {
         $("#rawVideoCheck").click();
@@ -979,9 +982,11 @@ r.on('fileAdded', function(file){
     if (ext) {
         getRawFileInfo();
     } else {
-        if ($("#rawVideoCheck").is(":checked")) {
+        if ($("#rawVideoCheck").is(":checked"))
             $("#rawVideoCheck").click();
-        }
+
+        if ($("#advacedCheck").is(":checked"))
+            $("#advacedCheck").click();
     }
 });
 
