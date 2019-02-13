@@ -244,7 +244,9 @@ function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 
         // check if we got bitrate and if we did, validate it using parser
         if (kvazaarOptions.bitrate !== undefined) {
-            kvazaarExtraOptions += " --bitrate " + kvazaarOptions.bitrate;
+            if (!kvazaarExtraOptions.includes("bitrate")) {
+                kvazaarExtraOptions = "--bitrate " + kvazaarOptions.bitrate + " " + kvazaarExtraOptions;
+            }
         }
 
         if (kvazaarExtraOptions && kvazaarExtraOptions.length > 0) {
@@ -530,9 +532,6 @@ function handleCancelRequest(client, token) {
 function handleUploadRequest(client, message) {
     let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar, message.kvazaar_extra);
     let validatedFilePromise = validateFileOptions(message.other);
-
-    console.log(message.kvazaar, message.kvazaar_extra);
-    console.log(message.other);
 
     // first validated both kvazaar options and file info
     Promise.all([validatedKvazaarPromise, validatedFilePromise]).then(function(values) {

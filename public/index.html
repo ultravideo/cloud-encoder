@@ -111,31 +111,33 @@
 						<option value="mkv">MKV</option>
 					</select>
 				</div>
-				<br>
+				<button id="advacedCheck" class="btn btn-primary">Advanced settings</button><br>
+				<div id="advacedOptions" style="display:none">
+					<hr style="height:1px;border:none;color:#333;background-color:#333;"></hr>
 					<div class="form-check">
-						<input type="checkbox" id="advacedCheck" class="options form-check-input"/>
-						<label class="form-check-label" for="advacedCheck" style="margin-top: 5px">
-							Advanced options
+						<input type="checkbox" id="rateControlCheck" class="options form-check-input"/>
+						<label class="form-check-label" for="rateControlCheck" style="margin-top: 5px">
+							Enable rate control
 						</label>
 					</div>
-
-				<div id="advacedOptions" style="display:none">
-					<hr class="separator"></hr>
-					<label id="idSelectedBitrate" style="font-size: 1.25em">
-						Selected bitrate: 0 kpbs
-					</label><br>
-					<div class="form-row">
-						<div class="col-md-2">
-							<label style="margin-top:10px; padding 0px;">Small size</label>
-						</div>
-						<div class="col-md-8">
-							<input type="range" value="0" min="32" max="19660800" step="64" id="bitrateSlider"
-								   class="form-control kvz_options" name="bitrate"/>
-						</div>
-						<div class="col-md-2">
-							<label style="margin-top:10px;">Good quality</label>
+					<div id="rateControl" style="display: none">
+						<br>
+						<label id="idSelectedBitrate" style="font-size: 1.25em">
+							Selected bitrate: 100 kbps
+						</label><br>
+						<div class="form-row">
+							<div class="col-md-2">
+								<label style="margin-top:10px; padding 0px;">Small size</label>
+							</div>
+							<div class="col-md-8">
+								<input type="range" value="0" min="100000" max="30000000" step="100000" id="bitrateSlider"
+									   class="form-control kvz_options" name="bitrate"/>
+							</div>
+							<div class="col-md-2">
+								<label style="margin-top:10px;">Good quality</label>
 							</div>
 						</div>
+					</div>
 					<hr class="separator"></hr>
 
 					<div class="form-check">
@@ -541,14 +543,13 @@
 							</div>
 						</div>
 					</div>
-					<textarea id="kvazaarExtraOptions" class="form-control" style="margin-bottom: 10px; margin-top: 5px"
-						placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50">
-					</textarea>
+					<textarea value="" id="kvazaarExtraOptions" class="form-control" style="margin-bottom: 10px; margin-top: 5px"
+						placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50"></textarea>
 					<div class="alert alert-danger" id="invalidOptions" style="display: none">
 					</div>
 					</div>
 				</div>
-				<hr class="separator"></hr>
+				<!-- <hr class="separator"></hr> -->
 				<button id="submitButton" class="btn btn-success" style="margin-top: 5px" disabled>Encode</button>
 
 				<div class="resumable-progress">

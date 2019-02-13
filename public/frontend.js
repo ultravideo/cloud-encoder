@@ -13,7 +13,7 @@ let fpsOk = false;
 let resOk = true;
 let pixFmtOk = true;
 let inputFileRaw = false;
-let bitrateSelected = false;
+let enableRateControl = false;
 
 // TODO start using the list from server
 const taskStatus = Object.freeze({
@@ -473,7 +473,9 @@ function handleInitResponse() {
 function handleOptionsValidationResponse(response) {
     if (response.data.valid === true) {
         $("#invalidOptions").hide();
-        $("#submitButton").prop("disabled", false);
+
+        if (fileID != null)
+            $("#submitButton").prop("disabled", false);
     } else {
         $("#invalidOptions").show();
         $("#invalidOptions").html("<strong>" + response.data.message + "</strong>");
@@ -673,6 +675,11 @@ $("#advacedCheck").click(function() {
     $("#advacedOptions").toggle();
 });
 
+$("#rateControlCheck").click(function() {
+    enableRateControl = !enableRateControl;
+    $("#rateControl").toggle();
+});
+
 $("#kvazaarExtraOptions").focusin(function() {
     $("#submitButton").prop("disabled", true);
 });
@@ -824,8 +831,8 @@ $('#submitButton').click(function(){
         delete other_options["pixfmt_txt"];
     }
 
-    // ignore the bitrate value if user didn't change it's value
-    if (bitrateSelected === false) {
+    // remove the bitrate from options if user didn't enable rate control
+    if (enableRateControl === false) {
         delete kvz_options['bitrate'];
     }
 
@@ -878,7 +885,7 @@ $(document).on('click', ".linkRequestLinkClass", function() {
 });
 
 
-$("#presetSlider").change(function() {
+$("#presetSlider").on("input change", function() {
     const presets = [
         "Veryslow (slowest, highest quality)", "Slower",
         "Slow", "Medium", "Fast", "Faster", "Veryfast",
@@ -888,9 +895,9 @@ $("#presetSlider").change(function() {
     $("#idSelectedPreset").text("Selected encoding level: " + presets[$("#presetSlider").val() - 1]);
 });
 
-$("#bitrateSlider").change(function() {
+$("#bitrateSlider").on("input change", function() {
     bitrateSelected = true;
-    $("#idSelectedBitrate").text("Selected bitrate: " + $("#bitrateSlider").val() + " kbps");
+    $("#idSelectedBitrate").text("Selected bitrate: " + $("#bitrateSlider").val() / 1000 + " kbps");
 });
 
 
@@ -910,11 +917,11 @@ $(document.body).on("keydown", this, function (event) {
 
         $("#bitrateSlider").val(0);
 
-        if ($("#advacedCheck").is(":checked"))
-            $("#advacedCheck").click();
-
         if ($("#rawVideoCheck").is(":checked"))
             $("#rawVideoCheck").click();
+
+        if ($("#rateControlCheck").is(":checked"))
+            $("#rateControlCheck").click();
 
         $("#advacedOptions").hide();
         $("#rawVideoInfo").hide();
