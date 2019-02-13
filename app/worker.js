@@ -160,9 +160,9 @@ function moveToOutputFolder(name, path) {
         let newPath = "/tmp/cloud_uploads/output/";
 
         if (outputFileExt === "hevc") {
-            newPath += origNameNoExt + ".hevc";
+            newPath += "" + new Date().getTime() + ".hevc";
         } else {
-            newPath += origNameNoExt + ".hevc." + outputFileExt;
+            newPath += "" + new Date().getTime() + ".hevc." + outputFileExt;
         }
 
         fs.rename(path, newPath, function(err) {
@@ -237,7 +237,6 @@ function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
             // extract audio if it's viable (users wants the output to contain the audio track
             // and there's an audio track to extract [video is not raw])
             if (fileOptions.container !== "none" && fileOptions.raw_video === 0 && validated_options[2] === 1) {
-                console.log("AUDIO TRACK PRESENT!");
                 promises.push(callFFMPEG([fileOptions.file_path], [],
                               fileOptions.tmp_path + ".wav", ["-vn", "-codec:a", "pcm_s16le", "-ac", "1"]));
             }
