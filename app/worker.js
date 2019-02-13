@@ -156,13 +156,22 @@ function ffmpegContainerize(videoPath, audioPath, container) {
 function moveToOutputFolder(name, path) {
     return new Promise((resolve, reject) => {
         const outputFileExt = path.split(".")[1];
-        const origNameNoExt = name.split(".").slice(0, -1).join(".");
         let newPath = "/tmp/cloud_uploads/output/";
+        let origNameNoExt = name.split(".").slice(0, -1).join(".");
+
+        // in case the file name is not in "standard format"
+        // (standard format being: "someletter maybewhitespace_andunderscore.extension")
+        //
+        // the code above for orignal name extraction may fail and it returns an empty string
+        // which is not a valid name for output. Use unix timestamp as a fallback
+        if (origNameNoExt === "") {
+            origNameNoExt = new Date().getTime();
+        }
 
         if (outputFileExt === "hevc") {
-            newPath += "" + new Date().getTime() + ".hevc";
+            newPath += origNameNoExt + ".hevc";
         } else {
-            newPath += "" + new Date().getTime() + ".hevc." + outputFileExt;
+            newPath += origNameNoExt + ".hevc." + outputFileExt;
         }
 
         fs.rename(path, newPath, function(err) {
@@ -237,6 +246,7 @@ function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
             // extract audio if it's viable (users wants the output to contain the audio track
             // and there's an audio track to extract [video is not raw])
             if (fileOptions.container !== "none" && fileOptions.raw_video === 0 && validated_options[2] === 1) {
+                console.log("AUDIO TRACK PRESENT!");
                 promises.push(callFFMPEG([fileOptions.file_path], [],
                               fileOptions.tmp_path + ".wav", ["-vn", "-codec:a", "pcm_s16le", "-ac", "1"]));
             }
