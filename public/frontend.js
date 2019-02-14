@@ -3,7 +3,7 @@ window.WebSocket = window.WebSocket || window.MozWebSocket;
 
 var fileID = null;
 var fileName = null;
-var connection = new WebSocket('ws://127.0.0.1:8080');
+var connection = new WebSocket('wss://' + document.location.host);
 var userToken = getUserToken();
 var numRequests = 0;
 var uploading = false;
@@ -381,7 +381,7 @@ function sendPixelFormatValidation(pixelFormat) {
 function handleDownloadResponse(response) {
     if (response.data.status === "accepted") {
         $("#table" + response.token + " #tdDownloadCount").html(2 - response.data.count);
-        var win = window.open("http://localhost:8080/download/" + response.data.token, '_blank');
+        var win = window.open("https://" + document.location.host + "/download/" + response.data.token, '_blank');
         win.focus();
 
         if (response.data.count === 2) {

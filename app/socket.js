@@ -1,15 +1,28 @@
 let WebSocket = require("ws");
 let WSServer = require("ws").Server;
-let server = require("http").createServer();
+var http = require("http");
+var app = require("./server");
 let fs = require("fs");
 let db = require("./db");
 let parser = require("./parser");
 let crypto = require('crypto');
 let kue = require('kue');
 var NRP = require('node-redis-pubsub');
-var app = require("./server");
 var redis_client = require('redis').createClient(7776);
 const workerStatus = require("./constants");
+
+// private key and pem file must be located in the root folder of this project
+// Docker copies these two files into container and they're then used from the
+// util directory
+const privateKey  = fs.readFileSync("util/privkey.pem", "utf8");
+const certificate = fs.readFileSync("util/cert.pem", "utf8");
+
+const credentials = {
+    key: privateKey,
+    cert: certificate
+};
+
+const httpsServer = require("https").createServer(credentials);
 
 // store kue's job id to redis so we can cancel tasks in constant time
 redis_client.on('connect', function() {
@@ -38,11 +51,17 @@ const clients = new Clients();
 
 // use the same server for WebSocket and http server
 let wss = new WSServer({
-    server: server
+    server: httpsServer
 });
 
-server.on("request", app);
-server.listen(8080);
+httpsServer.on("request", app);
+httpsServer.listen(8443);
+
+// redirect http to https
+http.createServer(function (req, res) {
+    res.writeHead(301, { "Location": "https://" + req.headers['host'] + req.url });
+    res.end();
+}).listen(8080);
 
 // --------------- message queue stuff start ---------------
 var nrp = new NRP({

@@ -382,6 +382,12 @@ app.get('/frontend.js', function (req, res) {
     fs.createReadStream("./public/frontend.js").pipe(res);
 });
 
+app.get("/.well-known/acme-challenge/vTMbu0ZH-cnwtTMct67-NzcPITKkQ70pZS5yq9G6anY", function(req, res) {
+    var fs = require('fs');
+    res.setHeader("content-type", "application/javascript");
+    fs.createReadStream("./util/cert").pipe(res);
+});
+
 queue.on('job enqueue', function() {
     console.log("job saved to work queue");
 }).on('job complete', function(id, result) {
