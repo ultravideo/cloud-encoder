@@ -9,9 +9,6 @@ var numRequests = 0;
 var uploading = false;
 var uploadFileToken = null;
 let selectedOptions = { };
-let fpsOk = false;
-let resOk = true;
-let pixFmtOk = true;
 let inputFileRaw = false;
 let enableRateControl = false;
 
@@ -106,11 +103,28 @@ function activateView(name) {
     $("#li" + name).addClass("active");
 }
 
-function enableSubmitIfOptionsValid() {
-    if (fpsOk && pixFmtOk && resOk && fileID !== null)
+function enableSubmitButtonIfPossible() {
+    if (fileID != null)
         $("#submitButton").prop("disabled", false);
-    else
-        $("#submitButton").prop("disabled", true);
+}
+
+function enableSaveButtonIfPossible(params) {
+    $("#advancedButton").prop("disabled", false);
+
+    // function static variable so we don't pollute the global space
+    enableSaveButtonIfPossible.states = {
+        options: true,
+        fps: true,
+        resolution: true,
+        pixfmt: true
+    };
+
+    Object.keys(params).forEach(function(key) {
+        if (params[key] === false)
+            $("#advancedButton").prop("disabled", true);
+
+        enableSaveButtonIfPossible.states[key] = params[key];
+    });
 }
 
 // My videos view consists of tables. Each request has it's own table to make the ordering easy
@@ -249,7 +263,6 @@ function getPixelFormat(fname) {
 
 function getRawFileInfo() {
     let fname = fileName;
-    inputFileRaw = true;
     fpsOk = true;
 
     let resVal = getResolution(fileName),
@@ -257,36 +270,31 @@ function getRawFileInfo() {
         bdVal  = getBitDepth(fileName),
         fmtVal = getPixelFormat(fileName);
 
-    if (resVal === "") {
+    if (resVal === "")
         resVal = "1920x1080";
-    }
 
-    if (bdVal === "") {
+    if (bdVal === "")
         bdVal = "8";
-    }
 
-    if (!$("#advacedCheck").is(":checked"))
-        $("#advacedCheck").click();
-
-    // check the raw video box automatically if file extension matched
-    if (!$("#rawVideoCheck").is(":checked")) {
-        $("#rawVideoCheck").click();
-    }
-
-    if (fpsVal === "") {
-        $("#submitButton").prop("disabled", true);
-        fpsOk = false;
-    }
+    if (fpsVal === "")
+        enableSaveButtonIfPossible({ fps: false });
 
     if (fmtVal === "other") {
         $("#pixFmtTxtId").show();
-        $("#submitButton").prop("disabled", true);
+        $("#advancedButton").prop("disabled", true);
     }
 
     $("#bitDepthValue").val(bdVal);
     $("#inputFPSValue").val(fpsVal);
     $("#resValue").val(resVal);
     $("#inputFormatValue").val(fmtVal);
+
+    // check the raw video box automatically if file extension matched
+    if (!$("#rawVideoCheck").is(":checked")) {
+        if ($("#advancedOptions").is(":hidden"))
+            $("#advancedButton").click();
+        $("#rawVideoCheck").click();
+    }
 }
 
 function showRequests() {
@@ -474,27 +482,29 @@ function handleOptionsValidationResponse(response) {
     if (response.data.valid === true) {
         $("#invalidOptions").hide();
 
-        if (fileID != null)
-            $("#submitButton").prop("disabled", false);
+        // update the state of options boolean and enable "save settings" button
+        // if all other options are also valid
+        enableSaveButtonIfPossible({ options: true });
     } else {
         $("#invalidOptions").show();
         $("#invalidOptions").html("<strong>" + response.data.message + "</strong>");
-        $("#submitButton").prop("disabled", true);
+
+        // disable save settings button
+        // it's re-enabled when incorrect settings are fixed
+        enableSaveButtonIfPossible({ options: false });
     }
 }
 
 function handlePixelFormatValidationResponse(response) {
     if (response.data.valid === true) {
         $("#pixFmtError").hide();
-        $("#submitButton").prop("disabled", false);
 
-        pixFmtOk = true;
-        enableSubmitIfOptionsValid();
+        enableSaveButtonIfPossible({ pixfmt: true });
     } else {
-        pixFmtOk = false;
+        enableSaveButtonIfPossible({ pixfmt: false });
+
         $("#pixFmtError").show();
         $("#pixFmtError").html(response.data.message);
-        $("#submitButton").prop("disabled", true);
     }
 }
 
@@ -624,15 +634,14 @@ $("#resValueTxt").focusout(function() {
     if (res !== "") {
         $("#resValueTxt").val(res);
         $("#inputResError").hide();
-        resOk = true;
-        enableSubmitIfOptionsValid();
+        enableSaveButtonIfPossible({ resolution: true });
         return;
     }
 
-    resOk = false;
-    enableSubmitIfOptionsValid();
     $("#inputResError").html("Invalid resolution!");
     $("#inputResError").show();
+
+    enableSaveButtonIfPossible({ resolution: false });
 });
 
 $("#inputFPSValue").focusout(function() {
@@ -642,20 +651,18 @@ $("#inputFPSValue").focusout(function() {
         return;
     }
 
-    let fps = getFPS(this.value);
-    if (fps !== "") {
+    let fps = this.value.match(/[1-9]{1}[0-9]{0,2}/g);
+    if (fps) {
         $("#inputFPSValue").val(fps);
         $("#inputFPSError").hide();
 
-        fpsOk = true;
-        enableSubmitIfOptionsValid();
+        enableSaveButtonIfPossible({ fps: true });
         return;
     }
 
-    fpsOk = false;
-    enableSubmitIfOptionsValid();
     $("#inputFPSError").html("Invalid FPS!");
     $("#inputFPSError").show();
+    enableSaveButtonIfPossible({ fps: false });
 });
 
 
@@ -669,11 +676,103 @@ $('#confirm-cancel').on('show.bs.modal', function(e) {
 
 $("#rawVideoCheck").click(function() {
     $("#rawVideoInfo").toggle();
+
+    if (!$("#rawVideoInfo").is(":hidden")) {
+        inputFileRaw = true;
+
+        // try to enable save button only if fps was found
+        enableSaveButtonIfPossible({
+            fps: $("#inputFPSValue").val() != ""
+        });
+
+        // if resolution was not matched from the video, custom resolution box is shown
+        // which requires input. Disable save button
+        if (!$("#resValueTxt").is(":hidden")) {
+            enableSaveButtonIfPossible({
+                fps: $("#resValueTxt").val() != ""
+            });
+        }
+
+        // if pixel format was not matched, other pixel format text input is show
+        // which requires input. Disable save button
+        if (!$("#pixFmtTxt").is(":hidden")) {
+            enableSaveButtonIfPossible({
+                fps: $("#pixFmtTxt").val() != ""
+            });
+        }
+    } else {
+        // set values to default if the raw video div is hidden
+        $("#bitDepthValue").val(8);
+        $("#inputFPSValue").val("");
+        $("#resValue").val("1920x1080");
+        $("#inputFormatValue").val("yuv420p");
+
+        enableSaveButtonIfPossible({
+            options: true,
+            fps: true,
+            resolution: true,
+            pixfmt: true
+        });
+
+        inputFileRaw = true;
+    }
 });
 
-$("#advacedCheck").click(function() {
-    $("#advacedOptions").toggle();
+$("#advancedButton").click(function() {
+    if ($("#advancedOptions").is(":hidden")) {
+        $("#cancelButton").show();
+
+        $("#advancedButton").text("Save");
+        $("#advancedButton").removeClass("btn-primary");
+        $("#advancedButton").addClass("btn-success");
+
+        // disable submit button while user is changing settings
+        // clicking save or cancel will enable the button if possible
+        $("#submitButton").prop("disabled", true);
+    } else {
+        $("#advancedButton").text("Advanced settings");
+        $("#advancedButton").removeClass("btn-success");
+        $("#advancedButton").addClass("btn-primary");
+        $("#cancelButton").hide();
+        enableSubmitButtonIfPossible();
+    }
+
+    $("#advancedOptions").toggle();
 });
+
+$("#cancelButton").click(function() {
+    $("#advancedOptions").hide();
+    $("#cancelButton").hide();
+    enableSubmitButtonIfPossible();
+
+    $("#advancedButton").text("Advanced settings");
+    $("#advancedButton").removeClass("btn-success");
+    $("#advancedButton").addClass("btn-primary");
+
+    // reset all options
+    enableRateControl = false;
+    inputFileRaw = false;
+    enableSaveButtonIfPossible({
+        options: true,
+        fps: true,
+        resolution: true,
+        pixfmt: true
+    });
+
+    $("#kvazaarExtraOptions").val("");
+
+    if ($("#rawVideoCheck").is(":checked"))
+        $("#rawVideoCheck").click();
+
+    if ($("#rateControlCheck").is(":checked"))
+        $("#rateControlCheck").click();
+
+    $("#bitrateSlider").val(100000);
+    $("#idSelectedBitrate").text("Selected bitrate: 0.1 Mbits/s");
+
+    $("#invalidOptions").hide();
+});
+
 
 $("#rateControlCheck").click(function() {
     enableRateControl = !enableRateControl;
@@ -681,7 +780,7 @@ $("#rateControlCheck").click(function() {
 });
 
 $("#kvazaarExtraOptions").focusin(function() {
-    $("#submitButton").prop("disabled", true);
+    $("#advancedButton").prop("disabled", true);
 });
 
 // add clicked option to kvazaar extra options if it hasnt' been added yet
@@ -782,9 +881,8 @@ $("#idVideoUsability").click(function() {
 });
 
 $('#submitButton').click(function(){
-    if (fileID === null) {
+    if (fileID === null)
         return;
-    }
 
     $("#submitButton").prop("disabled", false);
     disableFileBrowse();
@@ -816,6 +914,7 @@ $('#submitButton').click(function(){
     $(".options").serializeArray().map(function(x){other_options[x.name] = x.value;});
 
     if (inputFileRaw) {
+        console.log("input file is sraw");
         other_options.raw_video = "on";
     }
 
@@ -897,7 +996,7 @@ $("#presetSlider").on("input change", function() {
 
 $("#bitrateSlider").on("input change", function() {
     bitrateSelected = true;
-    $("#idSelectedBitrate").text("Selected bitrate: " + $("#bitrateSlider").val() / 1000 + " kbps");
+    $("#idSelectedBitrate").text("Selected bitrate: " + $("#bitrateSlider").val() / 1000 / 1000 + " Mbits/s");
 });
 
 
@@ -923,7 +1022,7 @@ $(document.body).on("keydown", this, function (event) {
         if ($("#rateControlCheck").is(":checked"))
             $("#rateControlCheck").click();
 
-        $("#advacedOptions").hide();
+        $("#advancedOptions").hide();
         $("#rawVideoInfo").hide();
 
         selectedOptions = { };
@@ -983,7 +1082,9 @@ r.on('fileAdded', function(file){
     let fname = r.files[r.files.length - 1].fileName.toString();
     let ext   = fname.match(/\.(raw|yuv.*|yuyv|rgb(32|a)?|bgra|h264)$/g);
 
-    $("#submitButton").prop("disabled", false);
+    // enable encode button only if advanced settings div is hidden
+    if ($("#advancedOptions").is(":hidden"))
+        $("#submitButton").prop("disabled", false);
 
     // try to match as match information from the file name as possible
     if (ext) {
@@ -991,9 +1092,6 @@ r.on('fileAdded', function(file){
     } else {
         if ($("#rawVideoCheck").is(":checked"))
             $("#rawVideoCheck").click();
-
-        if ($("#advacedCheck").is(":checked"))
-            $("#advacedCheck").click();
     }
 });
 

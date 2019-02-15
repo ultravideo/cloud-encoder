@@ -8,7 +8,8 @@
 		<meta name="author" content="">
 		<link rel="shortcut icon" href="../../docs-assets/ico/favicon.png">
 
-		<title>Kvazaar in Cloud</title>
+		<title>Kvazaar Cloud Encoder</title>
+		<link rel="icon" type="image/png" href="favicon.png">
 
 		<!-- Bootstrap core CSS -->
 		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" crossorigin="anonymous">
@@ -43,8 +44,10 @@
 	</head>
 	<body>
 	<div class="container">
-		<h2><a href="http://ultravideo.cs.tut.fi/"><img src="ultravideo-logo.png"></img></a></h2>
-		<h1>Kvazaar HEVC Cloud Encoder/Transcoder</h1><br>
+		<center>
+			<h2><a href="http://ultravideo.cs.tut.fi/" target="_blank"><img src="ultravideo-logo.png"></img></a></h2>
+		</center><br><br>
+		<center><h1>Kvazaar HEVC Cloud Encoder/Transcoder</h1></center><br>
 		<nav class="navbar navbar-expand navbar-light bg-light">
 			<div class="collapse navbar-collapse" id="navbarNav">
 				<ul class="navbar-nav">
@@ -103,50 +106,19 @@
 						</div>
 					</div>
 				<hr class="separator"></hr>
-				<div class="form-group">
-					<label style="font-size: 1.25em">Output container</label>
-					<select class="form-control kvz_options col-md-3" id="containerSelect" name="container">
-						<option value="none">None (HEVC)</option>
-						<option value="mp4">MP4</option>
-						<option value="mkv">MKV</option>
-					</select>
-				</div>
-				<button id="advacedCheck" class="btn btn-primary">Advanced settings</button><br>
-				<div id="advacedOptions" style="display:none">
-					<hr style="height:1px;border:none;color:#333;background-color:#333;"></hr>
-					<div class="form-check">
-						<input type="checkbox" id="rateControlCheck" class="options form-check-input"/>
-						<label class="form-check-label" for="rateControlCheck" style="margin-top: 5px">
-							Enable rate control
-						</label>
-					</div>
-					<div id="rateControl" style="display: none">
-						<br>
-						<label id="idSelectedBitrate" style="font-size: 1.25em">
-							Selected bitrate: 100 kbps
-						</label><br>
-						<div class="form-row">
-							<div class="col-md-2">
-								<label style="margin-top:10px; padding 0px;">Small size</label>
-							</div>
-							<div class="col-md-8">
-								<input type="range" value="0" min="100000" max="30000000" step="100000" id="bitrateSlider"
-									   class="form-control kvz_options" name="bitrate"/>
-							</div>
-							<div class="col-md-2">
-								<label style="margin-top:10px;">Good quality</label>
-							</div>
-						</div>
-					</div>
-					<hr class="separator"></hr>
-
+				<button id="advancedButton" class="btn btn-primary">Advanced settings</button>
+				<button id="cancelButton" class="btn btn-danger" style="display: none; margin-left: 10px">Cancel</button>
+				<div id="advancedOptions" style="display:none; margin-top: 10px" class="alert alert-dark">
 					<div class="form-check">
 						<input type="checkbox" id="rawVideoCheck" name="raw_video" class="options form-check-input"/>
 						<label class="form-check-label" for="rawVideoCheck" style="margin-top: 5px">
-							Additional specifications for raw video
+							Raw video?
 						</label>
 					</div>
 					<div id="rawVideoInfo" style="display: none">
+						<div class="alert alert-warning" style="margin-top:10px; margin-bottom: 0px;">
+							<strong>Warning! Changing these options might cause problems during encoding!</strong>
+						</div>
 						<form>
 						  <div class="form-group"><br>
 							<label>Input format</label>
@@ -198,8 +170,31 @@
 						</form>
 					</div>
 					<hr class="separator"></hr>
-					<button id="kvazaarCmdButton" class="btn btn-primary">Kvazaar options</button><br>
-					<div id="kvazaarExtraOptionsDiv" class=""><br>
+					<div class="form-check">
+						<input type="checkbox" id="rateControlCheck" class="options form-check-input"/>
+						<label class="form-check-label" for="rateControlCheck" style="margin-top: 5px">
+							Enable rate control
+						</label>
+					</div>
+					<div id="rateControl" style="display: none">
+						<br>
+						<label id="idSelectedBitrate" style="font-size: 1.25em">
+							Selected bitrate: 0.1 Mbits/s
+						</label><br>
+						<div class="form-row">
+							<div class="col-md-2">
+								<label style="margin-top:10px; padding 0px;">Small size</label>
+							</div>
+							<div class="col-md-8">
+								<input type="range" value="100000" min="100000" max="30000000" step="100000" id="bitrateSlider"
+									   class="form-control kvz_options" name="bitrate"/>
+							</div>
+							<div class="col-md-2">
+								<label style="margin-top:10px;">Good quality</label>
+							</div>
+						</div>
+					</div>
+					<hr class="separator"></hr>
 						<a class="" target="_blank"
 						   href="https://github.com/ultravideo/kvazaar#parameters">Description of Kvazaar input parameters</a><br><br>
 
@@ -541,7 +536,6 @@
 									</div>
 								</div>
 							</div>
-						</div>
 					</div>
 					<textarea value="" id="kvazaarExtraOptions" class="form-control" style="margin-bottom: 10px; margin-top: 5px"
 						placeholder="--no-cpuid --period 32 -r 10 --lossless --transfer bt470m" rows="4" cols="50"></textarea>
@@ -549,7 +543,16 @@
 					</div>
 					</div>
 				</div>
-				<!-- <hr class="separator"></hr> -->
+				<hr class="separator"></hr>
+				<div class="form-group">
+					<label style="font-size: 1.25em">Output container</label>
+					<select class="form-control kvz_options col-md-3" id="containerSelect" name="container">
+						<option value="none">None (HEVC)</option>
+						<option value="mp4">MP4</option>
+						<option value="mkv">MKV</option>
+					</select>
+				</div>
+				<hr class="separator"></hr>
 				<button id="submitButton" class="btn btn-success" style="margin-top: 5px" disabled>Encode</button>
 
 				<div class="resumable-progress">
@@ -578,8 +581,8 @@
 		<div id="divRequests"></div>
 		<div id="divAbout">
 			<h2>Kvazaar Cloud Encoder</h2>
-			<p>HEVC Cloud encoding provided by <a href='http://ultravideo.cs.tut.fi/'>Ultra Video Group</a>
-			using <a href='https://github.com/ultravideo/kvazaar'>Kvazaar</a> and <a href='https://www.ffmpeg.org/'>FFmpeg</a></p>
+			<p>HEVC Cloud encoding provided by <a href='http://ultravideo.cs.tut.fi/' target="_blank">Ultra Video Group</a>
+			using <a href='https://github.com/ultravideo/kvazaar' target="_blank">Kvazaar</a> and <a href='https://www.ffmpeg.org/' target="_blank">FFmpeg</a></p>
 			<h2>Disclaimer</h2>
 
 			<p>All the information and any part thereof provided on this website are provided « AS IS » without warranty of any kind either expressed or implied including, without limitation, warranties of merchantability, fitness for a particular purpose or non infringement of intellectual property rights.
@@ -629,7 +632,6 @@
 	<!-- modal end for cancel confirmation -->
 
 	<div class="footer">
-		<p>&copy; Ultra Video Group 2018</p>
 	</div>
 	<script src="frontend.js"></script>
 	</div>

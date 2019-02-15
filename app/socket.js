@@ -9,26 +9,53 @@ let crypto = require('crypto');
 let kue = require('kue');
 var NRP = require('node-redis-pubsub');
 var redis_client = require('redis').createClient(7776);
-const workerStatus = require("./constants");
+let workerStatus = require("./constants");
 
-// private key and pem file must be located in the root folder of this project
-// Docker copies these two files into container and they're then used from the
-// util directory
-const privateKey  = fs.readFileSync("util/privkey.pem", "utf8");
-const certificate = fs.readFileSync("util/cert.pem", "utf8");
+// --------------- http(s) ---------------
 
-const credentials = {
-    key: privateKey,
-    cert: certificate
-};
+// just to make localhost development easier
+let httpsEnabled = false;
+let server = null;
 
-const httpsServer = require("https").createServer(credentials);
+if (httpsEnabled) {
+    // private key and pem file must be located in the root folder of this project
+    // Docker copies these two files into container and they're then used from the
+    // util directory
+    const privateKey  = fs.readFileSync("util/privkey.pem", "utf8");
+    const certificate = fs.readFileSync("util/cert.pem", "utf8");
+
+    server = require("https").createServer({
+        key: privateKey,
+        cert: certificate
+    });
+
+    server.listen(8443).on("request", app);
+
+    // redirect http to https
+    http.createServer(function (req, res) {
+        res.writeHead(301, { "Location": "https://" + req.headers['host'] + req.url });
+        res.end();
+    }).listen(8080);
+
+} else {
+    server = require("http").createServer();
+    server.listen(8081).on("request", app);
+}
+
+// use the same server for WebSocket and http server
+let wss = new WSServer({
+    server: server
+});
+
+// --------------- /http(s) ---------------
+
 
 // store kue's job id to redis so we can cancel tasks in constant time
 redis_client.on('connect', function() {
     console.log('connected');
 });
 
+// job queue
 var queue = kue.createQueue({
     redis: {
         port: 7776,
@@ -49,19 +76,6 @@ class Clients {
 
 const clients = new Clients();
 
-// use the same server for WebSocket and http server
-let wss = new WSServer({
-    server: httpsServer
-});
-
-httpsServer.on("request", app);
-httpsServer.listen(8443);
-
-// redirect http to https
-http.createServer(function (req, res) {
-    res.writeHead(301, { "Location": "https://" + req.headers['host'] + req.url });
-    res.end();
-}).listen(8080);
 
 // --------------- message queue stuff start ---------------
 var nrp = new NRP({
