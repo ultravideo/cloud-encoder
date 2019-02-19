@@ -311,6 +311,11 @@ function showRequests() {
     activateView("Requests");
 }
 
+function uncheck(id) {
+    if ($("#" + id).is(":checked"))
+        $("#" + id).click();
+}
+
 // ------------------------------- /Helper functions -------------------------------
 
 
@@ -538,8 +543,8 @@ function handleTaskUpdate(response) {
         newDotClass = "dot dot_ready";
     }
     // request succeeded, failed or got cancelled -> show delete button
-    else if (response.data.status < taskStatus.CANCELLED ||
-             response.data.status < taskStatus.READY)
+    else if (response.data.status == taskStatus.CANCELLED ||
+             response.data.status == taskStatus.FAILURE)
     {
         newDotClass = "dot dot_failure";
     }
@@ -623,6 +628,17 @@ $("#inputFormatValue").change(function() {
         $("#pixFmtError").hide();
     }
 });
+
+$("#bitDepthValue").change(function() {
+    console.log(this.value);
+    if (this.value == "10") {
+        $("#10bitSelected").show();
+    } else {
+        uncheck("10bitCheck");
+        $("#10bitSelected").hide();
+    }
+});
+
 
 $("#pixFmtTxt").focusout(function() {
     sendPixelFormatValidation(this.value);
@@ -722,7 +738,7 @@ $("#advancedButton").click(function() {
     if ($("#advancedOptions").is(":hidden")) {
         $("#cancelButton").show();
 
-        $("#advancedButton").text("Save");
+        $("#advancedButton").text("Accept");
         $("#advancedButton").removeClass("btn-primary");
         $("#advancedButton").addClass("btn-success");
 

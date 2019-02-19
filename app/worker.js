@@ -351,7 +351,7 @@ function updateWorkerStatus(taskInfo, fileId, currentJob) {
 function preprocessRawVideo(fileOptions) {
     return new Promise((resolve, reject) => {
         if (fileOptions.video_format === "yuv420p") {
-            resolve(["", fileOptions.file_path]);
+            resolve(fileOptions.file_path);
         }
 
         // kvazaar only understands yuv420p, do some converting
@@ -367,7 +367,7 @@ function preprocessRawVideo(fileOptions) {
         callFFMPEG([fileOptions.file_path], inputOptions,
                     fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
         .then(() => {
-            resolve(["", fileOptions.tmp_path + ".yuv"]);
+            resolve(fileOptions.tmp_path + ".yuv");
         })
         .catch(function(err) {
             reject(err);
@@ -391,7 +391,10 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
     let preprocessFile = null;
 
     if (fileOptions.raw_video === 1) {
-        preprocessFile = preprocessRawVideo(fileOptions);
+        preprocessFile = Promise.all([
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING),
+            preprocessRawVideo(fileOptions)
+        ]);
     } else {
         preprocessFile = Promise.all([
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING),
