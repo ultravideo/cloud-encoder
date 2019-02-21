@@ -84,7 +84,7 @@ var nrp = new NRP({
 });
 
 nrp.on("message", function(msg) {
-    if (clients.clientList[msg.data.user]) {
+    if (msg.data.user !== undefined && clients.clientList[msg.data.user]) {
         if (clients.clientList[msg.data.user] && clients.clientList[msg.data.user].readyState === 1) {
             clients.clientList[msg.data.user].send(JSON.stringify(msg));
         }
@@ -120,6 +120,14 @@ function removeChunks(file_id) {
     });
 }
 
+function sendResponse(client, replyType, data) {
+    client.send(JSON.stringify({
+        type: "reply",
+        reply: replyType,
+        data: data
+    }));
+}
+
 wss.on('connection', function(client) {
     client.on('message', function(msg) {
         try {
@@ -142,13 +150,6 @@ wss.on('connection', function(client) {
                     console.log(validatedToken, "connected!");
                 })
                 .catch(function(err) {
-                    client.send(JSON.stringify({
-                        type: "reply",
-                        reply: "init",
-                        data: {
-                            status: "rejected",
-                        }
-                    }));
                 });
             }
 
@@ -157,13 +158,14 @@ wss.on('connection', function(client) {
                 clients.clientList[validatedToken] = client;
             })
             .catch(function(err) {
-                client.send(JSON.stringify({
-                    type: "reply",
-                    reply: "init",
-                    data: {
-                        status: "rejected",
-                    }
-                }));
+                sendResponse(client, "init", { status: "rejected" });
+                // client.send(JSON.stringify({
+                //     type: "reply",
+                //     reply: "init",
+                //     data: {
+                //         status: "rejected",
+                //     }
+                // }));
             });
 
         } else if (message.type === "downloadRequest") {
@@ -312,34 +314,20 @@ function validateKvazaarOptions(kvazaarOptions, kvazaarExtraOptions) {
 function handleDownloadRequest(client, token) {
     db.getTask(token).then(function(taskInfo) {
         if (!taskInfo) {
-            client.send(JSON.stringify({
-                type: "reply",
-                reply: "download",
-                data: {
-                    status: "deleted",
-                }
-            }));
+            sendResponse(client, "download", { status: "deleted" });
         } else {
             if (taskInfo.status != workerStatus.READY) {
-                client.send(JSON.stringify({
-                    type: "reply",
-                    reply: "download",
-                    data: {
-                        status: "rejected",
-                        message: "File is not ready!"
-                    }
-                }));
+                sendResponse(client, "download", {
+                    status: "rejected",
+                    message: "File is not ready!"
+                });
             }  else if (taskInfo.download_count >= 2) {
                 console.log("download count exceeded");
-                client.send(JSON.stringify({
-                    type: "reply",
-                    reply: "download",
-                    data: {
-                        status: "exceeded",
-                        message:  "File download limit has been exceeded!",
-                        token: taskInfo.token,
-                    }
-                }));
+                sendResponse(client, "download", {
+                    status: "exceeded",
+                    message:  "File download limit has been exceeded!",
+                    token: taskInfo.token,
+                });
 
                 // remove task and associated file
                 db.removeTask(taskInfo.taskID).then(() => {
@@ -350,15 +338,11 @@ function handleDownloadRequest(client, token) {
                     console.log(reason);
                 });
             } else {
-                client.send(JSON.stringify({
-                    type: "reply",
-                    reply: "download",
-                    data: {
-                        status: "accepted",
-                        token: token,
-                        count: taskInfo.download_count + 1,
-                    }
-                }));
+                sendResponse(client, "download", {
+                    status: "accepted",
+                    token: token,
+                    count: taskInfo.download_count + 1,
+                });
             }
         }
     });
@@ -372,27 +356,17 @@ function handleDeleteRequest(client, token) {
 
             // "authentication" failure
             if (!row || row.owner_id !== key) {
-                client.send(JSON.stringify({
-                    type: "reply",
-                    reply: "delete",
-                    data: {
-                        status: "nok",
-                    }
-                }));
+                sendResponse(client, "delete", { status: "nok" });
                 return;
             }
 
             db.removeTask(token).then(() => {
                 console.log("task delete succeeded!");
-                client.send(JSON.stringify({
-                    type: "reply",
-                    reply: "delete",
-                    data: {
-                        status: "ok",
-                        file_id: row.file_id,
-                        token: row.token
-                    }
-                }));
+                sendResponse(client, "delete", {
+                    status: "ok",
+                    file_id: row.file_id,
+                    token: row.token
+                });
             })
         })
     })
@@ -405,13 +379,7 @@ function handleDeleteRequest(client, token) {
 function handleTaskRequest(client, message) {
     db.getTasks("owner_id", message.user).then((rows) => {
         if (!rows || rows.length === 0) {
-            client.send(JSON.stringify({
-                type: "reply",
-                reply: "task",
-                data: {
-                    numTasks: 0,
-                }
-            }));
+            sendResponse(client, "task", { numTasks: 0 });
             return;
         }
 
@@ -525,6 +493,10 @@ function handleCancelRequest(client, token) {
 
         kue.Job.get(reply, function(err, job) {
             if (!job) {
+                sendResponse(client, "cancel", {
+                    valid: false,
+                    message: "Task does not exist!"
+                });
                 return;
             }
 
@@ -535,6 +507,8 @@ function handleCancelRequest(client, token) {
                         getUserTokenBySocket(client).then((userToken) => {
                             handleTaskRequest(client, { user: userToken });
                         });
+
+                        sendResponse(client, "cancel", { valid: true });
                     })
                     .catch(function(err) {
                         console.log(err);
@@ -544,7 +518,10 @@ function handleCancelRequest(client, token) {
                 nrp.emit('message', {
                     type: "cancelRequest",
                     token: token,
+                    data: { }
                 });
+
+                sendResponse(client, "cancel", { valid: true });
             }
         });
     });
@@ -688,17 +665,11 @@ function handleUploadRequest(client, message) {
                     }
                 }
 
-                client.send(
-                    JSON.stringify({
-                        type: "reply",
-                        reply: "upload",
-                        data: {
-                            status: uploadApproved ? "upload" : requestApproved ? "request_ok" : "request_nok",
-                            token: token,
-                            message: uploadInfo.message
-                        }
-                    })
-                );
+                sendResponse(client, "upload", {
+                    status: uploadApproved ? "upload" : requestApproved ? "request_ok" : "request_nok",
+                    token: token,
+                    message: uploadInfo.message
+                });
             })
             .catch(function(err) {
                 client.send(
@@ -758,45 +729,24 @@ function terminateOngoingUpload(key) {
 
 function handleoptionsValidationRequest(client, options) {
     parser.validateKvazaarOptions(options).then((validatedExtraOptions) => {
-        client.send(JSON.stringify({
-            type: "reply",
-            reply: "optionsValidation",
-            data: {
-                valid: true
-            }
-        }));
-
+        sendResponse(client, "optionsValidation", { valid: true });
     })
     .catch(function(err) {
-        client.send(JSON.stringify({
-            type: "reply",
-            reply: "optionsValidation",
-            data: {
-                valid: false,
-                message: err
-            }
-        }));
+        sendResponse(client, "optionsValidation", {
+            valid: false,
+            message: err.toString()
+        });
     });
 }
 
 function handlePixelFormatValidationRequest(client, pixelFormat) {
     parser.validatePixelFormat(pixelFormat).then((validatedPixelFormat) => {
-        client.send(JSON.stringify({
-            type: "reply",
-            reply: "pixelFormatValidation",
-            data: {
-                valid: true
-            }
-        }));
+        sendResponse(client, "pixelFormatValidation", { valid: true });
     })
     .catch(function(err) {
-        client.send(JSON.stringify({
-            type: "reply",
-            reply: "pixelFormatValidation",
-            data: {
-                valid: false,
-                message: err.toString(),
-            }
-        }));
+        sendResponse(client, "pixelFormatValidation", {
+            valid: false,
+            message: err.toString(),
+        });
     });
 }
