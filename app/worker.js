@@ -260,7 +260,7 @@ function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
             // If output is at least one frame, process it and ignore the error
             try {
               fs.stat(fileOptions.tmp_path + ".yuv",function(err2, data) {
-                  if (err)
+                  if (err2)
                     reject(err);
 
                   let resolutionSplit = fileOptions.resolution.split('x');
