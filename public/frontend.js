@@ -3,7 +3,8 @@ window.WebSocket = window.WebSocket || window.MozWebSocket;
 
 var fileID = null;
 var fileName = null;
-var connection = new WebSocket('wss://' + document.location.host);
+var connection = null;
+var websocketAddr = document.location.host;
 var userToken = getUserToken();
 var numRequests = 0;
 var uploading = false;
@@ -11,6 +12,8 @@ var uploadFileToken = null;
 let selectedOptions = { };
 let inputFileRaw = false;
 let enableRateControl = false;
+
+connectWebsocket(websocketAddr);
 
 // TODO start using the list from server
 const taskStatus = Object.freeze({
@@ -1188,7 +1191,8 @@ r.on('uploadStart', function(){
 
 
 // ------------------------------- WebSocket stuff -------------------------------
-connection.onopen = function() {
+
+function websocketOpenListener() {
     console.log("connection established");
 
     connection.send(JSON.stringify({
@@ -1202,9 +1206,9 @@ connection.onopen = function() {
     }));
 
     console.log("init", userToken);
-};
+}
 
-connection.onmessage = function(message) {
+function websocketMessageListener(message) {
     var message_data = null;
 
     try {
@@ -1242,14 +1246,38 @@ connection.onmessage = function(message) {
     } else if (message_data.type === "update") {
         handleTaskUpdate(message_data);
     }
-};
+}
 
-connection.onclose = function(error) {
-    console.log("connection closed...");
-};
+function websocketCloseListener(error) {
+    console.log("connection closed...");        
+    setTimeout(connectWebsocket, 1000, websocketAddr);    
+}
 
-connection.onerror = function(error) {
+function websocketErrorListener(error) {
     console.log(error);
-};
+    setTimeout(connectWebsocket, 1000, websocketAddr);
+}
 
+function connectWebsocket(addr) {    
+    
+    // Clear the old listeners, otherwise the will stay active in the background
+    if(connection !== null ) {
+      try {
+        connection.removeEventListener('open', websocketOpenListener);
+        connection.removeEventListener('message',websocketMessageListener);
+        connection.removeEventListener('close',websocketCloseListener);
+        connection.removeEventListener('error',websocketErrorListener);
+      } catch (e) {
+        console.log("Failed to remove listeners..");
+      }
+    }
+    
+    connection = new WebSocket(('https:' == document.location.protocol ?'wss':'ws')+'://' + addr);  
+
+    connection.addEventListener('open',websocketOpenListener);
+    connection.addEventListener('message',websocketMessageListener);
+    connection.addEventListener('close',websocketCloseListener);
+    connection.addEventListener('error',websocketErrorListener);
+
+}
 // ------------------------------- /WebSocket stuff -------------------------------
