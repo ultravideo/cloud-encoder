@@ -190,7 +190,7 @@ function addLogo(video_path, resolution, callback) {
     .then(() => {
         // Concat logo with the original video
         //console.log("Executing: "+"cat "+video_path+".logo.yuv"+ " >> "+video_path);
-        exec("cat "+video_path+"_logo.yuv"+ " >> "+video_path, (err, stdout, stderr) => {
+        exec("cat "+pathPrefix+"_logo.yuv"+ " >> "+video_path, (err, stdout, stderr) => {
             if (err) {
                // node couldn't execute the command
                throw err;
@@ -213,9 +213,16 @@ function checkIfAudioTrackExists(info) {
 }
 
 function validateVideoOptions(video_info) {
+    var videoStream = 0;
+    for(var i = 0; i < video_info.streams.length; i++) {
+      if(video_info.streams[i].codec_type === "video") {
+        videoStream = i;
+        break;
+      }
+    }
     return Promise.all([
-        parser.validateResolution(video_info.streams[0].width + "x" + video_info.streams[0].height),
-        parser.validateFrameRate(video_info.streams[0].avg_frame_rate),
+        parser.validateResolution(video_info.streams[videoStream].width + "x" + video_info.streams[videoStream].height),
+        parser.validateFrameRate(video_info.streams[videoStream].avg_frame_rate),
         checkIfAudioTrackExists(video_info)
     ]);
 }
@@ -249,7 +256,25 @@ function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
             resolve(fileOptions.tmp_path + ".yuv");
         })
         .catch(function(err) {
-            reject(err);
+           console.log(err);
+            // If output is at least one frame, process it and ignore the error
+            try {
+              fs.stat(fileOptions.tmp_path + ".yuv",function(err2, data) {
+                  if (err)
+                    reject(err);
+
+                  let resolutionSplit = fileOptions.resolution.split('x');
+                  if(!isNaN(resolutionSplit[0]) && !isNaN(resolutionSplit[1])) {
+                      // Has to be at least one frame Width*Height*1.5
+                      if(data.size >= parseInt(resolutionSplit[0])*parseInt(resolutionSplit[1])*1.5) {
+                          resolve(fileOptions.tmp_path + ".yuv");
+                      }
+                  }                
+                  reject(err);
+              });
+            } catch(err2) {
+              reject(err);
+            }
         });
     });
 
