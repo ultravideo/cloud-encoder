@@ -137,7 +137,7 @@ function ffmpegContainerize(videoPath, audioPath, container) {
             // There's a bug somewhere in ffmpeg, cloud or kvazaar which causes
             // mkv containers not to work (something about missing timestamps)
             // this bug can be mitigated by first using mp4 and converting the mp4 to mkv
-            callFFMPEG(inputs, [], tmpPath, outputOptions).then(() => {
+            callFFMPEG(inputs, ["-noautorotate"], tmpPath, outputOptions).then(() => {
                 if (container === "mkv")
                     return callFFMPEG([tmpPath], [], newPath, ["-c:v", "copy", "-c:a", "copy"]);
                 else
