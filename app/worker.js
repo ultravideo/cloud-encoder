@@ -67,8 +67,10 @@ function removeArtifacts(path, fileOptions) {
         //files.push("_new.hevc");
 
         // raw video files don't have audio tracks
-        if (fileOptions.raw_video === 0)
+        if (fileOptions.raw_video === 0) {
             files.push(".wav");
+            files.push(".wav.audio_info.txt");
+        }            
     }
 
     files.forEach(function(extension) {
@@ -88,7 +90,7 @@ function callFFMPEG(inputs, inputOptions, output, outputOptions) {
         let options = inputOptions;
 
         inputs.forEach(function(input) {
-            options.push("-i", input);
+            options.push(input);
         });
 
         options = options.concat(outputOptions);
@@ -126,12 +128,20 @@ function ffmpegContainerize(videoPath, audioPath, container) {
         // raw video to encode and the containerize in which case
         // we wouldn't have an audio track
         fs.access(audioPath, fs.constants.F_OK, function(err) {
-            let inputs = [ videoPath ];
+            let inputs = ["-i", videoPath ];
             let outputOptions = [ "-c:v", "copy" ];
 
             if (!err) {
-                inputs.push(audioPath);
-                outputOptions.push("-async", "1", "-c:a", "aac");
+                try {
+                  console.log("Reading audio info "+audioPath + ".audio_info.txt");
+                  let audioOptionsRaw = fs.readFileSync(audioPath + ".audio_info.txt");
+                  audioOptions = JSON.parse(audioOptionsRaw);
+                  //console.log(audioOptions);
+                } catch(e) {
+                  console.log("Failed to open .audio_info.txt");
+                }
+                inputs = inputs.concat(["-f", audioOptions.codec_name,"-i",audioPath]);
+                outputOptions.push("-async", "1", "-c:a", "copy");
             }
 
             // There's a bug somewhere in ffmpeg, cloud or kvazaar which causes
@@ -139,7 +149,7 @@ function ffmpegContainerize(videoPath, audioPath, container) {
             // this bug can be mitigated by first using mp4 and converting the mp4 to mkv
             callFFMPEG(inputs, ["-noautorotate"], tmpPath, outputOptions).then(() => {
                 if (container === "mkv")
-                    return callFFMPEG([tmpPath], [], newPath, ["-c:v", "copy", "-c:a", "copy"]);
+                    return callFFMPEG(["-i",tmpPath], [], newPath, ["-c:v", "copy", "-c:a", "copy"]);
                 else
                     resolve(newPath);
             })
@@ -185,7 +195,7 @@ function moveToOutputFolder(name, path) {
 function addLogo(video_path, resolution, callback) {
     const pathPrefix = video_path.split('.')[0];
 
-    callFFMPEG(["/tmp/cloud_uploads/misc/logo.png"], [],
+    callFFMPEG(["-i","/tmp/cloud_uploads/misc/logo.png"], [],
                pathPrefix + "_logo.yuv", ["-vf", "scale=" + resolution.replace('x', ':') + ",setdar=1:1", "-pix_fmt", "yuv420p","-f", "rawvideo"])
     .then(() => {
         // Concat logo with the original video
@@ -202,17 +212,25 @@ function addLogo(video_path, resolution, callback) {
     });
 }
 
-function checkIfAudioTrackExists(info) {
+function checkIfAudioTrackExists(fileOptions, info) {
     return new Promise((resolve, reject) => {
         info.streams.forEach(function(stream) {
-            if (stream.codec_type === "audio")
-                resolve(1);
+            if (stream.codec_type === "audio") {
+                console.log("Writing audio info "+fileOptions.tmp_path + ".wav.audio_info.txt");
+                const fd = fs.openSync(fileOptions.tmp_path + ".wav.audio_info.txt", "wx");
+                if (!fd)
+                    resolve(0);
+                let fileData = JSON.stringify(stream);
+                fs.writeSync(fd, fileData);
+                fs.closeSync(fd);
+                resolve(1);                    
+            }
         });
         resolve(0);
     });
 }
 
-function validateVideoOptions(video_info) {
+function validateVideoOptions(fileOptions, video_info) {
     var videoStream = 0;
     for(var i = 0; i < video_info.streams.length; i++) {
       if(video_info.streams[i].codec_type === "video") {
@@ -223,7 +241,7 @@ function validateVideoOptions(video_info) {
     return Promise.all([
         parser.validateResolution(video_info.streams[videoStream].width + "x" + video_info.streams[videoStream].height),
         parser.validateFrameRate(video_info.streams[videoStream].avg_frame_rate),
-        checkIfAudioTrackExists(video_info)
+        checkIfAudioTrackExists(fileOptions, video_info)
     ]);
 }
 
@@ -231,14 +249,14 @@ function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
     let promise = new Promise((resolve, reject) => {
         ffprobe(fileOptions.file_path, { path: ffprobeStatic.path })
         .then((info) => {
-            return validateVideoOptions(info);
+            return validateVideoOptions(fileOptions, info);
         })
         .then((validated_options) => {
             fileOptions.resolution        = validated_options[0];
             kvazaarOptions["input-fps"]   = validated_options[1];
 
             let promises = [
-                callFFMPEG([fileOptions.file_path], ["-r", kvazaarOptions['input-fps']],
+                callFFMPEG(["-i",fileOptions.file_path], [],
                             fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
             ];
 
@@ -246,8 +264,8 @@ function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
             // and there's an audio track to extract [video is not raw])
             if (fileOptions.container !== "none" && fileOptions.raw_video === 0 && validated_options[2] === 1) {
                 console.log("AUDIO TRACK PRESENT!");
-                promises.push(callFFMPEG([fileOptions.file_path], [],
-                              fileOptions.tmp_path + ".wav", ["-vn", "-codec:a", "pcm_s16le", "-ac", "1"]));
+                promises.push(callFFMPEG(["-i", fileOptions.file_path], [],
+                              fileOptions.tmp_path + ".wav", ["-vn", "-codec:a", "copy"]));
             }
 
             return Promise.all(promises);
@@ -382,7 +400,7 @@ function preprocessRawVideo(fileOptions) {
             inputOptions.push("-r", fileOptions.fps, "-vcodec", "rawvideo", "-f", "rawvideo");
         }
 
-        callFFMPEG([fileOptions.file_path], inputOptions,
+        callFFMPEG(["-i",fileOptions.file_path], inputOptions,
                     fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
         .then(() => {
             resolve(fileOptions.tmp_path + ".yuv");
