@@ -210,40 +210,49 @@ function processUploadedFile(req, identifier, original_filename) {
         concatChunks(req.query.resumableChunkNumber, identifier, original_filename, function(err, hash, path) {
             if (err)
                 reject(err);
+              
+            // checkFileValidity rejects promise if the file is invalid
+            checkFileValidity(identifier, path).then(() => {            
 
-            db.updateFile(identifier, { file_path : path, hash : hash }).then(() => {
-               return db.getTasks("file_id", identifier);
-            })
-            .then((tasks) => {
-                if (!tasks) {
-                    sendMessage(req.query.token, identifier, "action", "cancel", "Error occurred during file processing!");
-                    return;
-                }
-                tasks.forEach(function(task) {
-                    if (task.status === workerStatus.PREPROCESSING) {
-                        db.updateTask(task.taskid, { status: workerStatus.WAITING }).then(() => {
-
-                            sendStatusMessage(task.owner_id, task.file_id, task.token, "update",
-                                              "task", workerStatus.WAITING, "Queued");
-
-                            let job = queue.create('process_file', {
-                                task_token: task.token
-                            })
-                            .save(function(err) {
-                                if (err)
-                                    console.log("err", err);
-
-                                redis_client.set(task.token, job.id);
-                                console.log("server: job " + job.id + " saved to queue");
-                            });
-                        }, (reason) => {
-                            reject(reason);
-                        });
+                db.updateFile(identifier, { file_path : path, hash : hash }).then(() => {
+                   return db.getTasks("file_id", identifier);
+                })
+                .then((tasks) => {
+                    if (!tasks) {
+                        sendMessage(req.query.token, identifier, "action", "cancel", "Error occurred during file processing!");
+                        return;
                     }
+                    tasks.forEach(function(task) {
+                        if (task.status === workerStatus.PREPROCESSING) {
+                            db.updateTask(task.taskid, { status: workerStatus.WAITING }).then(() => {
+
+                                sendStatusMessage(task.owner_id, task.file_id, task.token, "update",
+                                                  "task", workerStatus.WAITING, "Queued");
+
+                                let job = queue.create('process_file', {
+                                    task_token: task.token
+                                })
+                                .save(function(err) {
+                                    if (err)
+                                        console.log("err", err);
+
+                                    redis_client.set(task.token, job.id);
+                                    console.log("server: job " + job.id + " saved to queue");
+                                });
+                            }, (reason) => {
+                                reject(reason);
+                            });
+                        }
+                    });
+                })
+                .catch(function(err) {
+                    reject(err);
                 });
             })
             .catch(function(err) {
-                reject(err);
+                sendMessage(req.query.token, identifier, "action", "cancel", err.toString());
+                res.status(400).send();
+                return;
             });
         });
     })
@@ -275,26 +284,18 @@ app.post('/upload', function(req, res) {
         } else if (status === "done") {
             res.send(status);
             
-            // checkFileValidity rejects promise if the file is invalid
-            checkFileValidity(identifier, chunkFile).then(() => {
-
-                // first update the status from upload to preprocessing so that
-                // connection can be closed without wreacking havoc with other requests
-                // db.updateTasks(identifier, { status: -3  }).then(() => {
-                updateFileStatusToPreprocessing(identifier).then(() => {
-                    return processUploadedFile(req, identifier, original_filename);
-                })
-                .catch(function(err) {
-                    console.log("sending error message her!");
-                    sendMessage(req.query.token, identifier, "action", "cancel", err.toString());
-                    console.log(err);
-                });
+            // first update the status from upload to preprocessing so that
+            // connection can be closed without wreacking havoc with other requests
+            // db.updateTasks(identifier, { status: -3  }).then(() => {
+            updateFileStatusToPreprocessing(identifier).then(() => {
+                return processUploadedFile(req, identifier, original_filename);
             })
             .catch(function(err) {
+                console.log("sending error message her!");
                 sendMessage(req.query.token, identifier, "action", "cancel", err.toString());
-                res.status(400).send();
-                return;
+                console.log(err);
             });
+
 
         } else {
             res.send(status);
