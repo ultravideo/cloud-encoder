@@ -56,7 +56,7 @@ nrp.on("message", function(msg) {
 // remove original file, extracted audio file and
 // raw video if the videos was containerized
 function removeArtifacts(path, fileOptions) {
-    var files = [".txt", "_logo.hevc", ".hevc"];
+    var files = [".txt", "_logo.yuv", ".hevc"];
 
     // decodeVideo creates temporary yuv file
     if (fileOptions.raw_video === 0) {
@@ -64,7 +64,7 @@ function removeArtifacts(path, fileOptions) {
     }
 
     if (fileOptions.container !== "none") {
-        files.push("_new.hevc");
+        //files.push("_new.hevc");
 
         // raw video files don't have audio tracks
         if (fileOptions.raw_video === 0)
@@ -186,25 +186,17 @@ function addLogo(video_path, resolution, callback) {
     const pathPrefix = video_path.split('.')[0];
 
     callFFMPEG(["/tmp/cloud_uploads/misc/logo.png"], [],
-               pathPrefix + "_logo.hevc", ["-vf", "scale=" + resolution.replace('x', ':') + ",setdar=1:1"])
+               pathPrefix + "_logo.yuv", ["-vf", "scale=" + resolution.replace('x', ':') + ",setdar=1:1", "-pix_fmt", "yuv420p","-f", "rawvideo"])
     .then(() => {
-            fs.open(pathPrefix + ".txt", "wx", (err, fd) => {
-                if (err)
-                    throw err;
-
-                const fileData = "file '" + video_path + "'\n" +
-                                 "file '" + pathPrefix + "_logo.hevc" + "'";
-
-                fs.write(fd, fileData, function(err, a, b) {
-                    callFFMPEG([pathPrefix + ".txt"],    ["-f", "concat", "-safe", "0"],
-                               pathPrefix + "_new.hevc", ["-c", "copy"])
-                    .then(() => {
-                        callback(null, pathPrefix + "_new.hevc");
-                    }, (reason) => {
-                        callback(reason);
-                    });
-                });
-            });
+        // Concat logo with the original video
+        //console.log("Executing: "+"cat "+video_path+".logo.yuv"+ " >> "+video_path);
+        exec("cat "+video_path+"_logo.yuv"+ " >> "+video_path, (err, stdout, stderr) => {
+            if (err) {
+               // node couldn't execute the command
+               throw err;
+            }
+            callback(null, video_path);
+        });
     }, (reason) => {
         callback(reason);
     });
@@ -288,6 +280,11 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions, taskInfo) {
         if (kvazaarOptions["input-bitdepth"] === 10) {
             kvz_exec = "kvazaar_10bit";
         }
+ 
+       addLogo(videoLocation, fileOptions.resolution, function(err, newPath) {
+          if (err)
+              reject(err);
+        });
 
         const child = spawn(kvz_exec, options);
 
@@ -300,11 +297,7 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions, taskInfo) {
 
         child.on("exit", function(code, signal) {
             if (code === 0) {
-                addLogo(fileOptions.tmp_path + ".hevc", fileOptions.resolution, function(err, newPath) {
-                    if (err)
-                        reject(err);
-                    resolve(newPath);
-                });
+                resolve(fileOptions.tmp_path + ".hevc");
             } else {
                 reject(new Error("kvazaar failed with exit code " + code));
                 console.log(options);
