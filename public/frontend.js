@@ -397,7 +397,7 @@ function sendPixelFormatValidation(pixelFormat) {
 function handleDownloadResponse(response) {
     if (response.data.status === "accepted") {
         $("#table" + response.token + " #tdDownloadCount").html(2 - response.data.count);
-        var win = window.open("https://" + document.location.host + "/download/" + response.data.token, '_blank');
+        var win = window.open(document.location.protocol+"//" + document.location.host + "/download/" + response.data.token, '_blank');
         win.focus();
 
         if (response.data.count === 2) {
