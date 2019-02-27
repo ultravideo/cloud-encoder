@@ -418,6 +418,7 @@ function handleTaskRequest(client, message) {
                 message.data.tasks.push({
                     name: values[0] ? values[0].name : "Error",
                     uniq_id: taskRow.file_id,
+                    timestamp: taskRow.timestamp,
                     status: taskRow.status,
                     message: msg,
                     download_count: taskRow.download_count,

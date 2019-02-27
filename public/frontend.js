@@ -166,6 +166,16 @@ function drawFileTable(file) {
             dotClass = "dot_inprogress";
         }
     }
+    var monthNames = [
+      "Jan", "Feb", "Marh", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    
+    var uploadDate = new Date(parseInt(file.timestamp));
+    // Time format: 20 Feb 2019 12:05
+    var dateString = 
+    uploadDate.getDate()+" "+monthNames[uploadDate.getMonth()]+" "+uploadDate.getFullYear()+" "+
+    uploadDate.getHours().toString().padStart(2, '0')+":"+uploadDate.getMinutes().toString().padStart(2, '0');
+    
 
     newHTML = 
         "</div>" +
@@ -173,6 +183,7 @@ function drawFileTable(file) {
         "<span id='reqStatus' class='dot " + dotClass + "'></span> <b>" + file.name + "</b>" +
         "<table class='fileReqTable' id='table" + file.token + "'><tr><td colspan='2'></td></tr><tr></tr>" +
         "<tr><td>Status:</td><td id='tdStatus'>" + file.message + "</td></tr>" +
+        "<tr><td>Uploaded:</td><td id='tdUploaded'>" + dateString + "</td></tr>" +
         newHTML;
 
     return newHTML;
@@ -449,7 +460,11 @@ function handleTaskResponse(response) {
     } else {
         numRequests = response.data.tasks.length;
         updateRequestCount();
-
+        
+        // Sort list, latest first
+        response.data.tasks.sort(function(a, b) {
+            return parseInt(a["timestamp"]) < parseInt(b["timestamp"]);
+        });
         // creating HTML dynamically like this is awful but whatevs
         response.data.tasks.forEach(function(file) {
             $("#divRequests").append(drawFileTable(file));
