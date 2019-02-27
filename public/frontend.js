@@ -436,7 +436,7 @@ function handleUploadResponse(response) {
         incRequestCount();
         $(".resumable-list").html("<br><div  class='alert alert-info' role='alert'>" +
             "File already in the server, request has been added to work queue<br>" + 
-            "You can follow the progress <a href='#' class='linkRequestLinkClass'>here</a></div>");
+            "You can <a href='#' class='linkRequestLinkClass btn btn-info' role='button'>follow the progress</a></div>");
         $(".resumable-drop").show();
         enableFileBrowse();
 
@@ -444,7 +444,7 @@ function handleUploadResponse(response) {
     } else {
         resetResumable();
         $(".resumable-list").html("<br><div class='alert alert-warning' role='alert'>" +
-            "You have already made this request, check <a href='#' class='linkRequestLinkClass'>" +
+            "You have already made this request, check <a href='#' class='linkRequestLinkClass btn btn-info' role='button'>" +
             "My videos</a> tab</div>");
         $(".resumable-drop").show();
         enableFileBrowse();
@@ -1143,7 +1143,7 @@ r.on('complete', function(){
 r.on('fileSuccess', function(file, message){
     $('.resumable-file-' + fileID + ' .resumable-file-name')
         .html("<div class='alert alert-success'>Uploaded " +  fileName + "!<br>" + 
-        "You can follow the progress <a href='#' class='linkRequestLinkClass'>here</a></div>");
+        "You can <a href='#' class='linkRequestLinkClass btn btn-info' role='button'>follow the progress</a></div>");
 
     $(".resumable-drop").show();
     resetUploadFileInfo();
