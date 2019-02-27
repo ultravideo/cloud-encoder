@@ -428,6 +428,7 @@ function handleUploadResponse(response) {
         $(".resumable-progress .progress-pause-link").show();
         $("#submitButton").prop("disabled", true);
 
+        incRequestCount();
         uploadFileToken = response.data.token;
         r.upload();
 
@@ -440,6 +441,7 @@ function handleUploadResponse(response) {
             "You can <a href='#' class='linkRequestLinkClass btn btn-info' role='button'>follow the encoding progress</a></div>");
         $(".resumable-drop").show();
         enableFileBrowse();
+        incRequestCount();
 
     // user has already submitted this request and it's still active (1 >= downloads left)
     } else {
@@ -611,7 +613,6 @@ function handleCancelAction(response) {
 }
 
 function handlePauseAction() {
-    incRequestCount();
     r.pause();
 }
 
