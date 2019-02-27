@@ -260,7 +260,7 @@ function processUploadedFile(req,res, identifier, original_filename) {
 
 
 // Host most stuff in the public folder
-app.use(express.static(__dirname + '/../public'));
+app.use(express.static(__dirname + '/../public', { dotfiles: 'allow' }));
 app.use(multipart());
 
 // Handle uploads through Resumable.js
@@ -356,12 +356,6 @@ app.get('/frontend.js', function (req, res) {
     var fs = require('fs');
     res.setHeader("content-type", "application/javascript");
     fs.createReadStream("./public/frontend.js").pipe(res);
-});
-
-app.get("/.well-known/acme-challenge/vTMbu0ZH-cnwtTMct67-NzcPITKkQ70pZS5yq9G6anY", function(req, res) {
-    var fs = require('fs');
-    res.setHeader("content-type", "application/javascript");
-    fs.createReadStream("./util/cert").pipe(res);
 });
 
 queue.on('job enqueue', function() {
