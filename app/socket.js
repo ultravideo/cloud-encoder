@@ -9,7 +9,7 @@ let crypto = require('crypto');
 let kue = require('kue');
 var NRP = require('node-redis-pubsub');
 var redis_client = require('redis').createClient(7776);
-let workerStatus = require("./constants");
+let constants = require("./constants");
 
 // --------------- http(s) ---------------
 
@@ -316,12 +316,12 @@ function handleDownloadRequest(client, token) {
         if (!taskInfo) {
             sendResponse(client, "download", { status: "deleted" });
         } else {
-            if (taskInfo.status != workerStatus.READY) {
+            if (taskInfo.status != constants.READY) {
                 sendResponse(client, "download", {
                     status: "rejected",
                     message: "File is not ready!"
                 });
-            }  else if (taskInfo.download_count >= 2) {
+            }  else if (taskInfo.download_count >= constants.FILE_DOWNLOAD_LIMIT) {
                 console.log("download count exceeded");
                 sendResponse(client, "download", {
                     status: "exceeded",
@@ -400,14 +400,14 @@ function handleTaskRequest(client, message) {
             ]).then((values) => {
                 let msg = "Done!";
                 switch (taskRow.status) {
-                    case workerStatus.CANCELLED:      msg = "Request cancelled";  break;
-                    case workerStatus.FAILURE:        msg = "Request failed!";    break;
-                    case workerStatus.PREPROCESSING:  msg = "Preprocessing file"; break;
-                    case workerStatus.UPLOADING:      msg = "Uploading file";     break;
-                    case workerStatus.WAITING:        msg = "Queued";             break;
-                    case workerStatus.DECODING:       msg = "Decoding";           break;
-                    case workerStatus.ENCODING:       msg = "Encoding";           break;
-                    case workerStatus.POSTPROCESSING: msg = "Post-processing";    break;
+                    case constants.CANCELLED:      msg = "Request cancelled";  break;
+                    case constants.FAILURE:        msg = "Request failed!";    break;
+                    case constants.PREPROCESSING:  msg = "Preprocessing file"; break;
+                    case constants.UPLOADING:      msg = "Uploading file";     break;
+                    case constants.WAITING:        msg = "Queued";             break;
+                    case constants.DECODING:       msg = "Decoding";           break;
+                    case constants.ENCODING:       msg = "Encoding";           break;
+                    case constants.POSTPROCESSING: msg = "Post-processing";    break;
                 }
 
                 const kvazaarOps = {
@@ -458,7 +458,7 @@ function handleUploadCancellation(client, message) {
             rows.forEach(function(row) {
                 if (row.token != message.token) {
                     promisesToResolve.push(
-                        db.updateTask(row.taskID, { status: workerStatus.FAILURE })
+                        db.updateTask(row.taskID, { status: constants.FAILURE })
                     );
                 }
             });
@@ -503,7 +503,7 @@ function handleCancelRequest(client, token) {
 
             if (job.started_at === undefined) {
                 job.remove(function() {
-                    db.updateTask(token, { status: workerStatus.CANCELLED })
+                    db.updateTask(token, { status: constants.CANCELLED })
                     .then(() => {
                         getUserTokenBySocket(client).then((userToken) => {
                             handleTaskRequest(client, { user: userToken });
@@ -619,10 +619,10 @@ function handleUploadRequest(client, message) {
                 // inserting new data task data to db
                 //
                 // This can be checked easily because files that are not ready have their file_path set to NULL
-                let status = workerStatus.UPLOADING;
+                let status = constants.UPLOADING;
 
                 if (data.db.file) {
-                    status = workerStatus.WAITING;
+                    status = constants.WAITING;
                 } else {
                     uploadApproved = true;
 
@@ -709,7 +709,7 @@ function terminateOngoingUpload(key) {
 
         rows.forEach(row => {
             // file upload ongoing
-            if (rows.status == workerStatus.UPLOADING) {
+            if (rows.status == constants.UPLOADING) {
                 // file can be removed because the upload was approved
                 // (ie the server didn't have the file before upload)
                 let promises = [

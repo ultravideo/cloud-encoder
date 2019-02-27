@@ -9,7 +9,7 @@ let process = require('process');
 var NRP = require('node-redis-pubsub');
 const { spawn } = require('child_process');
 const fsPromises = require('fs').promises;
-const workerStatus = require("./constants");
+const constants = require("./constants");
 
 let kue = require('kue');
 let queue = kue.createQueue({
@@ -356,14 +356,14 @@ function updateWorkerStatus(taskInfo, fileId, currentJob) {
         let message = "";
 
         switch (currentJob) {
-            case workerStatus.READY:          message = "Done!";             break;
-            case workerStatus.FAILURE:        message = "Request failed!";   break;
-            case workerStatus.WAITING:        message = "Queued";            break;
-            case workerStatus.DECODING:       message = "Decoding";          break;
-            case workerStatus.ENCODING:       message = "Encoding";          break;
-            case workerStatus.CANCELLED:      message = "Request cancelled"; break;
-            case workerStatus.UPLOADING:      message = "Uploading file";    break;
-            case workerStatus.POSTPROCESSING: message = "Post-processing";   break;
+            case constants.READY:          message = "Done!";             break;
+            case constants.FAILURE:        message = "Request failed!";   break;
+            case constants.WAITING:        message = "Queued";            break;
+            case constants.DECODING:       message = "Decoding";          break;
+            case constants.ENCODING:       message = "Encoding";          break;
+            case constants.CANCELLED:      message = "Request cancelled"; break;
+            case constants.UPLOADING:      message = "Uploading file";    break;
+            case constants.POSTPROCESSING: message = "Post-processing";   break;
         }
 
         db.updateTask(taskInfo.taskid, { status : currentJob }).then(() => {
@@ -428,25 +428,25 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
 
     if (fileOptions.raw_video === 1) {
         preprocessFile = Promise.all([
-            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING),
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, constants.DECODING),
             preprocessRawVideo(fileOptions)
         ]);
     } else {
         preprocessFile = Promise.all([
-            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.DECODING),
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, constants.DECODING),
             decodeVideo(fileOptions, kvazaarOptions, taskInfo)
         ]);
     }
 
     preprocessFile.then((rawVideoName) => {
         return Promise.all([
-            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.ENCODING),
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, constants.ENCODING),
             kvazaarEncode(rawVideoName[1], fileOptions, kvazaarOptions, taskInfo)
         ]);
     })
     .then((encodedVideoName) => {
         return Promise.all([
-            updateWorkerStatus(taskInfo, fileOptions.file_id, workerStatus.POSTPROCESSING),
+            updateWorkerStatus(taskInfo, fileOptions.file_id, constants.POSTPROCESSING),
             postProcessVideo(encodedVideoName[1], fileOptions)
         ]);
     })
@@ -458,20 +458,20 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
         // remove all intermediate files and end this task
         db.updateTask(taskInfo.taskid, { file_path : newPath }).then(() => {
             removeArtifacts(fileOptions.tmp_path, fileOptions);
-            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.READY);
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, constants.READY);
             done();
         }, (reason) => {
-            updateWorkerStatus(taskInfo, fileOptions.uniq_id, workerStatus.FAILURE);
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, constants.FAILURE);
             removeArtifacts(fileOptions.tmp_path, fileOptions);
             console.log(reason);
             done();
         });
     })
     .catch(function(reason) {
-        let taskStatus = workerStatus.FAILURE;
+        let taskStatus = constants.FAILURE;
 
         if (taskCancelled === true)
-            taskStatus = workerStatus.CANCELLED;
+            taskStatus = constants.CANCELLED;
 
         updateWorkerStatus(taskInfo, fileOptions.uniq_id, taskStatus);
         removeArtifacts(fileOptions.tmp_path, fileOptions);

@@ -11,7 +11,7 @@ var ffprobeStatic = require('ffprobe-static');
 var NRP = require('node-redis-pubsub');
 var redis_client = require('redis').createClient(7776);
 const { fork, spawn } = require('child_process');
-const workerStatus = require("./constants");
+const constants = require("./constants");
 
 // store kue's job id to redis so we can cancel tasks in constant time
 redis_client.on('connect', function() {
@@ -26,7 +26,7 @@ var queue = kue.createQueue({
     }
 });
 
-for (var i = 0; i < 5; ++i) {
+for (var i = 0; i < constants.NUMBER_OF_WORKER_THREADS; ++i) {
     console.log("forked!");
     fork('./app/worker');
 }
@@ -125,7 +125,7 @@ function checkIsVideoFile(inputFile) {
                 if (isNaN(numSeconds)) {
                     console.log(result);
                     reject(new Error("Failed to extract duration, file rejected. Maybe the input file wasn't a video file, it didn't contain duration field or it was raw video)"));
-                } else if (numSeconds > 1800) {
+                } else if (numSeconds > constants.FILE_TIME_LIMIT_IN_SECONDS) {
                     console.log("Rejected too long file, "+numSeconds.toString()+"s");
                     reject(new Error("File is too big!"));
                 } else {
@@ -181,14 +181,14 @@ function updateFileStatusToPreprocessing(identifier) {
     return new Promise((resolve, reject) => {
         db.getTasks("file_id", identifier).then((rows) => {
             for (let i = 0; i < rows.length; ++i) {
-                db.updateTask(rows[i].taskid, { status: workerStatus.PREPROCESSING }).then(() => {
+                db.updateTask(rows[i].taskid, { status: constants.PREPROCESSING }).then(() => {
                     if (i + 1 == rows.length) {
                         resolve();
                     }
 
                     sendStatusMessage(rows[i].owner_id, rows[i].file_id,
                                       rows[i].token, "update", "task",
-                                      workerStatus.PREPROCESSING, "Preprocessing file");
+                                      constants.PREPROCESSING, "Preprocessing file");
 
                     i++;
                 })
@@ -223,11 +223,11 @@ function processUploadedFile(req,res, identifier, original_filename) {
                         return;
                     }
                     tasks.forEach(function(task) {
-                        if (task.status === workerStatus.PREPROCESSING) {
-                            db.updateTask(task.taskid, { status: workerStatus.WAITING }).then(() => {
+                        if (task.status === constants.PREPROCESSING) {
+                            db.updateTask(task.taskid, { status: constants.WAITING }).then(() => {
 
                                 sendStatusMessage(task.owner_id, task.file_id, task.token, "update",
-                                                  "task", workerStatus.WAITING, "Queued");
+                                                  "task", constants.WAITING, "Queued");
 
                                 let job = queue.create('process_file', {
                                     task_token: task.token
@@ -269,7 +269,7 @@ app.post('/upload', function(req, res) {
         const chunkFile  = "/tmp/cloud_uploads/resumable-" + original_filename + "." + req.query.resumableChunkNumber;
 
         // file too large (>50GB), inform user, terminate upload and clean database
-        if (req.query.resumableChunkNumber * req.query.resumableChunkSize > 50 * 1000 * 1000 * 1000) {
+        if (req.query.resumableChunkNumber * req.query.resumableChunkSize > constants.FILE_SIZE_LIMIT_IN_BYTES) {
             sendMessage(req.query.token, identifier, "action", "cancel", "File is too large");
             db.getTasks("file_id", identifier)
             .then((tasks) => {
@@ -317,11 +317,11 @@ app.get('/download/:hash', function(req, res) {
             res.send("file does not exists!");
             res.status(404).end();
         } else {
-            if (taskInfo.status != workerStatus.READY) {
+            if (taskInfo.status != constants.READY) {
                 res.send("file is not ready");
                 res.status(403).end();
                 res.end();
-            }  else if (taskInfo.download_count >= 2) {
+            }  else if (taskInfo.download_count >= constants.FILE_DOWNLOAD_LIMIT) {
                 db.removeTask(taskInfo.taskid).then(() => {
                     fs.unlink(taskInfo.file_path, function(err) {
                         if (err)
