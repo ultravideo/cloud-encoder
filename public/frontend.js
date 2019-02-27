@@ -682,12 +682,13 @@ $("#inputFPSValue").focusout(function() {
     if (this.value === "") {
         $("#inputFPSError").html("FPS can't be empty!");
         $("#inputFPSError").show();
+        enableSaveButtonIfPossible({ fps: false });
         return;
     }
 
     let fps = this.value.match(/[1-9]{1}[0-9]{0,2}/g);
     if (fps) {
-        $("#inputFPSValue").val(fps);
+        $("#inputFPSValue").val(fps[0]);
         $("#inputFPSError").hide();
 
         enableSaveButtonIfPossible({ fps: true });
