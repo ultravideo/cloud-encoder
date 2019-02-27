@@ -14,7 +14,7 @@ let constants = require("./constants");
 // --------------- http(s) ---------------
 
 // just to make localhost development easier
-let httpsEnabled = false;
+let httpsEnabled = true;
 let server = null;
 
 if (httpsEnabled) {
