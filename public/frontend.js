@@ -748,7 +748,7 @@ $("#rawVideoCheck").click(function() {
             pixfmt: true
         });
 
-        inputFileRaw = true;
+        inputFileRaw = false;
     }
 });
 
