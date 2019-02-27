@@ -133,12 +133,11 @@ function ffmpegContainerize(videoPath, audioPath, container) {
 
             if (!err) {
                 try {
-                  console.log("Reading audio info "+audioPath + ".audio_info.txt");
-                  let audioOptionsRaw = fs.readFileSync(audioPath + ".audio_info.txt");
-                  audioOptions = JSON.parse(audioOptionsRaw);
-                  //console.log(audioOptions);
+                    console.log("Reading audio info "+audioPath + ".audio_info.txt");
+                    let audioOptionsRaw = fs.readFileSync(audioPath + ".audio_info.txt");
+                    audioOptions = JSON.parse(audioOptionsRaw);
                 } catch(e) {
-                  console.log("Failed to open .audio_info.txt");
+                    console.log("Failed to open .audio_info.txt");
                 }
                 inputs = inputs.concat(["-i",audioPath]);
                 outputOptions.push("-async", "1", "-c:a", "copy");
@@ -351,7 +350,7 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions, taskInfo) {
 }
 
 // subtask has been finished, update db and send status message to user
-function updateWorkerStatus(taskInfo, fileId, currentJob) {
+function updateWorkerStatus(taskInfo, fileId, currentJob, fileInfo) {
     return new Promise((resolve, reject) => {
         let message = "";
 
@@ -376,6 +375,8 @@ function updateWorkerStatus(taskInfo, fileId, currentJob) {
                     token: taskInfo.token,
                     status: currentJob,
                     message: message,
+                    size:     (fileInfo !== undefined) ? fileInfo[0] : null,
+                    duration: (fileInfo !== undefined) ? fileInfo[1] : null
                 }
             });
             resolve();
@@ -421,6 +422,40 @@ function postProcessVideo(encodedVideoName, fileOptions) {
     });
 }
 
+function getFileSizeAndDuration(path) {
+    return new Promise((resolve, reject) => {
+        let fileSize = ((fs.statSync(path).size) / 1000 / 1000).toFixed(2) + " MB";
+
+        ffprobe(path, { path: ffprobeStatic.path })
+        .then((video_info) => {
+            var videoStream = 0;
+
+            for (var i = 0; i < video_info.streams.length; ++i) {
+                if (video_info.streams[i].codec_type === "video") {
+                    videoStream = i;
+                    break;
+                }
+            }
+
+            let duration = parseInt(video_info.streams[i].duration);
+
+            if (isNaN(duration)) {
+                duration = null;
+            } else {
+                duration = (duration < 60)
+                    ? duration + " s"
+                    : duration = (duration / 60).toFixed(0) + " min " + duration % 60 + " s";
+            }
+
+            resolve([path, fileSize, duration]);
+        })
+        .catch(function(err) {
+           console.log(err);
+           reject(err);
+        });
+    });
+}
+
 // the driving force of worker, all steps are sequential
 // and f.ex. video decoding must finish before we can start encoding it
 function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
@@ -454,11 +489,21 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
         return moveToOutputFolder(fileOptions.name, path[1]);
     })
     .then((newPath) => {
+        return getFileSizeAndDuration(newPath);
+    })
+    .then((fileInfo) => {
+
+        const info = {
+            file_path: fileInfo[0],
+            file_size: fileInfo[1],
+            file_duration: fileInfo[2]
+        };
+
         // update file path to database so user can download the file,
         // remove all intermediate files and end this task
-        db.updateTask(taskInfo.taskid, { file_path : newPath }).then(() => {
+        db.updateTask(taskInfo.taskid, info).then(() => {
             removeArtifacts(fileOptions.tmp_path, fileOptions);
-            updateWorkerStatus(taskInfo, fileOptions.uniq_id, constants.READY);
+            updateWorkerStatus(taskInfo, fileOptions.uniq_id, constants.READY, [info.file_size, info.file_duration]);
             done();
         }, (reason) => {
             updateWorkerStatus(taskInfo, fileOptions.uniq_id, constants.FAILURE);

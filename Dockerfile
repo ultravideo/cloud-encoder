@@ -37,7 +37,7 @@ RUN apt-get update \
     && sudo -u postgres psql -d cloud_db -c "CREATE TABLE work_queue(taskid SERIAL PRIMARY KEY, \
                                              file_id VARCHAR(1024), ops_id VARCHAR(128), file_path VARCHAR(1024), status INTEGER, \
                                              download_count INTEGER, token VARCHAR(128), owner_id VARCHAR(128), \
-                                             timestamp BIGINT);"
+                                             timestamp BIGINT, file_duration VARCHAR(32), file_size VARCHAR(32));"
 
 WORKDIR /src
 COPY package.json /src/package.json

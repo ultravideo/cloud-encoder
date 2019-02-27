@@ -159,13 +159,6 @@ wss.on('connection', function(client) {
             })
             .catch(function(err) {
                 sendResponse(client, "init", { status: "rejected" });
-                // client.send(JSON.stringify({
-                //     type: "reply",
-                //     reply: "init",
-                //     data: {
-                //         status: "rejected",
-                //     }
-                // }));
             });
 
         } else if (message.type === "downloadRequest") {
@@ -419,6 +412,8 @@ function handleTaskRequest(client, message) {
                     name: values[0] ? values[0].name : "Error",
                     uniq_id: taskRow.file_id,
                     timestamp: taskRow.timestamp,
+                    size: taskRow.file_size,
+                    duration: taskRow.file_duration,
                     status: taskRow.status,
                     message: msg,
                     download_count: taskRow.download_count,

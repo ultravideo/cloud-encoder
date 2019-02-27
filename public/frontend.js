@@ -167,7 +167,7 @@ function drawFileTable(file) {
         }
     }
     var monthNames = [
-      "Jan", "Feb", "Marh", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     ];
     
     var uploadDate = new Date(parseInt(file.timestamp));
@@ -176,6 +176,7 @@ function drawFileTable(file) {
     uploadDate.getDate()+" "+monthNames[uploadDate.getMonth()]+" "+uploadDate.getFullYear()+" "+
     uploadDate.getHours().toString().padStart(2, '0')+":"+uploadDate.getMinutes().toString().padStart(2, '0');
     
+    console.log(file);
 
     newHTML = 
         "</div>" +
@@ -184,6 +185,8 @@ function drawFileTable(file) {
         "<table class='fileReqTable' id='table" + file.token + "'><tr><td colspan='2'></td></tr><tr></tr>" +
         "<tr><td>Status:</td><td id='tdStatus'>" + file.message + "</td></tr>" +
         "<tr><td>Uploaded:</td><td id='tdUploaded'>" + dateString + "</td></tr>" +
+        "<tr><td>Duration:</td><td id='tdDuration'>" + ((file.duration === null) ? "unknown" : file.duration) + "</td></tr>" +
+        "<tr><td>Output size:</td><td id='tdSize'>" +  ((file.size === null) ? "unknown" : file.size) + "</td></tr>" +
         newHTML;
 
     return newHTML;
@@ -436,7 +439,7 @@ function handleUploadResponse(response) {
         incRequestCount();
         $(".resumable-list").html("<br><div  class='alert alert-info' role='alert'>" +
             "File already in the server, request has been added to work queue<br>" + 
-            "You can <a href='#' class='linkRequestLinkClass btn btn-info' role='button'>follow the progress</a></div>");
+            "You can <a href='#' class='linkRequestLinkClass btn btn-info' role='button'>follow the encoding progress</a></div>");
         $(".resumable-drop").show();
         enableFileBrowse();
 
@@ -557,6 +560,14 @@ function handleTaskUpdate(response) {
         $("#div" + response.data.token + " #btnDownload").prop("disabled", false);
         $("#div" + response.data.token + " #btnDownload").removeAttr("onclick");
         $("#div" + response.data.token + " #btnDownload").attr("onClick", "sendDownloadRequest('" + response.data.token + "');");
+
+        if (response.data.size !== null) {
+            $("#tdSize").text(response.data.size);
+        }
+
+        if (response.data.duration !== null) {
+            $("#tdDuration").text(response.data.duration);
+        }
 
         newDotClass = "dot dot_ready";
     }
@@ -1144,7 +1155,7 @@ r.on('complete', function(){
 r.on('fileSuccess', function(file, message){
     $('.resumable-file-' + fileID + ' .resumable-file-name')
         .html("<div class='alert alert-success'>Uploaded " +  fileName + "!<br>" + 
-        "You can <a href='#' class='linkRequestLinkClass btn btn-info' role='button'>follow the progress</a></div>");
+        "You can <a href='#' class='linkRequestLinkClass btn btn-info' role='button'>follow the encoding progress</a></div>");
 
     $(".resumable-drop").show();
     resetUploadFileInfo();
