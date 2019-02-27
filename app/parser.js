@@ -57,7 +57,7 @@ module.exports = {
 
     validateFrameRate : function(str) {
         return new Promise((resolve, reject) => {
-            let fps = str.match(/[0-9]{1,4}\/[0-9]{1,4}/g);
+            let fps = str.match(/[1-9]{1,9}\/[0-9]{1,9}/);
             if (fps && fps.length > 0)
                 resolve(fps[0]);
             reject(new Error("Invalid FPS!"));
