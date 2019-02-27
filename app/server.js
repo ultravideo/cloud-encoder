@@ -112,30 +112,30 @@ function concatChunks(numChunks, identifier, filename, callback) {
 // check that its duration is within limits (<30min)
 function checkIsVideoFile(inputFile) {
     return new Promise((resolve, reject) => {
-        const options = [
-            "-v", "error", "-show_entries",
-            "format=duration", "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            inputFile
-        ];
-        const child = spawn("ffprobe", options);
-        let result = "";
-
-        // file size limit for containerized video is 30 minutes (1800 seconds)
-        child.stdout.on("data", function(data) { result += data.toString(); });
-        child.stderr.on("data", function(data) { result += data.toString(); });
-
-        child.on("exit", function(code, signal) {
-            let numSeconds = parseInt(result, 10);
-
-            if (isNaN(numSeconds)) {
-                reject(new Error("Failed to extract duration, file rejected. Maybe the input file wasn't a video file, it didn't contain duration field or it was raw video)"));
-            } else if (numSeconds > 1800) {
-                reject(new Error("File is too big!"));
-            } else {
-                resolve();
-            }
-        });
+        ffprobe(inputFile, { path: ffprobeStatic.path })
+            .then((video_info) => {
+                var videoStream = 0;
+                for(var i = 0; i < video_info.streams.length; i++) {
+                    if(video_info.streams[i].codec_type === "video") {
+                        videoStream = i;
+                        break;
+                    }
+                }
+                let numSeconds = parseInt(video_info.streams[i].duration);
+                if (isNaN(numSeconds)) {
+                    console.log(result);
+                    reject(new Error("Failed to extract duration, file rejected. Maybe the input file wasn't a video file, it didn't contain duration field or it was raw video)"));
+                } else if (numSeconds > 1800) {
+                    console.log("Rejected too long file, "+numSeconds.toString()+"s");
+                    reject(new Error("File is too big!"));
+                } else {
+                    resolve();
+                }
+            })
+            .catch(function(err) {
+               console.log(err);
+               reject(err);
+            });
     });
 }
 
@@ -205,7 +205,7 @@ function updateFileStatusToPreprocessing(identifier) {
 
 // after the file upload has completed, we must concatenate the chunks, update tasks's status to WAITING
 // and inform user about this change in state.
-function processUploadedFile(req, identifier, original_filename) {
+function processUploadedFile(req,res, identifier, original_filename) {
     return new Promise((resolve, reject) => {
         concatChunks(req.query.resumableChunkNumber, identifier, original_filename, function(err, hash, path) {
             if (err)
@@ -288,7 +288,7 @@ app.post('/upload', function(req, res) {
             // connection can be closed without wreacking havoc with other requests
             // db.updateTasks(identifier, { status: -3  }).then(() => {
             updateFileStatusToPreprocessing(identifier).then(() => {
-                return processUploadedFile(req, identifier, original_filename);
+                return processUploadedFile(req,res, identifier, original_filename);
             })
             .catch(function(err) {
                 console.log("sending error message her!");

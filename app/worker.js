@@ -233,10 +233,10 @@ function checkIfAudioTrackExists(fileOptions, info) {
 function validateVideoOptions(fileOptions, video_info) {
     var videoStream = 0;
     for(var i = 0; i < video_info.streams.length; i++) {
-      if(video_info.streams[i].codec_type === "video") {
-        videoStream = i;
-        break;
-      }
+        if(video_info.streams[i].codec_type === "video") {
+            videoStream = i;
+            break;
+        }
     }
     return Promise.all([
         parser.validateResolution(video_info.streams[videoStream].width + "x" + video_info.streams[videoStream].height),
