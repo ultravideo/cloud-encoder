@@ -68,8 +68,8 @@ function removeArtifacts(path, fileOptions) {
 
         // raw video files don't have audio tracks
         if (fileOptions.raw_video === 0) {
-            files.push(".wav");
-            files.push(".wav.audio_info.txt");
+            files.push("_audio.mp4");
+            files.push("_audio.mp4.audio_info.txt");
         }            
     }
 
@@ -128,7 +128,7 @@ function ffmpegContainerize(videoPath, audioPath, container) {
         // raw video to encode and the containerize in which case
         // we wouldn't have an audio track
         fs.access(audioPath, fs.constants.F_OK, function(err) {
-            let inputs = ["-i", videoPath ];
+            let inputs = ["-fflags","+genpts","-i", videoPath ];
             let outputOptions = [ "-c:v", "copy" ];
 
             if (!err) {
@@ -140,7 +140,7 @@ function ffmpegContainerize(videoPath, audioPath, container) {
                 } catch(e) {
                   console.log("Failed to open .audio_info.txt");
                 }
-                inputs = inputs.concat(["-f", audioOptions.codec_name,"-i",audioPath]);
+                inputs = inputs.concat(["-i",audioPath]);
                 outputOptions.push("-async", "1", "-c:a", "copy");
             }
 
@@ -216,8 +216,8 @@ function checkIfAudioTrackExists(fileOptions, info) {
     return new Promise((resolve, reject) => {
         info.streams.forEach(function(stream) {
             if (stream.codec_type === "audio") {
-                console.log("Writing audio info "+fileOptions.tmp_path + ".wav.audio_info.txt");
-                const fd = fs.openSync(fileOptions.tmp_path + ".wav.audio_info.txt", "wx");
+                console.log("Writing audio info "+fileOptions.tmp_path + "_audio.mp4.audio_info.txt");
+                const fd = fs.openSync(fileOptions.tmp_path + "_audio.mp4.audio_info.txt", "wx");
                 if (!fd)
                     resolve(0);
                 let fileData = JSON.stringify(stream);
@@ -265,7 +265,7 @@ function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
             if (fileOptions.container !== "none" && fileOptions.raw_video === 0 && validated_options[2] === 1) {
                 console.log("AUDIO TRACK PRESENT!");
                 promises.push(callFFMPEG(["-i", fileOptions.file_path], [],
-                              fileOptions.tmp_path + ".wav", ["-vn", "-codec:a", "copy"]));
+                              fileOptions.tmp_path + "_audio.mp4", ["-vn", "-codec:a", "copy"]));
             }
 
             return Promise.all(promises);
@@ -415,7 +415,7 @@ function preprocessRawVideo(fileOptions) {
 function postProcessVideo(encodedVideoName, fileOptions) {
     return new Promise((resolve, reject) => {
         if (fileOptions.container !== "none")
-            resolve(ffmpegContainerize(encodedVideoName, fileOptions.tmp_path + ".wav", fileOptions.container));
+            resolve(ffmpegContainerize(encodedVideoName, fileOptions.tmp_path + "_audio.mp4", fileOptions.container));
         else
             resolve(encodedVideoName);
     });
