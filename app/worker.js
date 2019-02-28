@@ -317,28 +317,28 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions, taskInfo) {
                 options.push(kvazaarOptions[key]);
         }
 
-       addLogo(videoLocation, fileOptions.resolution, function(err, newPath) {
-          if (err)
-              reject(err);
-        });
+        addLogo(videoLocation, fileOptions.resolution, function(err, newPath) {
+            if (err)
+                reject(err);
 
-        const child = spawn("kvazaar", options);
+            const child = spawn("kvazaar", options);
+            
+            // update currentJobPid so we can kill the process if user so requests
+            currentJobPid = child.pid;
 
-        // update currentJobPid so we can kill the process if user so requests
-        currentJobPid = child.pid;
+            let stderr = "";
+            child.stdout.on("data", function(data) { });
+            child.stderr.on("data", function(data) { stderr += data.toString(); });
 
-        let stderr = "";
-        child.stdout.on("data", function(data) { });
-        child.stderr.on("data", function(data) { stderr += data.toString(); });
-
-        child.on("exit", function(code, signal) {
-            if (code === 0) {
-                resolve(fileOptions.tmp_path + ".hevc");
-            } else {
-                reject(new Error("kvazaar failed with exit code " + code));
-                console.log(options);
-                console.log(stderr);
-            }
+            child.on("exit", function(code, signal) {
+                if (code === 0) {
+                    resolve(fileOptions.tmp_path + ".hevc");
+                } else {
+                    reject(new Error("kvazaar failed with exit code " + code));
+                    console.log(options);
+                    console.log(stderr);
+                }
+            });
         });
     });
 }
