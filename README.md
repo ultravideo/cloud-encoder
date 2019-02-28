@@ -1,6 +1,6 @@
-# cloud
+# Kvazaar Cloud Encoder
 
-kvazaar in cloud
+kvazaar in cloud with 2-clause BSD license
 
 indent by 4 spaces. (no tabs)
 
@@ -12,15 +12,14 @@ indent by 4 spaces. (no tabs)
    * If it does -> file upload is rejected, otherwise approved
 3.2) Server checks that given options are all valid
 4) File upload is started
-5) After the first chunk, file upload is paused and server checks the uploaded file is video and <30min
-6) If file is valid, upload is continued.
-7) When file upload is completed or the file already existed on the server, task is added to work queue
-8) One of the workers takes the task under work and user is sent status update about the task
-9) When the task is ready, user is able to download the output file or delete the task
+5) When file upload is completed, server checks the uploaded file is video and < FILE_TIME_LIMIT_IN_SECONDS (30min)
+6) task is added to work queue
+7) One of the workers takes the task under work and user is sent status update about the task
+8) When the task is ready, user is able to download the output file or delete the task
 
 At any point user is able to cancel the request and make another one. User is also able make multiple concurrent request (some of them may be queued).
 
-Download limit for each requets is 2 and after that the task is deleted.
+Download limit for each requets is FILE_DOWNLOAD_LIMIT (2) and after that the task is deleted.
 
 # Architecture
 
@@ -31,10 +30,10 @@ File is considered valid if it's a video file and its duration is <= 30min. For 
 
 Server.js communicates with the user through socket.js
 
-It also spawns 5 worker threads and 1 message queue thread.
+It also spawns NUMBER_OF_WORKER_THREADS (5) worker threads and 1 message queue thread.
 
 ## worker.js
-Cloud uses 5 worker threads for processing user requests. Workers listen to Kue's message queue for encoding requests.
+Cloud uses NUMBER_OF_WORKER_THREADS worker threads for processing user requests. Workers listen to Kue's message queue for encoding requests.
 
 How a worker thread works is very straightforward:
 
