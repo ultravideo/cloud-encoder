@@ -239,7 +239,7 @@ function validateVideoOptions(fileOptions, video_info) {
     }
     return Promise.all([
         parser.validateResolution(video_info.streams[videoStream].width + "x" + video_info.streams[videoStream].height),
-        parser.validateFrameRate(video_info.streams[videoStream].avg_frame_rate),
+        parser.validateFrameRate(video_info.streams[videoStream]),
         checkIfAudioTrackExists(fileOptions, video_info)
     ]);
 }
