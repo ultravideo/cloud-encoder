@@ -114,7 +114,7 @@ function checkIsVideoFile(inputFile) {
     return new Promise((resolve, reject) => {
         ffprobe(inputFile, { path: ffprobeStatic.path })
             .then((video_info) => {
-                var videoStream = 0;
+                var videoStream = -1;
                 for(var i = 0; i < video_info.streams.length; i++) {
                     if(video_info.streams[i].codec_type === "video") {
                         videoStream = i;
@@ -122,20 +122,26 @@ function checkIsVideoFile(inputFile) {
                     }
                 }
                 
+                // No video stream?
+                if(videoStream === -1) {
+                    reject("Error: No video track detected!");
+                }
+
                 // MKV does not contain the duration inside the stream, it's in tags.DURATION HH:MM:SS.sss format
-                let numSeconds = parseInt(video_info.streams[i].duration);
+                let numSeconds = 0;
+                if(video_info.streams+1 >= videoStream) numSeconds = parseInt(video_info.streams[videoStream].duration);
                 if(isNaN(numSeconds)
                    && video_info.streams.length > 0
-                   && video_info.streams[i].tags
-                   && typeof video_info.streams[i].tags.DURATION === "string") { 
-                    var splitTime =  video_info.streams[i].tags.DURATION.split(":");
+                   && video_info.streams[videoStream].tags
+                   && typeof video_info.streams[videoStream].tags.DURATION === "string") { 
+                    var splitTime =  video_info.streams[videoStream].tags.DURATION.split(":");
                     if(splitTime.length == 3) {
                         numSeconds = parseInt(splitTime[0])*60*60 +  parseInt(splitTime[1])*60 +  parseInt(splitTime[2]);
                     }                    
                 }
                 
                 if (isNaN(numSeconds)) {
-                    console.log("Video duration extraction failed: "+video_info.streams[i]);
+                    console.log("Video duration extraction failed: "+video_info.streams[videoStream]);
                     // Default to allowing the input
                     resolve();
                     //reject(new Error("Failed to extract duration, file rejected. Maybe the input file wasn't a video file, it didn't contain duration field or it was raw video)"));
