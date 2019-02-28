@@ -132,8 +132,10 @@ function checkIsVideoFile(inputFile) {
                 }
                 
                 if (isNaN(numSeconds)) {
-                    console.log(video_info.streams[i]);
-                    reject(new Error("Failed to extract duration, file rejected. Maybe the input file wasn't a video file, it didn't contain duration field or it was raw video)"));
+                    console.log("Video duration extraction failed: "+video_info.streams[i]);
+                    // Default to allowing the input
+                    resolve();
+                    //reject(new Error("Failed to extract duration, file rejected. Maybe the input file wasn't a video file, it didn't contain duration field or it was raw video)"));
                 } else if (numSeconds > constants.FILE_TIME_LIMIT_IN_SECONDS) {
                     console.log("Rejected too long file, "+numSeconds.toString()+"s");
                     reject(new Error("File is too big!"));

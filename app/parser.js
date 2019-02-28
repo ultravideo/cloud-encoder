@@ -65,8 +65,9 @@ module.exports = {
             fps = str.r_frame_rate.match(/[1-9]{1}[0-9]{0,8}\/[1-9]{1}[0-9]{0,8}/);
             if (fps && fps.length > 0)
                 resolve(fps[0]);
-            
-            reject(new Error("Invalid FPS!"));
+            // Force default 30fps, if not detected
+            resolve("30/1");
+            //reject(new Error("Invalid FPS!"));
         });
     },
 
