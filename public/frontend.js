@@ -176,8 +176,6 @@ function drawFileTable(file) {
     uploadDate.getDate()+" "+monthNames[uploadDate.getMonth()]+" "+uploadDate.getFullYear()+" "+
     uploadDate.getHours().toString().padStart(2, '0')+":"+uploadDate.getMinutes().toString().padStart(2, '0');
     
-    console.log(file);
-
     newHTML = 
         "</div>" +
         "<div id='div" + file.token + "'><hr id='separator" + file.token + "' class='separator'></hr>" +

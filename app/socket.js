@@ -421,7 +421,16 @@ function handleTaskRequest(client, message) {
                     options: kvazaarOps
                 });
 
-                client.send(JSON.stringify(message));
+                // Send response on the last item
+                if(message.data.tasks.length == rows.length) {
+                    client.send(JSON.stringify(message));
+                }
+            }).catch(function(err) {
+                // If promise rejects a db query, reduce the number and check if this was the last
+                rows.length--;
+                if(message.data.tasks.length == rows.length) {
+                    client.send(JSON.stringify(message));
+                }
             });
         });
     });
