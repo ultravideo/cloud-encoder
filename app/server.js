@@ -121,9 +121,18 @@ function checkIsVideoFile(inputFile) {
                         break;
                     }
                 }
+                
+                // MKV does not contain the duration inside the stream, it's in tags.DURATION HH:MM:SS.sss format
                 let numSeconds = parseInt(video_info.streams[i].duration);
+                if(isNaN(numSeconds) && typeof video_info.streams[i].tags.DURATION === "string") { 
+                    var splitTime =  video_info.streams[i].tags.DURATION.split(":");
+                    if(splitTime.length == 3) {
+                        numSeconds = parseInt(splitTime[0])*60*60 +  parseInt(splitTime[1])*60 +  parseInt(splitTime[2]);
+                    }                    
+                }
+                
                 if (isNaN(numSeconds)) {
-                    console.log(result);
+                    console.log(video_info.streams[i]);
                     reject(new Error("Failed to extract duration, file rejected. Maybe the input file wasn't a video file, it didn't contain duration field or it was raw video)"));
                 } else if (numSeconds > constants.FILE_TIME_LIMIT_IN_SECONDS) {
                     console.log("Rejected too long file, "+numSeconds.toString()+"s");
