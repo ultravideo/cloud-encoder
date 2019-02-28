@@ -5,7 +5,7 @@
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<meta name="description" content="">
-		<meta name="author" content="">
+		<meta name="author" content="Ultravideogroup">
 		<link rel="shortcut icon" href="../../docs-assets/ico/favicon.png">
 
 		<title>Kvazaar Cloud Encoder</title>
@@ -67,6 +67,7 @@
 	<div class="jumbotron">
 		<div id="divUpload">
 			<div id="formData">
+				<h2>Select new file to be encoded</h2><br>
 				<div class="alert alert-info" role="alert">
 					<p></p>
 					<p>Cloud accepts raw video in 
@@ -74,8 +75,9 @@
 					<strong>YUYV422</strong> / 
 					<strong>RGBA</strong> / 
 					<strong>RGB32</strong> formats,
-					<strong>raw H.264 video</strong> and <strong>video in any container</strong> FFmpeg is able to decode and it encodes the input video to <strong>HEVC</strong>
-					</p>
+					<strong>raw H.264 video</strong> and <strong>video in any container</strong> FFmpeg is able to decode and it encodes the input video to <strong>HEVC</strong><br>
+
+					<br>Size limits: <strong>30 minutes</strong> for containerized video, <strong>50 GB</strong> for raw video
 				</div>
 				<div id="selectedFile"></div>
 				<div class="form-group">
@@ -109,12 +111,12 @@
 				<button id="advancedButton" class="btn btn-primary">Advanced settings</button>
 				<button id="cancelButton" class="btn btn-danger" style="display: none; margin-left: 10px">Cancel</button>
 				<div id="advancedOptions" style="display:none; margin-top: 10px" class="alert alert-dark">
-					<div class="form-check">
-						<input type="checkbox" id="rawVideoCheck" name="raw_video" class="options form-check-input"/>
-						<label class="form-check-label" for="rawVideoCheck" style="margin-top: 5px">
-							Raw video?
-						</label>
-					</div>
+					<label class="switch">
+						<input type="checkbox" id="rawVideoCheck">
+						<span class="slider round"></span>
+					</label>
+					<label class="form-check-label" style="margin-left: 5px; margin-top: 10px">Raw video?</label>
+					<hr class="separator"></hr>
 					<div id="rawVideoInfo" style="display: none">
 						<div class="alert alert-warning" style="margin-top:10px; margin-bottom: 0px;">
 							<strong>Warning! Changing these options might cause problems during encoding!</strong>
@@ -177,14 +179,19 @@
 								</div>
 						  </div>
 						</form>
+						<hr class="separator"></hr>
 					</div>
+					<label class="switch">
+						<input type="checkbox" id="rateControlCheck">
+						<span class="slider round"></span>
+					</label>
+					<label class="form-check-label" style="margin-left: 5px; margin-top: 10px">Enable rate control</label>
 					<hr class="separator"></hr>
-					<div class="form-check">
-						<input type="checkbox" id="rateControlCheck" class="options form-check-input"/>
-						<label class="form-check-label" for="rateControlCheck" style="margin-top: 5px">
-							Enable rate control
-						</label>
-					</div>
+
+					<!-- <input type="checkbox" id="rateControlCheckrateControlCheck" class="options form-check-input"/> -->
+					<!-- <label class="form-check-label" for="rateControlCheck" style="margin-top: 5px"> -->
+					<!-- 	Enable rate control -->
+					<!-- </label> -->
 					<div id="rateControl" style="display: none">
 						<br>
 						<label id="idSelectedBitrate" style="font-size: 1.25em">
@@ -202,8 +209,8 @@
 								<label style="margin-top:10px;">Good quality</label>
 							</div>
 						</div>
+						<hr class="separator"></hr>
 					</div>
-					<hr class="separator"></hr>
 						<a class="" target="_blank"
 						   href="https://github.com/ultravideo/kvazaar#parameters">Description of Kvazaar input parameters</a><br><br>
 
@@ -492,7 +499,7 @@
 											--tiles &lt;int&gt;x&lt;int&gt;
 										</button>
 										<button value="slices" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
-												data-toggle="tooltip" title="Control how slices are used<br> - tiles: Put tiles in independent slices<br> - wpp: Put rows in dependent slices<br> - tiles+wpp: Do both<br>">
+											    data-toggle="tooltip" title="Control how slices are used<br> - tiles: Put tiles in independent slices<br> - wpp: Put rows in dependent slices<br> - tiles+wpp: Do both<br>">
 											--slices &lt;string&gt;
 										</button>
 									</div>
@@ -640,7 +647,7 @@
 	</div>
 	<!-- modal end for cancel confirmation -->
 
-	<div class="footer">
+	<!-- <div class="footer"> -->
 	</div>
 	<script src="frontend.js"></script>
 	</div>
