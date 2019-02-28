@@ -124,7 +124,10 @@ function checkIsVideoFile(inputFile) {
                 
                 // MKV does not contain the duration inside the stream, it's in tags.DURATION HH:MM:SS.sss format
                 let numSeconds = parseInt(video_info.streams[i].duration);
-                if(isNaN(numSeconds) && typeof video_info.streams[i].tags.DURATION === "string") { 
+                if(isNaN(numSeconds)
+                   && video_info.streams.length > 0
+                   && video_info.streams[i].tags
+                   && typeof video_info.streams[i].tags.DURATION === "string") { 
                     var splitTime =  video_info.streams[i].tags.DURATION.split(":");
                     if(splitTime.length == 3) {
                         numSeconds = parseInt(splitTime[0])*60*60 +  parseInt(splitTime[1])*60 +  parseInt(splitTime[2]);
