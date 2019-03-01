@@ -291,12 +291,12 @@ function getRawFileInfo() {
     if (bdVal === "")
         bdVal = "8";
 
-    if (fpsVal === "")
-        enableSaveButtonIfPossible({ fps: false });
+    // enable submit button if fps was extracted successfully
+    enableSaveButtonIfPossible({ fps: (fpsVal !== "") });
 
     if (fmtVal === "other") {
         $("#pixFmtTxtId").show();
-        $("#advancedButton").prop("disabled", true);
+        enableSaveButtonIfPossible({ pixfmt: false });
     }
 
     $("#bitDepthValue").val(bdVal);
@@ -640,20 +640,24 @@ $("#kvazaarCmdButton").click(function() {
 $("#resValue").change(function() {
     if (this.value === "custom") {
         $("#resValueTxtId").show();
+        enableSaveButtonIfPossible({ resolution: false });
     } else {
         $("#resValueTxt").val("");
         $("#resValueTxtId").hide();
         $("#inputResError").hide();
+        enableSaveButtonIfPossible({ resolution: true });
     }
 });
 
 $("#inputFormatValue").change(function() {
     if (this.value === "other") {
         $("#pixFmtTxtId").show();
+        enableSaveButtonIfPossible({ pixfmt: false });
     } else {
         $("#pixFmtTxt").val("");
         $("#pixFmtTxtId").hide();
         $("#pixFmtError").hide();
+        enableSaveButtonIfPossible({ pixfmt: true });
     }
 });
 
