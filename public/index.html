@@ -67,14 +67,13 @@
 	<div class="jumbotron">
 		<div id="divUpload">
 			<div id="formData">
-				<h2>Select new file to be encoded</h2><br>
 				<div class="alert alert-info" role="alert">
-					<p></p>
 					<p>Cloud accepts raw video in <strong><a target="_blank" href="/pixfmts">several different formats</a></strong>,
 					<strong>raw H.264 video</strong> and <strong>video in any container</strong> FFmpeg is able to decode and it encodes the input video to <strong>HEVC</strong><br>
 
 					<br>Size limits: <strong>30 minutes</strong> for containerized video, <strong>50 GB</strong> for raw video
 				</div>
+				<br><br><br>
 				<div id="selectedFile"></div>
 				<div class="form-group">
 					<div id="resumableUpload" class="resumable-drop">
@@ -84,6 +83,7 @@
 						</a>
 					</div>
 				</div>
+				<br><br><br>
 
 				<hr class="separator"></hr>
 				<div class="container">
@@ -107,11 +107,12 @@
 				<button id="advancedButton" class="btn btn-primary">Advanced settings</button>
 				<button id="cancelButton" class="btn btn-danger" style="display: none; margin-left: 10px">Cancel</button>
 				<div id="advancedOptions" style="display:none; margin-top: 10px" class="alert alert-dark">
+				<label class="form-check-label" style="margin-right: 5px; margin-top: 10px">Container</label>
 					<label class="switch">
 						<input type="checkbox" id="rawVideoCheck">
 						<span class="slider round"></span>
 					</label>
-					<label class="form-check-label" style="margin-left: 5px; margin-top: 10px">Raw video?</label>
+					<label class="form-check-label" style="margin-left: 5px; margin-top: 10px">Raw video</label>
 					<hr class="separator"></hr>
 					<div id="rawVideoInfo" style="display: none">
 						<div class="alert alert-warning" style="margin-top:10px; margin-bottom: 0px;">
@@ -177,17 +178,19 @@
 						</form>
 						<hr class="separator"></hr>
 					</div>
-					<label class="switch">
-						<input type="checkbox" id="rateControlCheck">
-						<span class="slider round"></span>
-					</label>
-					<label class="form-check-label" style="margin-left: 5px; margin-top: 10px">Enable rate control</label>
-					<hr class="separator"></hr>
-
-					<!-- <input type="checkbox" id="rateControlCheckrateControlCheck" class="options form-check-input"/> -->
-					<!-- <label class="form-check-label" for="rateControlCheck" style="margin-top: 5px"> -->
-					<!-- 	Enable rate control -->
+					<!-- <label class="switch"> -->
+					<!-- 	<input type="checkbox" id="rateControlCheck"> -->
+					<!-- 	<span class="slider round"></span> -->
 					<!-- </label> -->
+					<!-- <label class="form-check-label" style="margin-left: 5px; margin-top: 10px">Enable rate control</label> -->
+
+					<div class="form-check">
+					<input type="checkbox" id="rateControlCheck" class="options form-check-input"/>
+					<label class="form-check-label" for="rateControlCheck" style="margin-top: 5px">
+						Enable rate control
+					</label>
+					</div>
+					<hr class="separator"></hr>
 					<div id="rateControl" style="display: none">
 						<br>
 						<label id="idSelectedBitrate" style="font-size: 1.25em">

@@ -146,22 +146,22 @@ function drawFileTable(file) {
     // request done
     if (file.status === taskStatus.READY) {
         newHTML +=
-            "<button id='btnDownload' class='btn btn-success' " +
+            "<br><button id='btnDownload' class='btn btn-success' " +
             "onclick=\"sendDownloadRequest('" + file.token + "')\">Download</button>" +
-            "<button style='margin-left: 2px' class='btn btn-danger' data-toggle='modal'" +
+            "<button style='margin-left: 10px' class='btn btn-danger' data-toggle='modal'" +
             "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button>";
         dotClass = "dot_ready";
     } else {
         if (file.status === taskStatus.CANCELLED || file.status === taskStatus.FAILURE) {
             newHTML +=
-                "<button id='btnDownload' class='btn btn-success' disabled>Download</button>" +
-                "<button class='btn btn-danger' style='margin-left: 2px' id='btnDelete' data-toggle='modal'" +
+                "<br><button id='btnDownload' class='btn btn-success' disabled>Download</button>" +
+                "<button class='btn btn-danger' style='margin-left: 10px' id='btnDelete' data-toggle='modal'" +
                 "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button>";
             dotClass = "dot_failure";
         } else {
             newHTML +=
-                "<button id='btnDownload' class='btn btn-success' disabled>Download</button>" + 
-                "<button class='btn btn-danger' style='margin-left: 2px' id='btnDelete' data-toggle='modal'" +
+                "<br><button id='btnDownload' class='btn btn-success' disabled>Download</button>" + 
+                "<button class='btn btn-danger' style='margin-left: 10px' id='btnDelete' data-toggle='modal'" +
                 "data-href='" + file.token + "' data-target='#confirm-cancel'>Cancel</button>";
             dotClass = "dot_inprogress";
         }
