@@ -378,6 +378,12 @@ app.get('/frontend.js', function (req, res) {
     fs.createReadStream("./public/frontend.js").pipe(res);
 });
 
+app.get('/pixfmts', function(req, res) {
+    var fs = require('fs');
+    var stream = fs.createReadStream("./util/pixfmts.txt");
+    stream.pipe(res);
+});
+
 queue.on('job enqueue', function() {
     console.log("job saved to work queue");
 }).on('job complete', function(id, result) {

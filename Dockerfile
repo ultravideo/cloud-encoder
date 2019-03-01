@@ -39,7 +39,7 @@ COPY package.json /src/package.json
 RUN npm install --silent
 
 COPY app/server.js app/worker.js app/parser.js app/socket.js app/db.js app/constants.js /src/app/
-COPY cert cert.pem privkey.pem util/resumable.js public/frontend.js util/resumable-node.js util/logo.png /src/util/
+COPY cert cert.pem privkey.pem util/pixfmts.txt util/resumable.js public/frontend.js util/resumable-node.js util/logo.png /src/util/
 COPY public/ /src/public/
 
 EXPOSE 8080
