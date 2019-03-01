@@ -254,12 +254,11 @@ function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
             return validateVideoOptions(fileOptions, info);
         })
         .then((validated_options) => {
-            progress = 1;
             fileOptions.resolution        = validated_options[0];
             kvazaarOptions["input-fps"]   = validated_options[1];
             validated_options_func_global = validated_options;
             return callFFMPEG(["-noautorotate","-y","-i",fileOptions.file_path], [],
-                            fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"]);
+                            fileOptions.tmp_path + ".yuv", ["-vf","pad=ceil(iw/2)*2:ceil(ih/2)*2", "-f", "rawvideo", "-pix_fmt", "yuv420p"]);
 
 
         })

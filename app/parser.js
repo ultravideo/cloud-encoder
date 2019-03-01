@@ -49,8 +49,13 @@ module.exports = {
         return new Promise((resolve, reject) => {
             let res = str.match(/[0-9]{1,4}\x[0-9]{1,4}/g);
 
-            if (res && res.length > 0)
-                resolve(res[0]);
+            if (res && res.length > 0) {
+                // Ceil to be divisible by 2
+                var resolution = res[0].split('x');
+                resolution[0] = parseInt(resolution[0]) + parseInt(resolution[0])%2;
+                resolution[1] = parseInt(resolution[1]) + parseInt(resolution[1])%2;
+                resolve(resolution[0].toString()+"x"+resolution[1].toString());
+            }
             reject(new Error("Invalid resolution!"));
         });
     },
