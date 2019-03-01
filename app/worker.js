@@ -245,52 +245,85 @@ function validateVideoOptions(fileOptions, video_info) {
 }
 
 function decodeVideo(fileOptions, kvazaarOptions, taskInfo) {
+    var validated_options_func_global = null;
+    var audioFailed = false;
+    var yuvFailed = false;
     let promise = new Promise((resolve, reject) => {
         ffprobe(fileOptions.file_path, { path: ffprobeStatic.path })
         .then((info) => {
             return validateVideoOptions(fileOptions, info);
         })
         .then((validated_options) => {
+            progress = 1;
             fileOptions.resolution        = validated_options[0];
             kvazaarOptions["input-fps"]   = validated_options[1];
+            validated_options_func_global = validated_options;
+            return callFFMPEG(["-noautorotate","-y","-i",fileOptions.file_path], [],
+                            fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"]);
 
-            let promises = [
-                callFFMPEG(["-noautorotate","-i",fileOptions.file_path], [],
-                            fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
-            ];
 
-            // extract audio if it's viable (users wants the output to contain the audio track
-            // and there's an audio track to extract [video is not raw])
-            if (fileOptions.container !== "none" && fileOptions.raw_video === 0 && validated_options[2] === 1) {
-                console.log("AUDIO TRACK PRESENT!");
-                promises.push(callFFMPEG(["-i", fileOptions.file_path], [],
-                              fileOptions.tmp_path + "_audio.mp4", ["-vn", "-codec:a", "copy"]));
+        })
+        .catch(function(err) {
+            //console.log(err);
+           
+            // If output is at least one frame, process it and ignore the error
+            try {
+                fs.stat(fileOptions.tmp_path + ".yuv",function(err2, data) {
+                    if (err2) {
+                        console.log(err2 + data);
+                        reject(err);
+                    }
+
+                    let resolutionSplit = fileOptions.resolution.split('x');
+                    if(!isNaN(resolutionSplit[0]) && !isNaN(resolutionSplit[1])) {
+                        // Has to be at least one frame Width*Height*1.5
+                        if(data.size >= parseInt(resolutionSplit[0])*parseInt(resolutionSplit[1])*1.5) {
+                            return;
+                        }
+                    }
+                    yuvFailed = true;
+                    reject(err);
+                });
+            } catch(err2) {
+                yuvFailed = true;
+                reject(err);
             }
 
-            return Promise.all(promises);
+        })
+        .then(() => {
+            // extract audio if it's viable (users wants the output to contain the audio track
+            // and there's an audio track to extract [video is not raw])
+            if (fileOptions.container !== "none" && fileOptions.raw_video === 0 && validated_options_func_global[2] === 1) {
+                console.log("AUDIO TRACK PRESENT!");
+                return callFFMPEG(["-y","-i", fileOptions.file_path], [],
+                              fileOptions.tmp_path + "_audio.mp4", ["-vn", "-codec:a", "copy"]);
+            }
+        })
+        .catch(function(err){
+            if(yuvFailed)  { 
+                reject();
+            } else {
+                // Mark audio as failed so we can try fallback method              
+                audioFailed = true;
+            }
+        })
+        .then(() => {
+            if(audioFailed) {
+                console.log("Using fallback aac audio");
+                return callFFMPEG(["-y","-i", fileOptions.file_path], [],
+                                  fileOptions.tmp_path + "_audio.mp4", ["-vn", "-c:a", "aac"]);
+            } else {
+                resolve(fileOptions.tmp_path + ".yuv");
+            }
         })
         .then(() => {
             resolve(fileOptions.tmp_path + ".yuv");
         })
-        .catch(function(err) {
-           console.log(err);
-            // If output is at least one frame, process it and ignore the error
-            try {
-              fs.stat(fileOptions.tmp_path + ".yuv",function(err2, data) {
-                  if (err2)
-                    reject(err);
-
-                  let resolutionSplit = fileOptions.resolution.split('x');
-                  if(!isNaN(resolutionSplit[0]) && !isNaN(resolutionSplit[1])) {
-                      // Has to be at least one frame Width*Height*1.5
-                      if(data.size >= parseInt(resolutionSplit[0])*parseInt(resolutionSplit[1])*1.5) {
-                          resolve(fileOptions.tmp_path + ".yuv");
-                      }
-                  }                
-                  reject(err);
-              });
-            } catch(err2) {
-              reject(err);
+        .catch(function(err){
+            if(yuvFailed)  { 
+                reject();
+            } else {
+                resolve(fileOptions.tmp_path + ".yuv");
             }
         });
     });
@@ -395,7 +428,7 @@ function preprocessRawVideo(fileOptions) {
             inputOptions.push("-r", fileOptions.fps, "-vcodec", "rawvideo", "-f", "rawvideo");
         }
 
-        callFFMPEG(["-i",fileOptions.file_path], inputOptions,
+        callFFMPEG(["-y","-i",fileOptions.file_path], inputOptions,
                     fileOptions.tmp_path + ".yuv", ["-f", "rawvideo", "-pix_fmt", "yuv420p"])
         .then(() => {
             resolve(fileOptions.tmp_path + ".yuv");
