@@ -16,11 +16,6 @@ RUN apt-get update \
     && make \
     && make install \
     && make clean \
-    && sed -i "s/define KVZ_BIT_DEPTH 8/define KVZ_BIT_DEPTH 10/" src/kvazaar.h \
-    && ./configure --disable-shared --program-suffix="_10bit" \
-    && make \
-    && make install \
-    && make clean \
     && cd .. \
     && mkdir src src/public src/util src/app \
     && export CLOUD_HOST=$CLOUD_HOST \

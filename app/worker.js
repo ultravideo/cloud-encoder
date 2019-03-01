@@ -317,18 +317,12 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions, taskInfo) {
                 options.push(kvazaarOptions[key]);
         }
 
-        let kvz_exec = "kvazaar";
-
-        if (kvazaarOptions["input-bitdepth"] === 10) {
-            kvz_exec = "kvazaar_10bit";
-        }
- 
        addLogo(videoLocation, fileOptions.resolution, function(err, newPath) {
           if (err)
               reject(err);
         });
 
-        const child = spawn(kvz_exec, options);
+        const child = spawn("kvazaar", options);
 
         // update currentJobPid so we can kill the process if user so requests
         currentJobPid = child.pid;
