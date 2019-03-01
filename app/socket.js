@@ -547,7 +547,8 @@ function handleCancelRequest(client, token) {
 function handleUploadRequest(client, message) {
     let validatedKvazaarPromise = validateKvazaarOptions(message.kvazaar, message.kvazaar_extra);
     let validatedFilePromise = validateFileOptions(message.other);
-
+    var data_func_global = null;
+    
     // first validated both kvazaar options and file info
     Promise.all([validatedKvazaarPromise, validatedFilePromise]).then(function(values) {
         let kvazaarPromise = db.getOptions(values[0][0].hash);
@@ -572,7 +573,20 @@ function handleUploadRequest(client, message) {
                 }
             };
         })
-        .then((data) => {
+        .then((data) => {    
+            data_func_global = data;
+            // Check that the file actually exists in the disk
+            if(data.db.file) {
+                if(!fs.existsSync(data.db.file.file_path)) {
+                    console.log("Uploaded file found from the DB but not disk, removing reference");
+                    var uniq_id = data.db.file.uniq_id;
+                    data.db.file = null;
+                    return db.removeFile(uniq_id);
+                }              
+            }
+        })
+        .then(() => {
+            data = data_func_global;
             // now check what info has already been stored. Save all insert queries
             // to promisesToResolve array which is then executed with Promise.all.
             // We can execute all queries at once because the insert queries
