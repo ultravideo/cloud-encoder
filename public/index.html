@@ -86,23 +86,21 @@
 				<br><br><br>
 
 				<hr class="separator"></hr>
-				<div class="container">
-					<label id="idSelectedPreset" style="font-size: 1.25em">
+					<label id="idSelectedPreset">
 						Selected encoding level: Ultrafast (fastest, lowest quality)
 					</label><br>
 					<div class="form-row">
 						<div class="col-md-2">
-							<label style="margin-top:10px; padding 0px;">Good quality</label>
+							<label style="margin-top:10px; padding 0px; font-size: 17px">Good quality</label>
 						</div>
 						<div class="col-md-8">
 							<input type="range" value="9" min="1" max="9" id="presetSlider"
 								   class="form-control kvz_options" name="preset"/>
 						</div>
 						<div class="col-md-2">
-							<label style="margin-top:10px;">High speed</label>
+							<label style="margin-top:10px; font-size: 17px">High speed</label>
 							</div>
 						</div>
-					</div>
 				<hr class="separator"></hr>
 				<button id="advancedButton" class="btn btn-primary">Advanced settings</button>
 				<button id="cancelButton" class="btn btn-danger" style="display: none; margin-left: 10px">Cancel</button>
@@ -186,26 +184,25 @@
 
 					<div class="form-check">
 					<input type="checkbox" id="rateControlCheck" class="options form-check-input"/>
-					<label class="form-check-label" for="rateControlCheck" style="margin-top: 5px">
+					<label class="form-check-label" for="rateControlCheck" style="margin-left: 5px; margin-top: 1px">
 						Enable rate control
 					</label>
 					</div>
 					<hr class="separator"></hr>
 					<div id="rateControl" style="display: none">
-						<br>
-						<label id="idSelectedBitrate" style="font-size: 1.25em">
+						<label id="idSelectedBitrate" >
 							Selected bitrate: 0.1 Mbits/s
 						</label><br>
 						<div class="form-row">
 							<div class="col-md-2">
-								<label style="margin-top:10px; padding 0px;">Small size</label>
+								<label style="margin-top:10px; padding 0px; font-size: 17px">Small size</label>
 							</div>
 							<div class="col-md-8">
 								<input type="range" value="100000" min="100000" max="30000000" step="100000" id="bitrateSlider"
 									   class="form-control kvz_options" name="bitrate"/>
 							</div>
 							<div class="col-md-2">
-								<label style="margin-top:10px;">Good quality</label>
+								<label style="margin-top:10px; font-size: 17px">Good quality</label>
 							</div>
 						</div>
 						<hr class="separator"></hr>
@@ -308,12 +305,12 @@
 												data-toggle="tooltip" title="How often the video parameter set is re-sent [0]<br> - 0: Only send VPS with the first frame<br> - N: Send VPS with every Nth intra frame">
 											--vps-period &lt;integer&gt;
 										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
 										<button value="ref" class="btn btn-secondary kvzExtraOption paramRequired"
 												data-toggle="tooltip" title="Number of reference frames, in range 1..15 [4]">
 											--ref &lt;integer&gt;
 										</button>
-									</div>
-									<div class="btn-group" role="group" aria-label="">
 										<button value="gop" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
 									  data-toggle="tooltip" title="GOP structure [8]<br> - 0: Disabled<br> - 8: B-frame pyramid of length 8<br> - lp-<string>: Low-delay P-frame GOP (e.g. lp-g8d4t2, see README)">
 											--gop
@@ -330,12 +327,12 @@
 												data-toggle="tooltip" title="Use lossless coding. [disabled]">
 											--lossless
 										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
 										<button value="mv-constraint" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
 												data-toggle="tooltip" title="Constrain movement vectors. [none] <br> - none: No constraint <br> - frametile: Constrain within the tile <br> - frametilemargin: Constrain even more">
 											--mv-constraint &lt;string&gt;
 										</button>
-									</div>
-									<div class="btn-group" role="group" aria-label="">
 										<button value="set-qp-in-cu" class="btn btn-secondary kvzExtraOption"
 												data-toggle="tooltip" title="Set QP at CU level keeping pic_init_qp_minus26 in PPS zero.">
 											--set-qp-in-cu
@@ -432,12 +429,12 @@
 												data-toggle="tooltip" title="Intra prediction units sizes [1-4]<br> - 0, 1, 2, 3, 4: from 64x64 to 4x4">
 											--pu-depth-intra &lt;int&gt;-&lt;int&gt;
 										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
 										<button value="tr-depth-intra" class="btn btn-secondary kvzExtraOption paramRequired"
 												data-toggle="tooltip" title="Transform split depth for intra blocks [0]">
 											--tr-depth-intra &lt;integer&gt;
 										</button>
-									</div>
-									<div class="btn-group" role="group" aria-label="">
 										<button value="bipred" class="btn btn-secondary kvzExtraOption"
 												data-toggle="tooltip" title="Bi-prediction [disabled]">
 											--bipred
@@ -446,16 +443,18 @@
 												data-toggle="tooltip" title="CU split search termination [zero]<br> - off: Don't terminate early<br> - zero: Terminate when residual is zero<br>">
 											--cu-split-termination &lt;string&gt;
 										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
 										<button value="me-early-termination" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
 												data-toggle="tooltip" title="Motion estimation termination [on]<br> - off: Don't terminate early<br> - on: Terminate early<br> - sensitive: Terminate even earlier<br>">
 											--me-early-termination &lt;string&gt;
 										</button>
-									</div>
-									<div class="btn-group" role="group" aria-label="">
 										<button value="fast-residual-cost" class="btn btn-secondary kvzExtraOption paramRequired"
 												data-toggle="tooltip" title="Skip CABAC cost for residual coefficients when QP is below the limit. [0]">
 											--fast-residual-cost &lt;integer&gt;
 										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
 										<button value="intra-rdo-et" class="btn btn-secondary kvzExtraOption"
 												data-toggle="tooltip" title="Check intra modes in rdo stage only until a zero coefficient CU is found [disabled]">
 											--intra-rdo-et
@@ -530,12 +529,12 @@
 												data-toggle="tooltip" title="Specify color range [tv]<br> - tv, pc">
 											--range &lt;string&gt;
 										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
 										<button value="colorprim" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
 												data-toggle="tooltip" title="Specify color primaries [undef]<br> - undef, bt709, bt470m, bt470bg,<br> smpte170m, smpte240m, film, bt2020<br>">
 											--colorprim &lt;string&gt;
 										</button>
-									</div>
-									<div class="btn-group" role="group" aria-label="">
 										<button value="transfer" class="btn btn-secondary kvzExtraOption paramRequired multilinett"
 												data-toggle="tooltip" title="Specify transfer characteristics [undef]<br> - undef, bt709, bt470m, bt470bg,<br> smpte170m, smpte240m, linear, log100,<br> log316, iec61966-2-4, bt1361e,<br> iec61966-2-1, bt2020-10, bt2020-12<br>">
 											--transfer &lt;string&gt;
@@ -544,6 +543,8 @@
 												data-toggle="tooltip" title="Specify color matrix setting [undef]<br> - undef, bt709, fcc, bt470bg, smpte170m,<br> smpte240m, GBR, YCgCo, bt2020nc, bt2020c<br>">
 											--colormatrix &lt;string&gt;
 										</button>
+									</div>
+									<div class="btn-group" role="group" aria-label="">
 										<button value="chromaloc" class="btn btn-secondary kvzExtraOption paramRequired"
 												data-toggle="tooltip" title="Specify chroma sample location (0 to 5) [0]">
 											--chromaloc &lt;integer&gt;
@@ -560,7 +561,7 @@
 				</div>
 				<hr class="separator"></hr>
 				<div class="form-group">
-					<label style="font-size: 1.25em">Output container</label>
+					<label>Output container</label>
 					<select class="form-control kvz_options col-md-3" id="containerSelect" name="container">
 						<option value="none">None (HEVC)</option>
 						<option value="mp4" selected>MP4</option>

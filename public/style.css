@@ -3,35 +3,45 @@ body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,form,fieldset,input,textarea,p,
 
 /* Baseline */
 body, p, h1, h2, h3, h4, h5, h6 {font:normal 12px/1.3em Helvetica, Arial, sans-serif; color:#333; }
-h1 {font-size:22px; font-weight:bold;}
+h1 {font-size:27px; font-weight:bold;}
 h2 {font-size:19px; font-weight:bold;}
 h3 {font-size:16px; font-weight:bold;}
 h4 {font-size:14px; font-weight:bold;}
 h5 {font-size:12px; font-weight:bold;}
-p {margin:10px 0;}
+/* p {margin:10px 0;} */
 
 
 body {
 	text-align:left;
 	margin:40px; 
-	/* font-size: 1.02em; */
-	font-size: 1.0em !important;
+	font-size: 19px !important;
 }
 
 #frame {margin:0 auto; width:900px; text-align:left;}
 
 
 .alert-info p {
-	font-size: 1.0em !important;
+	font-size: 17px !important;
+}
+
+.alert-warning strong {
+	font-size: 17px !important;
+}
+
+.kvzExtraOption {
+	font-size: 17px !important;
 }
 
 /* Uploader: Drag & Drop */
 .resumable-error {
 	display: none;
-	font-size: 14px;
+	font-size: 19px;
 	font-style: italic;
 }
 
+.btn {
+	font-size: 19px !important;
+}
 
 .fileReqTable {
 	margin-bottom: 5px;
@@ -67,10 +77,6 @@ body {
 
 .dot_failure {
 	background-color: red;
-}
-
-.alert, .alert-info {
-	font-size: 1.20em;
 }
 
 .resumable-drop {
@@ -167,7 +173,7 @@ body {
 }
 
 table {
-	font-size: 1.15em;
+	/* font-size: 1.15em; */
 }
 
 .status-msg-starting {
