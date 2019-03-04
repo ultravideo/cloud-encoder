@@ -457,7 +457,6 @@ function handleUploadResponse(response) {
             "You can <a href='#' class='linkRequestLinkClass btn btn-info' role='button'>follow the encoding progress</a></div>");
         $(".resumable-drop").show();
         enableFileBrowse();
-        incRequestCount();
 
     // user has already submitted this request and it's still active (1 >= downloads left)
     } else {
