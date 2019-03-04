@@ -181,7 +181,7 @@ function drawFileTable(file) {
         "<tr><td>Status:</td><td id='tdStatus'>" + file.message + "</td></tr>" +
         "<tr><td>Uploaded:</td><td id='tdUploaded'>" + dateString + "</td></tr>";
 
-    if (file.duration !== null)
+    if (file.duration !== null && file.duration !== "")
         html += "<tr><td>Duration:</td><td id='tdDuration'>" + file.duration + "</td></tr>";
 
     html += "<tr class='blank_row'><tr><td colspan='2'></td></tr>";
