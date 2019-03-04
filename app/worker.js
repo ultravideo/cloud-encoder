@@ -49,6 +49,18 @@ nrp.on("message", function(msg) {
         // files and set the status of taks to CANCELLED
         process.kill(currentJobPid);
     }
+    // Reply to the pingrequest with current job and pid
+    else if(msg.type === "pingRequest") {
+        nrp.emit('message', {
+            type: "pong",
+            reply: "ping",
+            data: {
+                pid: process.pid,
+                jobpid: currentJobPid,
+                token: currentJobToken,
+            }
+        });
+    }
 });
 
 // ------------------- /message queue stuff -------------------
@@ -547,6 +559,7 @@ function processFile(fileOptions, kvazaarOptions, taskInfo, done) {
         updateWorkerStatus(taskInfo, fileOptions.uniq_id, taskStatus);
         removeArtifacts(fileOptions.tmp_path, fileOptions);
         console.log(reason);
+        currentJobToken = null;
         done();
     });
 }

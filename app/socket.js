@@ -10,6 +10,7 @@ let kue = require('kue');
 var NRP = require('node-redis-pubsub');
 var redis_client = require('redis').createClient(7776);
 let constants = require("./constants");
+const { fork, spawn } = require('child_process');
 
 // --------------- http(s) ---------------
 
@@ -84,12 +85,42 @@ var nrp = new NRP({
 });
 
 nrp.on("message", function(msg) {
-    if (msg.data.user !== undefined && clients.clientList[msg.data.user]) {
+    if (msg.type === "update" && msg.data.user !== undefined && clients.clientList[msg.data.user]) {
         if (clients.clientList[msg.data.user] && clients.clientList[msg.data.user].readyState === 1) {
             clients.clientList[msg.data.user].send(JSON.stringify(msg));
         }
     }
+    // ping reply
+    else if(msg.type === "pong") {
+        pingReplies.push(msg.data);
+    }
 });
+
+// List of replies from the workers
+var pingReplies = [];
+// Ignore worker count at the startup and when adding new workers
+var addedWorker = true;
+
+function pingWorkers() {
+    console.log("Replied clients " + pingReplies.length);
+
+    // Ignore creating new workers for one cycle
+    if(!addedWorker && pingReplies.length < constants.NUMBER_OF_WORKER_THREADS) {
+        // Fork a new worker if less than the required number replied to ping
+        fork('./app/worker');
+        addedWorker = true;
+    } else {
+        addedWorker = false;
+    }
+
+    pingReplies = [];
+    nrp.emit('message', {
+        type: "pingRequest",
+    });
+};
+
+// Ping workers every couple of seconds to make sure enough is running
+setInterval(pingWorkers, 2000);
 
 // --------------- message queue stuff end ---------------
 
