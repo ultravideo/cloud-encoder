@@ -115,18 +115,22 @@ function enableSaveButtonIfPossible(params) {
     $("#advancedButton").prop("disabled", false);
 
     // function static variable so we don't pollute the global space
-    enableSaveButtonIfPossible.states = {
-        options: true,
-        fps: true,
-        resolution: true,
-        pixfmt: true
-    };
+    if (enableSaveButtonIfPossible.states === undefined) {
+        enableSaveButtonIfPossible.states = {
+            options: true,
+            fps: true,
+            resolution: true,
+            pixfmt: true
+        };
+    }
 
     Object.keys(params).forEach(function(key) {
-        if (params[key] === false)
-            $("#advancedButton").prop("disabled", true);
-
         enableSaveButtonIfPossible.states[key] = params[key];
+    });
+
+    Object.keys(enableSaveButtonIfPossible.states).forEach(function(key) {
+        if (enableSaveButtonIfPossible.states[key] === false)
+            $("#advancedButton").prop("disabled", true);
     });
 }
 
@@ -746,7 +750,7 @@ $("#rawVideoCheck").click(function() {
         // which requires input. Disable save button
         if (!$("#resValueTxt").is(":hidden")) {
             enableSaveButtonIfPossible({
-                fps: $("#resValueTxt").val() != ""
+                resolution: $("#resValueTxt").val() != ""
             });
         }
 
@@ -754,7 +758,7 @@ $("#rawVideoCheck").click(function() {
         // which requires input. Disable save button
         if (!$("#pixFmtTxt").is(":hidden")) {
             enableSaveButtonIfPossible({
-                fps: $("#pixFmtTxt").val() != ""
+                pixfmt: $("#pixFmtTxt").val() != ""
             });
         }
     } else {
