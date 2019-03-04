@@ -137,19 +137,12 @@ function enableSaveButtonIfPossible(params) {
 // My videos view consists of tables. Each request has it's own table to make the ordering easy
 // These tables are drawn every time user clicks the My videos link
 function drawFileTable(file) {
-
-    let newHTML  = "";
+    let buttonHTML  = "";
     let dotClass = "";
-
-    Object.keys(file.options).forEach(function(key) {
-        newHTML += "<tr><td>" + key + ":</td><td >" + file.options[key] + "</td></tr>";
-    });
-
-    newHTML += "<tr><td>Downloads left:</td><td id='tdDownloadCount'>" + (2 - file.download_count) + "</td></tr></table>";
 
     // request done
     if (file.status === taskStatus.READY) {
-        newHTML +=
+        buttonHTML +=
             "<br><button id='btnDownload' class='btn btn-success' " +
             "onclick=\"sendDownloadRequest('" + file.token + "')\">Download</button>" +
             "<button style='margin-left: 10px' class='btn btn-danger' data-toggle='modal'" +
@@ -157,30 +150,31 @@ function drawFileTable(file) {
         dotClass = "dot_ready";
     } else {
         if (file.status === taskStatus.CANCELLED || file.status === taskStatus.FAILURE) {
-            newHTML +=
+            buttonHTML +=
                 "<br><button id='btnDownload' class='btn btn-success' disabled>Download</button>" +
                 "<button class='btn btn-danger' style='margin-left: 10px' id='btnDelete' data-toggle='modal'" +
                 "data-href='" + file.token + "' data-target='#confirm-delete'>Delete</button>";
             dotClass = "dot_failure";
         } else {
-            newHTML +=
+            buttonHTML +=
                 "<br><button id='btnDownload' class='btn btn-success' disabled>Download</button>" + 
                 "<button class='btn btn-danger' style='margin-left: 10px' id='btnDelete' data-toggle='modal'" +
                 "data-href='" + file.token + "' data-target='#confirm-cancel'>Cancel</button>";
             dotClass = "dot_inprogress";
         }
     }
+
     var monthNames = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     ];
     
-    var uploadDate = new Date(parseInt(file.timestamp));
     // Time format: 20 Feb 2019 12:05
+    var uploadDate = new Date(parseInt(file.timestamp));
     var dateString = 
-    uploadDate.getDate()+" "+monthNames[uploadDate.getMonth()]+" "+uploadDate.getFullYear()+" "+
-    uploadDate.getHours().toString().padStart(2, '0')+":"+uploadDate.getMinutes().toString().padStart(2, '0');
+        uploadDate.getDate() + " " + monthNames[uploadDate.getMonth()] + " " + uploadDate.getFullYear() + " " +
+        uploadDate.getHours().toString().padStart(2, '0') + ":" + uploadDate.getMinutes().toString().padStart(2, '0');
     
-    let info = "</div>" +
+    let html = "</div>" +
         "<div id='div" + file.token + "'><hr id='separator" + file.token + "' class='separator'></hr>" +
         "<span id='reqStatus' class='dot " + dotClass + "'></span> <b>" + file.name + "</b>" +
         "<table class='fileReqTable' id='table" + file.token + "'><tr><td colspan='2'></td></tr><tr></tr>" +
@@ -188,11 +182,28 @@ function drawFileTable(file) {
         "<tr><td>Uploaded:</td><td id='tdUploaded'>" + dateString + "</td></tr>";
 
     if (file.duration !== null)
-        info += "<tr><td>Duration:</td><td id='tdDuration'>" + file.duration + "</td></tr>";
-    if (file.size !== null)
-        info += "<tr><td>Output size:</td><td id='tdSize'>" +  file.size + "</td></tr>";
+        html += "<tr><td>Duration:</td><td id='tdDuration'>" + file.duration + "</td></tr>";
 
-    return info + newHTML;
+    html += "<tr class='blank_row'><tr><td colspan='2'></td></tr>";
+    html += "<tr><td>Preset</td><td>" + file.preset + "</td></tr>";
+    html += "<tr><td>Format</td><td>" + file.format + "</td></tr>";
+
+    if (file.bitrate !== null)
+        html += "<tr><td>Bitrate</td><td>" + file.bitrate + "</td></tr>";
+
+    if (file.settings !== null)
+        html += "<tr><td>Settings</td><td>" + file.settings + "</td></tr>";
+
+    html += "<tr class='blank_row'><tr><td colspan='2'></td></tr>";
+    html += "<tr><td>Container</td><td>" + file.container + "</td></tr>";
+
+    if (file.size !== null)
+        html += "<tr><td>Output size:</td><td id='tdSize'>" +  file.size + "</td></tr>";
+
+    html += "<tr><td>Downloads:</td><td>" + (2 - file.download_count) + "</td></tr>";
+    html += "</table>";
+
+    return html + buttonHTML;
 }
 
 function resetUploadFileInfo() {
@@ -561,27 +572,10 @@ function handleTaskUpdate(response) {
 
     // request ready
     if (response.data.status === taskStatus.READY) {
-        // enable Download button
-        $("#div" + response.data.token + " #btnDownload").prop("disabled", false);
-        $("#div" + response.data.token + " #btnDownload").removeAttr("onclick");
-        $("#div" + response.data.token + " #btnDownload").attr("onClick", "sendDownloadRequest('" + response.data.token + "');");
-
-        let nextRow = 4;
-        let table   = document.getElementById("table" + response.data.token);
-
-        if (response.data.duration !== null) {
-            let row   = table.insertRow(nextRow++);
-            let cell0 = row.insertCell(0).innerHTML = "Duration:";
-            let cell1 = row.insertCell(1).innerHTML = response.data.duration;
-        }
-
-        if (response.data.size !== null) {
-            let row   = table.insertRow(nextRow);
-            let cell0 = row.insertCell(0).innerHTML = "Output size:";
-            let cell1 = row.insertCell(1).innerHTML = response.data.size;
-        }
-
-        newDotClass = "dot dot_ready";
+        connection.send(JSON.stringify({
+            user: userToken,
+            type: "taskQuery"
+        }));
     }
     // request succeeded, failed or got cancelled -> show delete button
     else if (response.data.status == taskStatus.CANCELLED ||

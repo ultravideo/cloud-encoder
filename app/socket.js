@@ -238,6 +238,11 @@ function validateFileOptions(fileOptions) {
                 reject(err);
             });
         } else {
+            let ext = fileOptions.name.match(/\.[0-9a-z]+$/i);
+
+            if (ext)
+                validatedOptions.video_format = ext[0].slice(1);
+
             resolve(validatedOptions);
         }
     });
@@ -386,7 +391,6 @@ function handleTaskRequest(client, message) {
         };
 
         rows.forEach(function(taskRow) {
-
             Promise.all([
                 db.getFile(taskRow.file_id),
                 db.getOptions(taskRow.ops_id)
@@ -403,14 +407,34 @@ function handleTaskRequest(client, message) {
                     case constants.POSTPROCESSING: msg = "Post-processing";    break;
                 }
 
-                const kvazaarOps = {
-                    "Container": values[1]["container"],
-                    "Options":   values[1]["extra"]
-                };
+                let format   = values[0]["video_format"];
+                let preset   = values[1]["extra"].match(/preset [a-zA-Z]+\,?/);
+                let bitrate  = values[1]["extra"].match(/bitrate [0-9]+\,?/);
+                let settings = values[1]["extra"];
+
+                if (preset) {
+                    settings = settings.replace(preset[0], "");
+                    preset   = preset[0].split(" ")[1].replace(",", "");
+                }
+
+                if (bitrate) {
+                    settings = settings.replace(bitrate[0], "");
+                    bitrate  = bitrate[0].split(" ")[1].replace(",", "");
+
+                    bitrate = (bitrate / 1000 / 1000) + " Mbits/s";
+                }
+
+                if (settings === "")
+                    settings = null;
 
                 message.data.tasks.push({
                     name: values[0] ? values[0].name : "Error",
                     uniq_id: taskRow.file_id,
+                    preset: preset,
+                    format: format,
+                    bitrate: bitrate,
+                    container: values[1]["container"],
+                    settings: settings,
                     timestamp: taskRow.timestamp,
                     size: taskRow.file_size,
                     duration: taskRow.file_duration,
@@ -418,17 +442,16 @@ function handleTaskRequest(client, message) {
                     message: msg,
                     download_count: taskRow.download_count,
                     token: taskRow.token,
-                    options: kvazaarOps
                 });
 
                 // Send response on the last item
-                if(message.data.tasks.length == rows.length) {
+                if (message.data.tasks.length == rows.length) {
                     client.send(JSON.stringify(message));
                 }
             }).catch(function(err) {
                 // If promise rejects a db query, reduce the number and check if this was the last
                 rows.length--;
-                if(message.data.tasks.length == rows.length) {
+                if (message.data.tasks.length == rows.length) {
                     client.send(JSON.stringify(message));
                 }
             });
