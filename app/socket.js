@@ -10,7 +10,30 @@ let kue = require('kue');
 var NRP = require('node-redis-pubsub');
 var redis_client = require('redis').createClient(7776);
 let constants = require("./constants");
-const { fork, spawn } = require('child_process');
+const { fork, spawn, spawnSync } = require('child_process');
+
+// --------------- startup ---------------
+
+var kvazaarOutput = spawnSync("kvazaar", ["--version"]);
+if(kvazaarOutput.status != 0) {
+    console.log(kvazaarOutput);
+
+    console.log("Kvazaar binary not found!")
+    process.exit(1);
+}
+console.log(kvazaarOutput.stdout.toString());
+
+var ffmpegOutput = spawnSync("ffmpeg", ["-version"]);
+if(ffmpegOutput.status != 0) {
+  console.log(ffmpegOutput);
+  console.log("ffmpeg binary not found!")
+  process.exit(1);
+}
+console.log(ffmpegOutput.stdout.toString());
+
+
+// --------------- end startup -----------
+
 
 // --------------- http(s) ---------------
 
