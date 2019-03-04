@@ -108,7 +108,7 @@ var nrp = new NRP({
 });
 
 nrp.on("message", function(msg) {
-    if (msg.type === "update" && msg.data.user !== undefined && clients.clientList[msg.data.user]) {
+    if (msg.type === "update" && msg.data.user !== undefined) {
         if (clients.clientList[msg.data.user] && clients.clientList[msg.data.user].readyState === 1) {
             clients.clientList[msg.data.user].send(JSON.stringify(msg));
         }
@@ -116,6 +116,12 @@ nrp.on("message", function(msg) {
     // ping reply
     else if(msg.type === "pong") {
         pingReplies.push(msg.data);
+    }
+    // Task progress
+    else if(msg.type === "progress" && msg.data.user !== undefined && msg.data.totalFrames != 0) {
+        if (clients.clientList[msg.data.user] && clients.clientList[msg.data.user].readyState === 1) {
+            clients.clientList[msg.data.user].send(JSON.stringify(msg));
+        }
     }
 });
 
@@ -125,7 +131,7 @@ var pingReplies = [];
 var addedWorker = true;
 
 function pingWorkers() {
-    console.log("Replied clients " + pingReplies.length);
+    //console.log("Replied clients " + pingReplies.length);
 
     // Ignore creating new workers for one cycle
     if(!addedWorker && pingReplies.length < constants.NUMBER_OF_WORKER_THREADS) {

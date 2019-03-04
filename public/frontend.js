@@ -559,6 +559,17 @@ function handlePixelFormatValidationResponse(response) {
 
 // ------------------------------- WebSocket updates and actions -------------------------------
 
+function handleProgressUpdate(response) {
+    // ignore update, "My videos" tab is not active
+    if ($("#table" + response.data.token).length == 0) {
+        return;
+    }
+
+    // display the latest status message and change the color of dot if necessary
+    $("#div" + response.data.token + " #tdStatus").html("Encoding "+Math.floor((response.data.frame/response.data.totalFrames*100))+"%");
+
+}
+
 // worker, socket or server sent us task update regarding one of our files
 // Update the task if My videos view is active
 function handleTaskUpdate(response) {
@@ -1280,6 +1291,8 @@ function websocketMessageListener(message) {
         }
     } else if (message_data.type === "update") {
         handleTaskUpdate(message_data);
+    } else if (message_data.type === "progress") {
+        handleProgressUpdate(message_data);
     }
 }
 

@@ -174,7 +174,7 @@ module.exports = {
                 if (err) {
                     reject(err);
                     console.log(sql);
-                    console.log(params);
+                    console.log(options_id);
                 }
                 resolve(!res ? null : res.rowCount > 0 ? res.rows[0] : null);
             });

@@ -37,6 +37,9 @@ let taskCancelled = false;
 // It's set when processing the task is started
 let currentJobToken = null;
 
+// Total number of frames in the current job
+let currentJobFrames = 0;
+
 // user pressed cancel button and socket send us cancel request
 // check if we're processing the request and if we are, kill the process
 nrp.on("message", function(msg) {
@@ -365,14 +368,57 @@ function kvazaarEncode(videoLocation, fileOptions, kvazaarOptions, taskInfo) {
             if (err)
                 reject(err);
 
+
+            let fileSize = fs.statSync(videoLocation).size;
+            let resolutionSplit = fileOptions.resolution.split('x');
+            currentJobFrames = Math.ceil(fileSize/(parseInt(resolutionSplit[0])*parseInt(resolutionSplit[1])*1.5));
+
             const child = spawn("kvazaar", options);
             
             // update currentJobPid so we can kill the process if user so requests
             currentJobPid = child.pid;
 
             let stderr = "";
+            let stderrUnprocessed = "";
+            let lastReport = (new Date()).getTime();
+            let lastFrame = 0;
+            let lastCheckedFrame = 0;
+            let checkReport = 1; // How often to check for report
             child.stdout.on("data", function(data) { });
-            child.stderr.on("data", function(data) { stderr += data.toString(); });
+            child.stderr.on("data", function(data) {
+                stderr += data.toString();
+                stderrUnprocessed += data.toString();
+                var lines = stderrUnprocessed.split('\n');
+                if(lines.length > 0) {
+                    stderrUnprocessed = lines.pop();
+                    lines.forEach(line => {
+                        if (line.substr(0, 3) === "POC") {
+                            lastFrame++;
+                        }
+                    });
+                    if(lastFrame-lastCheckedFrame > checkReport) {
+                        var currentTime = (new Date()).getTime();
+                        lastCheckedFrame = lastFrame;
+                        // Emit reports only every seconds
+                        if(currentTime-lastReport >= 1000) {
+                            lastReport = currentTime;
+                            nrp.emit('message', {
+                                type: "progress",
+                                data: {
+                                    user: taskInfo.owner_id,
+                                    token: taskInfo.token,
+                                    file_id: fileOptions.uniq_id,
+                                    frame: lastFrame,
+                                    totalFrames: currentJobFrames,
+                                }
+                            });
+                        } else {
+                            // We got some frames but they were processed in under one second, increase check interval
+                            checkReport++;
+                        }
+                    }
+                }
+            });
 
             child.on("exit", function(code, signal) {
                 if (code === 0) {
