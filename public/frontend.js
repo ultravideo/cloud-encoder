@@ -176,18 +176,19 @@ function drawFileTable(file) {
     uploadDate.getDate()+" "+monthNames[uploadDate.getMonth()]+" "+uploadDate.getFullYear()+" "+
     uploadDate.getHours().toString().padStart(2, '0')+":"+uploadDate.getMinutes().toString().padStart(2, '0');
     
-    newHTML = 
-        "</div>" +
+    let info = "</div>" +
         "<div id='div" + file.token + "'><hr id='separator" + file.token + "' class='separator'></hr>" +
         "<span id='reqStatus' class='dot " + dotClass + "'></span> <b>" + file.name + "</b>" +
         "<table class='fileReqTable' id='table" + file.token + "'><tr><td colspan='2'></td></tr><tr></tr>" +
         "<tr><td>Status:</td><td id='tdStatus'>" + file.message + "</td></tr>" +
-        "<tr><td>Uploaded:</td><td id='tdUploaded'>" + dateString + "</td></tr>" +
-        "<tr><td>Duration:</td><td id='tdDuration'>" + ((file.duration === null) ? "unknown" : file.duration) + "</td></tr>" +
-        "<tr><td>Output size:</td><td id='tdSize'>" +  ((file.size === null) ? "unknown" : file.size) + "</td></tr>" +
-        newHTML;
+        "<tr><td>Uploaded:</td><td id='tdUploaded'>" + dateString + "</td></tr>";
 
-    return newHTML;
+    if (file.duration !== null)
+        info += "<tr><td>Duration:</td><td id='tdDuration'>" + file.duration + "</td></tr>";
+    if (file.size !== null)
+        info += "<tr><td>Output size:</td><td id='tdSize'>" +  file.size + "</td></tr>";
+
+    return info + newHTML;
 }
 
 function resetUploadFileInfo() {
@@ -561,12 +562,19 @@ function handleTaskUpdate(response) {
         $("#div" + response.data.token + " #btnDownload").removeAttr("onclick");
         $("#div" + response.data.token + " #btnDownload").attr("onClick", "sendDownloadRequest('" + response.data.token + "');");
 
-        if (response.data.size !== null) {
-            $("#tdSize").text(response.data.size);
-        }
+        let nextRow = 4;
+        let table   = document.getElementById("table" + response.data.token);
 
         if (response.data.duration !== null) {
-            $("#tdDuration").text(response.data.duration);
+            let row   = table.insertRow(nextRow++);
+            let cell0 = row.insertCell(0).innerHTML = "Duration:";
+            let cell1 = row.insertCell(1).innerHTML = response.data.duration;
+        }
+
+        if (response.data.size !== null) {
+            let row   = table.insertRow(nextRow);
+            let cell0 = row.insertCell(0).innerHTML = "Output size:";
+            let cell1 = row.insertCell(1).innerHTML = response.data.size;
         }
 
         newDotClass = "dot dot_ready";
