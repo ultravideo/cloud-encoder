@@ -3,10 +3,10 @@ let process = require("process");
 let pg = require("pg");
 
 const pool = new pg.Pool({
-    user: process.env.POSTGRES_USER,
-    host: "127.0.0.1",
-    database: "cloud_db",
-    password: process.env.POSTGRES_PASS,
+    user: process.env.POSTGRES_USER || "postgres",
+    host: process.env.POSTGRES_HOST || "127.0.0.1",
+    database: process.env.POSTGRES_DB || "cloud_db",
+    password: process.env.POSTGRES_PASS || "postgres",
     port: "5432"
 });
 
