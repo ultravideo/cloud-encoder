@@ -10,17 +10,17 @@ Indent by 4 spaces. (no tabs)
 docker build -t cloud .
 `
 
-`
+```
 docker run --rm --name cloud-postgres -v ~/kvazaar-cloud-db:/var/lib/postgresql/data -d --env POSTGRES_PASSWORD=postgres postgres:latest
-docker run --rm --name cloud-encoder --restart always -d --link cloud-postgres:pg -p 80:8080 -p 443:8443 -v /tmp:/tmp cloud
-`
+docker run --rm --name cloud-encoder -d --link cloud-postgres:pg -p 80:8080 -p 443:8443 -v /tmp:/tmp cloud
+```
 
 If you want to use the Kvazaar Cloud Encoder in localhost, you need to change the variable *httpsEnabled* in socket.js to false and run:
 
-`
+```
 docker run --rm --name cloud-postgres -v ~/kvazaar-cloud-db:/var/lib/postgresql/data -d --env POSTGRES_PASSWORD=postgres postgres:latest
-docker run --rm --name cloud-encoder --restart always -d --link cloud-postgres:pg -p 80:8081 -v /tmp:/tmp cloud
-`
+docker run --rm --name cloud-encoder -d --link cloud-postgres:pg -p 80:8081 -v /tmp:/tmp cloud
+```
 
 # How everything works
 
