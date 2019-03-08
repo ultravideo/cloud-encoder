@@ -564,9 +564,11 @@ function handleProgressUpdate(response) {
     if ($("#table" + response.data.token).length == 0) {
         return;
     }
+    let progressPercentage = ((response.data.frame/response.data.totalFrames*100));
+    let progressBar = '<progress style="height: 20px;" value="'+progressPercentage+'" max="100"></progress> '+Math.floor(progressPercentage)+'%';
 
     // display the latest status message and change the color of dot if necessary
-    $("#div" + response.data.token + " #tdStatus").html("Encoding "+Math.floor((response.data.frame/response.data.totalFrames*100))+"%");
+    $("#div" + response.data.token + " #tdStatus").html("Encoding "+progressBar);
 
 }
 
