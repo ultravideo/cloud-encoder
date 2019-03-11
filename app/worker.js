@@ -209,7 +209,7 @@ function moveToOutputFolder(name, path) {
 function addLogo(video_path, resolution, callback) {
     const pathPrefix = video_path.split('.')[0];
 
-    callFFMPEG(["-i","/tmp/cloud_uploads/misc/logo.png"], [],
+    callFFMPEG(["-y","-i","/tmp/cloud_uploads/misc/logo.png"], [],
                pathPrefix + "_logo.yuv", ["-vf", "scale=" + resolution.replace('x', ':') + ",setdar=1:1", "-pix_fmt", "yuv420p","-f", "rawvideo"])
     .then(() => {
         // Concat logo with the original video
